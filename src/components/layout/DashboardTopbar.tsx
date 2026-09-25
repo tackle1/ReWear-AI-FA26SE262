@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import '../../styles/dashboard/DashboardTopbar.css';
 
 export interface DashboardTopbarProps {
@@ -15,6 +15,7 @@ export interface DashboardTopbarProps {
   onRegionClick?: () => void;
   onNotificationClick?: () => void;
   onAvatarClick?: () => void;
+  onLogout?: () => void;
 }
 
 export const DashboardTopbar: React.FC<DashboardTopbarProps> = ({
@@ -31,9 +32,38 @@ export const DashboardTopbar: React.FC<DashboardTopbarProps> = ({
   onRegionClick,
   onNotificationClick,
   onAvatarClick,
+  onLogout,
 }) => {
-  const [inner, setInner] = React.useState('');
+  const [inner, setInner] = useState('');
+  const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
+  const accountMenuRef = useRef<HTMLDivElement>(null);
   const value = searchValue ?? inner;
+
+  useEffect(() => {
+    if (!isAccountMenuOpen) return;
+
+    const handleDocumentClick = (event: MouseEvent) => {
+      if (!accountMenuRef.current?.contains(event.target as Node)) {
+        setIsAccountMenuOpen(false);
+      }
+    };
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsAccountMenuOpen(false);
+    };
+
+    document.addEventListener('mousedown', handleDocumentClick);
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('mousedown', handleDocumentClick);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [isAccountMenuOpen]);
+
+  const handleAvatarClick = () => {
+    onAvatarClick?.();
+    setIsAccountMenuOpen((isOpen) => !isOpen);
+  };
+
   return (
     <header className="rw-topbar">
       <div className="rw-topbar-search">
@@ -72,13 +102,47 @@ export const DashboardTopbar: React.FC<DashboardTopbarProps> = ({
           </svg>
           {hasUnread && <i className="rw-bell-dot" />}
         </button>
-        <button type="button" className="rw-avatar-btn" onClick={onAvatarClick} aria-label={userName}>
-          {avatarSrc ? (
-            <img className="rw-avatar-img" src={avatarSrc} alt={userName} />
-          ) : (
-            <span className="rw-avatar-fallback">{userName.charAt(0)}</span>
+        <div className="rw-account-menu-wrap" ref={accountMenuRef}>
+          <button
+            type="button"
+            className={`rw-avatar-btn${isAccountMenuOpen ? ' is-open' : ''}`}
+            onClick={handleAvatarClick}
+            aria-label={`Mở menu tài khoản của ${userName}`}
+            aria-expanded={isAccountMenuOpen}
+            aria-haspopup="menu"
+          >
+            {avatarSrc ? (
+              <img className="rw-avatar-img" src={avatarSrc} alt={userName} />
+            ) : (
+              <span className="rw-avatar-fallback">{userName.charAt(0)}</span>
+            )}
+          </button>
+          {isAccountMenuOpen && (
+            <div className="rw-account-menu" role="menu" aria-label="Menu tài khoản">
+              <div className="rw-account-menu-header">
+                <span className="rw-account-menu-name">{userName}</span>
+                <span className="rw-account-menu-subtitle">{verifiedLabel}</span>
+              </div>
+              <div className="rw-account-menu-divider" />
+              <button
+                type="button"
+                className="rw-account-menu-item rw-account-menu-logout"
+                role="menuitem"
+                onClick={() => {
+                  setIsAccountMenuOpen(false);
+                  onLogout?.();
+                }}
+              >
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M10 17l5-5-5-5" />
+                  <path d="M15 12H3" />
+                  <path d="M21 19V5a2 2 0 0 0-2-2h-5" />
+                </svg>
+                <span>Đăng xuất</span>
+              </button>
+            </div>
           )}
-        </button>
+        </div>
         <div className="rw-user-meta">
           <div className="rw-user-line1">
             <b>{userName}</b>

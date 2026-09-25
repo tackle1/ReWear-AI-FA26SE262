@@ -3,14 +3,17 @@
 .rw-topbar-search:focus-within { border-color: #2e7cf6; background: #fff; box-shadow: 0 0 0 3px rgba(46, 124, 246, 0.15); color: #2e7cf6; }
 .rw-topbar-input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font-size: 13px; color: #0f172a; }
 .rw-topbar-input::placeholder { color: #7b8799; }
-.rw-topbar-right { margin-left: auto; display: flex; align-items: center; gap: 12px; min-width: 0; }
+.rw-topbar-right { position: relative; z-index: 1; margin-left: auto; display: flex; align-items: center; gap: 12px; min-width: 0; }
 .rw-region-pill { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px; border: 0; border-radius: 9px; background: #f0f4fb; color: #334155; font-size: 12.5px; font-weight: 500; cursor: pointer; white-space: nowrap; }
 .rw-region-pill:hover { background: #e6edf8; }
 .rw-bell-btn { position: relative; width: 36px; height: 36px; display: grid; place-items: center; border: 0; border-radius: 9px; background: transparent; color: #334155; cursor: pointer; }
 .rw-bell-btn:hover { background: #f1f5f9; }
 .rw-bell-dot { position: absolute; top: 7px; right: 8px; width: 8px; height: 8px; border-radius: 50%; background: #ef4444; border: 2px solid #fff; }
-.rw-avatar-btn { border: 0; background: transparent; padding: 0; cursor: pointer; border-radius: 50%; transition: transform 0.18s ease; }
+.rw-account-menu-wrap { position: relative; z-index: 2; }
+.rw-avatar-btn { border: 0; background: transparent; padding: 0; cursor: pointer; border-radius: 50%; transition: transform 0.18s ease, box-shadow 0.18s ease; }
 .rw-avatar-btn:hover { transform: scale(1.05); }
+.rw-avatar-btn:focus-visible { outline: 2px solid #2e7cf6; outline-offset: 3px; }
+.rw-avatar-btn.is-open { box-shadow: 0 0 0 3px rgba(46, 124, 246, 0.16); }
 .rw-avatar-img { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; object-position: center 20%; display: block; background: #e2e8f0; border: 2px solid #fff; box-shadow: 0 0 0 2px #dbe7fd, 0 8px 16px -8px rgba(26, 54, 93, 0.5); }
 .rw-avatar-fallback { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: #0f1930; color: #fff; font-weight: 700; }
 .rw-user-meta { line-height: 1.3; min-width: 0; white-space: nowrap; }
@@ -18,4 +21,15 @@
 .rw-user-line1 b { color: #0f172a; font-weight: 700; }
 .rw-verified-badge { display: inline-block; padding: 3px 8px; border-radius: 20px; background: linear-gradient(135deg, #e0f2e9, #e8f6ef); border: 1px solid #bfe6cf; color: #15803d; font-size: 11px; font-weight: 700; }
 .rw-user-line2 { font-size: 11.5px; color: #64748b; }
+.rw-account-menu { position: absolute; top: calc(100% + 8px); right: 0; z-index: 100; width: 228px; padding: 8px; border: 1px solid #e2e8f3; border-radius: 14px; background: #fff; box-shadow: 0 18px 42px -18px rgba(15, 25, 48, 0.34); animation: rw-account-menu-in 0.16s ease-out; }
+.rw-account-menu-header { display: flex; flex-direction: column; gap: 3px; padding: 8px 10px; }
+.rw-account-menu-name { overflow: hidden; color: #0f172a; font-size: 13px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.rw-account-menu-subtitle { overflow: hidden; color: #64748b; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.rw-account-menu-divider { height: 1px; margin: 4px 2px 6px; background: #edf1f7; }
+.rw-account-menu-item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px; border: 0; border-radius: 9px; background: transparent; color: #334155; font: inherit; font-size: 13px; font-weight: 600; text-align: left; cursor: pointer; }
+.rw-account-menu-item:hover { background: #f7f9fc; }
+.rw-account-menu-item:focus-visible { outline: 2px solid #2e7cf6; outline-offset: -2px; }
+.rw-account-menu-logout { color: #dc2626; }
+.rw-account-menu-logout:hover { background: #fef2f2; }
+@keyframes rw-account-menu-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
 @media (max-width: 900px) { .rw-user-meta { display: none; } .rw-region-pill span { display: none; } .rw-topbar-search { flex: 1; } }

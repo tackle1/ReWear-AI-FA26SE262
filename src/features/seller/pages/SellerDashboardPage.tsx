@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
 import sellerAvatar from '../../../assets/images/seller-avatar.png';
 import ROUTES from '../../../routes/routes.config';
+import { logout } from '../../../store/slices/authSlice';
+import storage, { tokenStorage } from '../../../utils/storage';
 import DashboardSidebar from '../../../components/layout/DashboardSidebar';
 import DashboardTopbar from '../../../components/layout/DashboardTopbar';
 import DashboardPageHeader from '../../../components/layout/DashboardPageHeader';
@@ -13,12 +16,21 @@ import '../../../styles/dashboard/DashboardTheme.css';
 
 export const SellerDashboardPage: React.FC = () => {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const [activeMenu, setActiveMenu] = useState('dashboard');
+
+  const handleLogout = () => {
+    dispatch(logout());
+    tokenStorage.clearTokens();
+    storage.removeItem('rewear_current_user');
+    navigate(ROUTES.AUTH.LOGIN, { replace: true });
+  };
+
   return (
     <div className="seller-app rw-dashboard-theme">
       <DashboardSidebar activeKey={activeMenu} onSelect={(key) => setActiveMenu(key)} />
       <section className="seller-shell">
-        <DashboardTopbar avatarSrc={sellerAvatar} />
+        <DashboardTopbar avatarSrc={sellerAvatar} onLogout={handleLogout} />
         <main className="seller-main">
           <DashboardPageHeader onCreate={() => navigate(ROUTES.LISTING.CREATE)} />
           <DashboardStats />
