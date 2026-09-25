@@ -48,14 +48,14 @@
 
 1. **Cập nhật nhánh dev mới nhất:**
    ```bash
-   git checkout dev && git pull origin dev
-Tạo nhánh làm việc mới từ dev:
+- git checkout dev && git pull origin dev
+- Tạo nhánh làm việc mới từ dev:
 git checkout -b feature/ten-tinh-nang
-Code, test và commit:
-git add .
-git commit -m "feat(module): mô tả ngắn gọn thay đổi"
-Push nhánh lên GitHub và tạo Pull Request (PR) vào dev:
-git push -u origin feature/ten-tinh-nang
+- Code, test và commit:
+- git add .
+- git commit -m "feat(module): mô tả ngắn gọn thay đổi"
+- Push nhánh lên GitHub và tạo Pull Request (PR) vào dev:
+- git push -u origin feature/ten-tinh-nang
 
 ---
 
