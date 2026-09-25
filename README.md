@@ -47,7 +47,9 @@
 ### **2. Luồng làm việc (Workflow)**
 
 1. **Cập nhật nhánh dev mới nhất:**
+    ```bash
 git checkout dev && git pull origin dev
+```
 - Tạo nhánh làm việc mới từ dev:
 git checkout -b feature/ten-tinh-nang
 - Code, test và commit:
@@ -56,7 +58,6 @@ git checkout -b feature/ten-tinh-nang
 - Push nhánh lên GitHub và tạo Pull Request (PR) vào dev:
 - git push -u origin feature/ten-tinh-nang
 
----
 
 
 
