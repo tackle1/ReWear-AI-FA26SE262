@@ -47,7 +47,6 @@
 ### **2. Luồng làm việc (Workflow)**
 
 1. **Cập nhật nhánh dev mới nhất:**
-   ```bash
 git checkout dev && git pull origin dev
 - Tạo nhánh làm việc mới từ dev:
 git checkout -b feature/ten-tinh-nang
