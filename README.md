@@ -45,9 +45,9 @@
 > 📌 **Lưu ý:** Xác định thành viên qua `git log` (Author Email), **không** nhét tên người vào tên nhánh.
 
 ---
-
 ### **2. Luồng làm việc (Workflow)**
-1. Cập nhật nhánh `dev` mới nhất:
+
+1. **Cập nhật nhánh dev mới nhất:**
    ```bash
    git checkout dev && git pull origin dev
 Tạo nhánh làm việc mới từ dev:
@@ -64,7 +64,7 @@ fix: Sửa bug (Ví dụ: fix(auth): xử lý lỗi 401 khi hết hạn refresh 
 refactor: Tối ưu code (Ví dụ: refactor(escrow): tối ưu hóa luồng gọi webhook)
 chore: Cấu hình / thư viện (Ví dụ: chore(deps): nâng cấp axios lên v1.6)
 docs: Cập nhật tài liệu (Ví dụ: docs(readme): bổ sung hướng dẫn chạy local)
-🚀 Hướng dẫn cài đặt & Chạy dự án (Project Setup)
+🚀 Hướng dẫn cài đặt & chạy dự án(Project Setup)
 Yêu cầu hệ thống (Prerequisites)
 Node.js >= 18.x
 npm / yarn / pnpm
@@ -88,5 +88,6 @@ Nguyễn Tuấn Hoàng (Leader)
 Ngô Doãn Đạt
 Huỳnh Thiên Quốc
 Lý Hải Dương
+
 
 ---
