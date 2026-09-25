@@ -44,7 +44,6 @@
 
 > 📌 **Lưu ý:** Xác định thành viên qua `git log` (Author Email), **không** nhét tên người vào tên nhánh.
 
----
 ### **2. Luồng làm việc (Workflow)**
 
 1. **Cập nhật nhánh dev mới nhất:**
@@ -57,37 +56,9 @@ git add .
 git commit -m "feat(module): mô tả ngắn gọn thay đổi"
 Push nhánh lên GitHub và tạo Pull Request (PR) vào dev:
 git push -u origin feature/ten-tinh-nang
-3. Commit Message Format
-Cú pháp chuẩn: <loại>(<mục-tiêu>): <mô tả ngắn>
-feat: Tính năng mới (Ví dụ: feat(listing): tích hợp camera chụp ảnh hướng dẫn)
-fix: Sửa bug (Ví dụ: fix(auth): xử lý lỗi 401 khi hết hạn refresh token)
-refactor: Tối ưu code (Ví dụ: refactor(escrow): tối ưu hóa luồng gọi webhook)
-chore: Cấu hình / thư viện (Ví dụ: chore(deps): nâng cấp axios lên v1.6)
-docs: Cập nhật tài liệu (Ví dụ: docs(readme): bổ sung hướng dẫn chạy local)
-🚀 Hướng dẫn cài đặt & chạy dự án(Project Setup)
-Yêu cầu hệ thống (Prerequisites)
-Node.js >= 18.x
-npm / yarn / pnpm
-Docker & Docker Compose (cho Database & Redis)
-Các bước cài đặt
-Clone repository:
-git clone https://github.com/your-org/ReWear-AI-FA26SE262.git
-cd ReWear-AI-FA26SE262
-Tạo file môi trường từ file mẫu:
-cp .env.example .env
-Cài đặt dependencies:
-npm install
-Khởi chạy ứng dụng ở môi trường Development:
-npm run dev
-👥 Thông tin Dự án (Project Info)
-Mã đề tài: FA26SE262
-Tên đề tài: ReWear AI — AI-Powered Resale Verification & Escrow Platform
-Giảng viên hướng dẫn: Thân Thị Ngọc Vân
-Thành viên nhóm:
-Nguyễn Tuấn Hoàng (Leader)
-Ngô Doãn Đạt
-Huỳnh Thiên Quốc
-Lý Hải Dương
+
+---
+
 
 
 ---
