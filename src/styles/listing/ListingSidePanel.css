@@ -1,0 +1,130 @@
+/* ── Cột phải: xem trước tin đăng, ký quỹ, cổng thanh toán ── */
+.rw-lc-side-card {
+  background: #ffffff;
+  border: 1px solid #e7edf7;
+  border-radius: 16px;
+  padding: 16px 16px 18px;
+  box-shadow: 0 16px 38px -32px rgba(26, 54, 93, 0.5);
+}
+.rw-lc-side-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+.rw-lc-side-eyebrow {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+.rw-lc-side-note { font-size: 11px; color: #94a3b8; }
+.rw-lc-side-title { margin: 0; font-size: 14.5px; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 8px; }
+
+/* Thẻ xem trước sản phẩm */
+.rw-lc-search-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 0 16px; }
+.rw-lc-search-title { display: inline-flex; align-items: center; gap: 8px; color: #182235; font-size: 14px; font-weight: 800; }
+.rw-lc-search-title svg { color: #4b5563; }
+.rw-lc-search-sync { padding: 5px 9px; border-radius: 5px; background: #eaf1ff; color: #182235; font-size: 10px; font-weight: 800; letter-spacing: .04em; }
+.rw-lc-search-card { overflow: hidden; border-radius: 12px; background: #edf3ff; }
+.rw-lc-preview-media { position: relative; overflow: hidden; aspect-ratio: 1 / 1; background: #f1f5fb; }
+.rw-lc-preview-media img { display: block; width: 100%; height: 100%; object-fit: cover; transition: transform 0.4s ease; }
+.rw-lc-preview-media:hover img { transform: scale(1.04); }
+.rw-lc-preview-tag {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  font-size: 10px;
+  font-weight: 800;
+  color: #182235;
+  background: rgba(255, 255, 255, .94);
+  border-radius: 999px;
+  padding: 5px 9px;
+}
+.rw-lc-search-sku { position: absolute; top: 11px; left: 11px; padding: 4px 8px; border-radius: 5px; background: rgba(255,255,255,.94); color: #182235; font-size: 10px; font-weight: 800; letter-spacing: .04em; }
+.rw-lc-preview-body { padding: 12px 14px 14px; }
+.rw-lc-search-line { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: #4b5563; font-size: 10px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
+.rw-lc-preview-title { margin: 6px 0 0; font-size: 14px; font-weight: 800; color: #14213a; line-height: 1.35; }
+.rw-lc-search-prices { display: flex; justify-content: space-between; gap: 12px; margin: 11px -14px 0; padding: 9px 14px 8px; border-top: 1px solid rgba(148,163,184,.25); border-bottom: 1px solid rgba(148,163,184,.2); }
+.rw-lc-search-prices div { display: flex; flex-direction: column; gap: 3px; }
+.rw-lc-search-prices div:last-child { align-items: flex-end; }
+.rw-lc-search-prices span { color: #64748b; font-size: 10px; }
+.rw-lc-search-prices b { color: #14213a; font-size: 15px; font-variant-numeric: tabular-nums; }
+.rw-lc-search-prices div:last-child b { color: #357cf3; font-size: 13px; }
+.rw-lc-search-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 9px; }
+.rw-lc-search-tags span { padding: 4px 6px; border-radius: 4px; background: #dce9ff; color: #334155; font-size: 9.5px; line-height: 1.2; }
+.rw-lc-search-note { margin: 17px 0 0; color: #4b5563; font-size: 11.5px; line-height: 1.55; }
+
+/* Bảo vệ khỏi tráo hàng – hàng thanh lý */
+.rw-lc-anti-swap { padding: 25px 20px 22px; }
+.rw-lc-anti-swap-head { display: flex; align-items: center; gap: 14px; }
+.rw-lc-anti-swap-icon { display: grid; flex: 0 0 auto; place-items: center; width: 42px; height: 42px; border-radius: 11px; background: #e8f1ff; color: #14213a; }
+.rw-lc-anti-swap-head h3 { margin: 0; color: #14213a; font-size: 19px; line-height: 1.2; font-weight: 800; letter-spacing: -.02em; }
+.rw-lc-anti-swap-head p { margin: 3px 0 0; color: #64748b; font-size: 13px; line-height: 1.35; }
+.rw-lc-anti-swap-desc { margin: 22px 0 19px; color: #52637c; font-size: 14px; line-height: 1.42; }
+.rw-lc-anti-swap-signature { padding: 14px 15px 13px; border: 1px solid #cbdfff; border-radius: 9px; background: #edf3ff; }
+.rw-lc-anti-swap-signature > div { display: flex; justify-content: space-between; gap: 12px; color: #3b4a63; font-size: 11px; letter-spacing: .04em; }
+.rw-lc-anti-swap-signature > div b:last-child { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.rw-lc-anti-swap-signature > span { display: block; height: 6px; margin: 12px 0; overflow: hidden; border-radius: 999px; background: #dbeafe; }
+.rw-lc-anti-swap-signature > span i { display: block; width: 75%; height: 100%; border-radius: inherit; background: #0b1223; }
+.rw-lc-anti-swap-signature p { display: flex; align-items: center; gap: 8px; margin: 0; color: #334155; font-size: 12px; font-weight: 600; }
+@media (max-width: 420px) { .rw-lc-anti-swap-signature { padding: 16px; } .rw-lc-anti-swap-signature > div { font-size: 10px; } }
+
+/* Xem trước thông tin đăng dành cho hàng thanh lý */
+.rw-lc-clearance-preview { padding: 8px 8px 6px; }
+.rw-lc-clearance-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.rw-lc-clearance-head span { font-size: 12px; font-weight: 800; line-height: 1.35; color: #8ca0bc; letter-spacing: .02em; }
+.rw-lc-clearance-head strong { font-size: 16px; line-height: 1.35; color: #2563eb; }
+.rw-lc-clearance-divider { height: 1px; margin: 16px 0 18px; background: #e7edf7; }
+.rw-lc-clearance-media { position: relative; overflow: hidden; border-radius: 13px; aspect-ratio: 1.5 / 1; background: #f1f5f9; }
+.rw-lc-clearance-media img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.rw-lc-clearance-media > span { position: absolute; left: 12px; top: 12px; border-radius: 6px; padding: 5px 9px; background: rgba(15, 23, 42, .88); color: #fff; font-size: 10px; font-weight: 800; letter-spacing: .05em; }
+.rw-lc-clearance-content { padding-top: 19px; }
+.rw-lc-clearance-brand { display: block; color: #2563eb; font-size: 11px; letter-spacing: .04em; }
+.rw-lc-clearance-content h3 { margin: 11px 0 9px; color: #0f172a; font-size: 16px; line-height: 1.4; font-weight: 800; }
+.rw-lc-clearance-specs { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 12px 0 10px; border-top: 1px solid #e7edf7; }
+.rw-lc-clearance-specs div, .rw-lc-clearance-condition, .rw-lc-clearance-prices div { display: flex; flex-direction: column; gap: 3px; }
+.rw-lc-clearance-content span { color: #8ca0bc; font-size: 11px; }
+.rw-lc-clearance-content b { color: #0f172a; font-size: 12.5px; }
+.rw-lc-clearance-condition { padding: 11px 0; border-top: 1px solid #e7edf7; }
+.rw-lc-clearance-condition b { color: #2563eb; }
+.rw-lc-clearance-prices { display: flex; justify-content: space-between; gap: 12px; padding: 11px 0; border-top: 1px solid #e7edf7; }
+.rw-lc-clearance-prices div:last-child { align-items: flex-end; text-align: right; }
+.rw-lc-clearance-prices b { font-size: 18px; }
+.rw-lc-clearance-prices div:last-child b { color: #2563eb; font-size: 13px; padding-top: 5px; }
+.rw-lc-clearance-content p { margin: 0; padding: 12px 9px; border: 1px solid #dce5f1; border-radius: 9px; background: #f8fafc; color: #64748b; font-size: 11px; line-height: 1.4; text-align: center; }
+
+/* Danh sách lợi ích / bullet */
+.rw-lc-side-list { margin: 10px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 7px; }
+.rw-lc-side-list li { display: flex; align-items: flex-start; gap: 8px; font-size: 12px; line-height: 1.55; color: #475569; }
+.rw-lc-side-list svg { flex: 0 0 auto; margin-top: 2px; color: #0f9d68; }
+.rw-lc-side-desc { margin: 8px 0 0; font-size: 12px; line-height: 1.6; color: #64748b; }
+.rw-lc-lock {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: linear-gradient(135deg, #eaf3ff, #deebff);
+  color: #1d4ed8;
+}
+
+/* Cổng thanh toán */
+.rw-lc-pay-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px dashed #e6ecf6;
+}
+.rw-lc-pay-label { font-size: 9.5px; font-weight: 800; letter-spacing: 0.11em; text-transform: uppercase; color: #64748b; margin-right: 2px; }
+.rw-lc-pay-badges { display: flex; flex-wrap: wrap; gap: 6px; }
+.rw-lc-pay-badge {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #334155;
+  background: #f6f8fc;
+  border: 1px solid #e5ebf5;
+  border-radius: 6px;
+  padding: 5px 8px;
+}
+.rw-lc-pay-note { display: flex; align-items: center; gap: 7px; margin-top: 12px; font-size: 11.5px; color: #0f9d68; font-weight: 600; }

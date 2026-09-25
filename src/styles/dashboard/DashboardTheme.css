@@ -1,0 +1,50 @@
+.rw-dashboard-theme {
+  --rw-font: 'Be Vietnam Pro', Inter, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --rw-ink: #0f172a;
+  --rw-muted: #64748b;
+  --rw-line: #e6ecf6;
+  --rw-card: rgba(255, 255, 255, 0.94);
+  --rw-blue: #2e7cf6;
+  --rw-teal: #14b8a6;
+  --rw-navy: #0f1930;
+  --rw-shadow: 0 18px 40px -28px rgba(26, 54, 93, 0.35);
+  --rw-shadow-hover: 0 24px 48px -26px rgba(26, 54, 93, 0.42);
+}
+
+.seller-app {
+  min-height: 100vh;
+  display: flex;
+  color: #14213a;
+  font-family: var(--rw-font);
+  background:
+    radial-gradient(1100px 320px at 85% -80px, rgba(46, 124, 246, 0.14), transparent 60%),
+    radial-gradient(900px 300px at 10% 0%, rgba(20, 184, 166, 0.12), transparent 55%),
+    linear-gradient(180deg, #f7faff 0%, #f3f6fc 100%);
+  animation: rw-page-in 0.45s ease both;
+}
+
+.seller-shell { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.seller-shell .rw-topbar { width: 100%; }
+.seller-main {
+  padding: 26px 28px 36px;
+  max-width: 1340px;
+  width: 100%;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.seller-main > * { animation: rw-rise 0.5s ease both; }
+.seller-main > *:nth-child(2) { animation-delay: 0.05s; }
+.seller-main > *:nth-child(3) { animation-delay: 0.1s; }
+.seller-main > *:nth-child(4) { animation-delay: 0.15s; }
+.seller-main > *:nth-child(5) { animation-delay: 0.2s; }
+
+@keyframes rw-page-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes rw-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) {
+  .seller-app, .seller-main > * { animation: none; }
+}
+@media (max-width: 800px) {
+  .seller-main { padding: 16px; gap: 14px; }
+}

@@ -1,0 +1,35 @@
+/* ── Tình trạng sản phẩm (Hàng thanh lý) ── */
+.rw-lc-notes { padding: 24px 26px 26px; }
+.rw-lc-notes-title { margin: 0; font-size: 18px; font-weight: 800; letter-spacing: -0.018em; color: #0f172a; }
+
+.rw-lc-notes-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin-top: 20px;
+  background: #f7f8fa;
+  border: 1px solid #e6eaf1;
+  border-radius: 12px;
+  padding: 18px 20px;
+}
+.rw-lc-notes-check {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: #0f172a;
+  color: #ffffff;
+}
+.rw-lc-notes-body { min-width: 0; }
+.rw-lc-notes-status { margin: 2px 0 0; font-size: 14.5px; font-weight: 700; color: #0f172a; }
+.rw-lc-notes-desc { margin: 8px 0 0; font-size: 14px; line-height: 1.66; color: #64748b; }
+
+@media (max-width: 820px) {
+  .rw-lc-notes { padding: 20px 18px 22px; }
+  .rw-lc-notes-title { font-size: 16.5px; }
+  .rw-lc-notes-box { padding: 15px 16px; gap: 11px; }
+  .rw-lc-notes-status { font-size: 14px; }
+  .rw-lc-notes-desc { font-size: 13px; }
+}

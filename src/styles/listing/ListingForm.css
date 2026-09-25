@@ -1,0 +1,349 @@
+/* ── Card & form dùng chung cho cột trái trang Tạo tin đăng ── */
+.rw-lc-card {
+  background: #ffffff;
+  border: 1px solid #e0e9f7;
+  border-radius: 16px;
+  padding: 18px 20px 20px;
+  box-shadow: 0 20px 44px -32px rgba(31, 64, 122, 0.34);
+}
+.rw-lc-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 6px;
+}
+.rw-lc-card-title { margin: 0; font-size: 16.5px; font-weight: 800; letter-spacing: -0.015em; color: #0f172a; }
+.rw-lc-card-sub { margin: 6px 0 0; font-size: 12.5px; line-height: 1.6; color: #64748b; }
+.rw-lc-card-sub b { color: #0f172a; font-weight: 700; }
+.rw-lc-head-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #f3f7ff;
+  border: 1px solid #e0eafc;
+  color: #1d4ed8;
+  border-radius: 999px;
+  padding: 7px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.18s ease;
+}
+.rw-lc-head-pill:hover { background: #e7f0ff; transform: translateY(-1px); }
+
+/* ── Trường nhập dùng chung ── */
+.rw-lc-label { font-size: 13px; font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 4px; }
+.rw-lc-req { color: #e11d48; font-weight: 800; }
+.rw-lc-input,
+.rw-lc-textarea {
+  width: 100%;
+  font-family: inherit;
+  font-size: 13.5px;
+  color: #0f172a;
+  background: #fbfcff;
+  border: 1.4px solid #dfe7f3;
+  border-radius: 10px;
+  padding: 11px 13px;
+  outline: none;
+  transition: all 0.18s ease;
+}
+.rw-lc-textarea { min-height: 96px; resize: vertical; line-height: 1.6; }
+.rw-lc-input:hover,
+.rw-lc-textarea:hover { border-color: #c9d7ee; }
+.rw-lc-input:focus,
+.rw-lc-textarea:focus { border-color: #2e7cf6; background: #ffffff; box-shadow: 0 0 0 4px rgba(46, 124, 246, 0.13); }
+.rw-lc-helper { font-size: 11.5px; color: #94a3b8; line-height: 1.45; }
+
+/* ── Khu vực tải ảnh ── */
+.rw-lc-uploads { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 16px; }
+.rw-lc-upload {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border-radius: 14px;
+  border: 1.4px dashed #d6e0f1;
+  background: #fafcff;
+  padding: 12px;
+  min-height: 168px;
+}
+.rw-lc-upload.filled { border-style: solid; border-color: #e4eaf5; background: #ffffff; }
+.rw-lc-upload-remove {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(15, 23, 42, .82);
+  color: #fff;
+  font-size: 17px;
+  line-height: 1;
+  cursor: pointer;
+}
+.rw-lc-upload-thumb { width: 100%; height: 104px; border-radius: 10px; object-fit: cover; background: #f1f5fb; }
+.rw-lc-upload-caption { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.rw-lc-upload-caption b { font-size: 12.5px; font-weight: 700; color: #0f172a; }
+.rw-lc-upload-caption span { font-size: 11.5px; color: #64748b; line-height: 1.45; }
+.rw-lc-upload-add {
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 9px;
+  background: transparent;
+  border: none;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #64748b;
+  cursor: pointer;
+  padding: 12px;
+}
+.rw-lc-upload-add:hover { color: #1d4ed8; }
+.rw-lc-upload-add-icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1.5px dashed #c8d6ec;
+  background: #ffffff;
+  color: #1d4ed8;
+  transition: all 0.18s ease;
+}
+.rw-lc-upload-add:hover .rw-lc-upload-add-icon { border-color: #2e7cf6; background: #eef5ff; transform: translateY(-2px); }
+.rw-lc-upload-count {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  font-size: 10.5px;
+  font-weight: 800;
+  color: #1d4ed8;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid #dbe6fa;
+  border-radius: 999px;
+  padding: 4px 8px;
+}
+
+/* ── Gallery ảnh tham chiếu hàng thanh lý ── */
+.rw-lc-clearance-gallery {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+  margin-top: 18px;
+}
+.rw-lc-clearance-gallery-slot {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  overflow: hidden;
+  border: 1.4px dashed #cbd8eb;
+  border-radius: 13px;
+  background: #f8fbff;
+  color: #64748b;
+}
+.rw-lc-clearance-gallery-slot.primary {
+  min-height: 244px;
+}
+.rw-lc-clearance-gallery-slot.filled {
+  border-style: solid;
+  border-color: #dbe5f3;
+  background: #f1f5fb;
+}
+.rw-lc-clearance-gallery-slot img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: inherit;
+  object-fit: cover;
+}
+.rw-lc-clearance-gallery-secondary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+.rw-lc-clearance-gallery-secondary .rw-lc-clearance-gallery-slot {
+  min-height: 104px;
+}
+.rw-lc-clearance-gallery-empty {
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 10px;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color .18s ease, background .18s ease, color .18s ease;
+}
+.rw-lc-clearance-gallery-empty:hover {
+  border-color: #5794ee;
+  background: #eef5ff;
+  color: #1d4ed8;
+}
+.rw-lc-clearance-gallery-plus {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px dashed #9db8e2;
+  border-radius: 50%;
+  color: #2563eb;
+  font-size: 22px;
+  font-weight: 400;
+  line-height: 1;
+}
+.rw-lc-clearance-gallery-label {
+  position: absolute;
+  right: 7px;
+  bottom: 7px;
+  left: 7px;
+  padding: 5px 6px;
+  border-radius: 5px;
+  background: rgba(15, 23, 42, .82);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  text-align: center;
+}
+.rw-lc-clearance-gallery-remove {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  display: grid;
+  place-items: center;
+  width: 23px;
+  height: 23px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(15, 23, 42, .82);
+  color: #fff;
+  font-size: 17px;
+  line-height: 1;
+  cursor: pointer;
+}
+.rw-lc-clearance-gallery-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+  color: #94a3b8;
+  font-size: 11.5px;
+}
+.rw-lc-clearance-gallery-footer button {
+  border: 0;
+  background: transparent;
+  color: #2563eb;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.rw-lc-clearance-secondary-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+.rw-lc-clearance-secondary-thumb {
+  position: relative;
+  width: 84px;
+  height: 84px;
+  overflow: hidden;
+  border: 1px solid #dbe5f3;
+  border-radius: 10px;
+  background: #f1f5fb;
+}
+.rw-lc-clearance-secondary-thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.rw-lc-clearance-secondary-thumb span {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  left: 4px;
+  padding: 3px 2px;
+  border-radius: 4px;
+  background: rgba(15, 23, 42, .82);
+  color: #fff;
+  font-size: 9px;
+  text-align: center;
+}
+.rw-lc-clearance-secondary-thumb button {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: grid;
+  place-items: center;
+  width: 19px;
+  height: 19px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(15, 23, 42, .82);
+  color: #fff;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+/* ── So sánh giá niêm yết ── */
+.rw-lc-price-grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.95fr); gap: 14px; margin-top: 16px; }
+.rw-lc-price-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.rw-lc-price-stat {
+  background: #f8fafd;
+  border: 1px solid #e8eef8;
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+.rw-lc-price-stat span { font-size: 11.5px; color: #64748b; font-weight: 600; }
+.rw-lc-price-stat b { display: block; margin-top: 5px; font-size: 18px; font-weight: 800; color: #0f172a; font-variant-numeric: tabular-nums; }
+.rw-lc-price-stat.hint b { color: #1d4ed8; }
+.rw-lc-bars { display: flex; align-items: flex-end; gap: 8px; height: 74px; margin-top: 14px; padding: 0 2px; }
+.rw-lc-bar { flex: 1; border-radius: 6px 6px 3px 3px; background: linear-gradient(180deg, #cfe0fb, #eaf1fd); }
+.rw-lc-bar.hot { background: linear-gradient(180deg, #2e7cf6, #6aa6fb); }
+.rw-lc-trend {
+  background: linear-gradient(150deg, #f5f9ff 0%, #eef5ff 100%);
+  border: 1px solid #e2ebfa;
+  border-radius: 13px;
+  padding: 14px 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.rw-lc-trend h4 { margin: 0; font-size: 12.5px; font-weight: 800; color: #0f172a; }
+.rw-lc-trend p { margin: 0; font-size: 11.5px; line-height: 1.55; color: #64748b; }
+.rw-lc-trend-btn {
+  margin-top: auto;
+  align-self: flex-start;
+  background: #ffffff;
+  border: 1px solid #d7e4fa;
+  color: #1d4ed8;
+  border-radius: 9px;
+  padding: 9px 13px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+.rw-lc-trend-btn:hover { background: #eef5ff; transform: translateY(-1px); }
+@media (max-width: 900px) {
+  .rw-lc-price-grid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 640px) {
+  .rw-lc-uploads, .rw-lc-price-stats { grid-template-columns: minmax(0, 1fr); }
+  .rw-lc-clearance-gallery-slot.primary { min-height: 190px; }
+  .rw-lc-clearance-gallery-secondary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .rw-lc-clearance-secondary-thumb { width: 76px; height: 76px; }
+}
