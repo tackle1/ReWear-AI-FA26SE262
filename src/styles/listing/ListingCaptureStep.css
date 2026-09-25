@@ -1,0 +1,641 @@
+/* ============================================================
+   REWEAR AI — BƯỚC 02: GUIDED FORENSIC PHOTO CAPTURE
+   Ultra-modern, high-tech luxury aesthetic
+   ============================================================ */
+
+.rw-lc-capture {
+  position: relative;
+  padding: 0 4px 100px;
+  color: #0F172A;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* Ambient glow in background */
+.rw-lc-capture::before {
+  position: absolute;
+  z-index: -1;
+  inset: -30px -40px 40px;
+  content: '';
+  background:
+    radial-gradient(circle at 10% 5%, rgba(37, 99, 235, 0.08), transparent 35%),
+    radial-gradient(circle at 90% 25%, rgba(14, 165, 233, 0.07), transparent 30%);
+  pointer-events: none;
+}
+
+/* ── Topline Header ── */
+.rw-lc-capture-topline {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 20px;
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 16px;
+  margin-bottom: 22px;
+  box-shadow: 0 4px 20px -6px rgba(15, 23, 42, 0.05);
+}
+
+.rw-lc-capture-device {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.rw-lc-capture-device > span {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: #EFF6FF;
+  border: 1px solid #DBEAFE;
+  color: #2563EB;
+  flex-shrink: 0;
+}
+
+.rw-lc-capture-device b {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  color: #0F172A;
+  font-weight: 700;
+}
+
+.rw-lc-capture-device b em {
+  font-style: normal;
+  font-size: 10px;
+  font-weight: 800;
+  color: #1E40AF;
+  background: #DBEAFE;
+  padding: 2px 7px;
+  border-radius: 4px;
+  letter-spacing: 0.05em;
+}
+
+.rw-lc-capture-device small {
+  display: block;
+  font-size: 12px;
+  color: #64748B;
+  margin-top: 2px;
+}
+
+.rw-lc-capture-progress {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 12.5px;
+  color: #64748B;
+}
+
+.rw-lc-capture-progress i {
+  display: block;
+  width: 100px;
+  height: 7px;
+  background: #E2E8F0;
+  border-radius: 99px;
+  overflow: hidden;
+}
+
+.rw-lc-capture-progress i b {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #2563EB, #38BDF8);
+  border-radius: 99px;
+  transition: width 0.3s ease;
+}
+
+.rw-lc-capture-progress strong {
+  font-size: 12.5px;
+  color: #0F172A;
+  font-weight: 700;
+}
+
+/* ── Main Two-Column Grid ── */
+.rw-lc-capture-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.68fr) minmax(380px, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+/* ── Left Column: Forensic Studio ── */
+.rw-lc-capture-main {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: 0 10px 30px -4px rgba(15, 23, 42, 0.05);
+}
+
+/* Camera Bar Header */
+.rw-lc-capture-camera-head {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 12px 20px;
+  background: #0F172A;
+  color: #CBD5E1;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.rw-lc-capture-camera-head span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.rw-lc-capture-camera-head span:last-child {
+  margin-left: auto;
+  color: #38BDF8;
+  font-weight: 700;
+  background: rgba(56, 189, 248, 0.12);
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+/* Camera Viewport */
+.rw-lc-capture-viewport {
+  position: relative;
+  min-height: 440px;
+  background: #111827;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rw-lc-capture-viewport img {
+  display: block;
+  width: 100%;
+  height: 440px;
+  object-fit: cover;
+  transition: opacity 0.25s ease, transform 0.4s ease;
+}
+
+/* Shutter flash overlay */
+.rw-lc-capture-flash {
+  position: absolute;
+  inset: 0;
+  background-color: #FFFFFF;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 40;
+  transition: opacity 0.18s ease-out;
+}
+
+.rw-lc-capture-flash.active {
+  opacity: 0.92;
+}
+
+/* High-tech targeting brackets (L-corners) */
+.rw-lc-target-bracket {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  border-color: #38BDF8;
+  border-style: solid;
+  pointer-events: none;
+  z-index: 10;
+  filter: drop-shadow(0 0 6px rgba(56, 189, 248, 0.6));
+}
+
+.rw-lc-target-bracket.tl {
+  top: 24px;
+  left: 24px;
+  border-width: 2.5px 0 0 2.5px;
+  border-top-left-radius: 6px;
+}
+
+.rw-lc-target-bracket.tr {
+  top: 24px;
+  right: 24px;
+  border-width: 2.5px 2.5px 0 0;
+  border-top-right-radius: 6px;
+}
+
+.rw-lc-target-bracket.bl {
+  bottom: 24px;
+  left: 24px;
+  border-width: 0 0 2.5px 2.5px;
+  border-bottom-left-radius: 6px;
+}
+
+.rw-lc-target-bracket.br {
+  bottom: 24px;
+  right: 24px;
+  border-width: 0 2.5px 2.5px 0;
+  border-bottom-right-radius: 6px;
+}
+
+/* Center crosshair reticle */
+.rw-lc-center-reticle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 140px;
+  height: 140px;
+  border: 1px dashed rgba(56, 189, 248, 0.45);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rw-lc-center-reticle::before {
+  content: '';
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border: 2px solid #38BDF8;
+  border-radius: 50%;
+  background: rgba(56, 189, 248, 0.2);
+}
+
+/* Laser sweep scan line */
+.rw-lc-laser-scan {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent 0%, #38BDF8 50%, transparent 100%);
+  box-shadow: 0 0 14px 2px #38BDF8;
+  pointer-events: none;
+  z-index: 12;
+  animation: rw-laser-sweep 2.8s ease-in-out infinite alternate;
+}
+
+@keyframes rw-laser-sweep {
+  0% {
+    top: 8%;
+    opacity: 0.4;
+  }
+  50% {
+    top: 92%;
+    opacity: 1;
+  }
+  100% {
+    top: 8%;
+    opacity: 0.4;
+  }
+}
+
+/* Floating HUD tags inside viewport */
+.rw-lc-hud-tag {
+  position: absolute;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.82);
+  color: #F8FAFC;
+  font-size: 11px;
+  font-weight: 600;
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  z-index: 15;
+}
+
+.rw-lc-hud-tag.tl {
+  top: 24px;
+  left: 60px;
+}
+
+.rw-lc-hud-tag.tr {
+  top: 24px;
+  right: 60px;
+  color: #38BDF8;
+}
+
+.rw-lc-hud-tag.bl {
+  bottom: 24px;
+  left: 60px;
+}
+
+.rw-lc-hud-tag.br {
+  bottom: 24px;
+  right: 60px;
+  background: rgba(30, 58, 138, 0.85);
+  border-color: rgba(56, 189, 248, 0.4);
+  color: #FFFFFF;
+}
+
+/* Bottom camera metadata strip */
+.rw-lc-capture-camera-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 20px;
+  font-size: 11px;
+  color: #64748B;
+  background: #F8FAFC;
+  border-top: 1px solid #E2E8F0;
+  border-bottom: 1px solid #E2E8F0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+/* Action Button Bar */
+.rw-lc-capture-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 18px 20px;
+  background: #FFFFFF;
+}
+
+.rw-lc-capture-actions button {
+  height: 44px;
+  padding: 0 16px;
+  border-radius: 12px;
+  border: 1px solid #E2E8F0;
+  background: #F8FAFC;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.15s ease;
+}
+
+.rw-lc-capture-actions button:hover {
+  background: #F1F5F9;
+  border-color: #CBD5E1;
+  color: #0F172A;
+  transform: translateY(-1px);
+}
+
+.rw-lc-capture-actions button.primary {
+  margin-left: auto;
+  background: #000000;
+  color: #FFFFFF;
+  border: none;
+  padding: 0 22px;
+  font-weight: 700;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+}
+
+.rw-lc-capture-actions button.primary:hover {
+  background: #1E293B;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
+  transform: translateY(-1px);
+}
+
+.rw-lc-capture-actions button.primary kbd {
+  background: rgba(255, 255, 255, 0.2);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  font-family: inherit;
+}
+
+/* AI Guidance Banner */
+.rw-lc-capture-warning {
+  margin: 0 20px 20px;
+  padding: 14px 18px;
+  background: #EFF6FF;
+  border: 1px solid #DBEAFE;
+  border-radius: 14px;
+  color: #334155;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.rw-lc-capture-warning b {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #1E40AF;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+/* AI Live Pre-Check Metrics */
+.rw-lc-capture-metrics-wrap {
+  margin: 0 20px 20px;
+  padding: 16px 18px;
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: 16px;
+}
+
+.rw-lc-capture-metrics-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.rw-lc-capture-metrics-head strong {
+  font-size: 13.5px;
+  color: #0F172A;
+  font-weight: 700;
+}
+
+.rw-lc-capture-metrics-head span {
+  font-size: 11px;
+  font-weight: 800;
+  color: #16A34A;
+  background: #DCFCE7;
+  padding: 3px 8px;
+  border-radius: 6px;
+  letter-spacing: 0.02em;
+}
+
+.rw-lc-capture-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.rw-lc-capture-metrics div {
+  padding: 12px;
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 10px;
+  transition: all 0.2s ease;
+}
+
+.rw-lc-capture-metrics div:hover {
+  border-color: #38BDF8;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(56, 189, 248, 0.12);
+}
+
+.rw-lc-capture-metrics span {
+  display: block;
+  font-size: 11px;
+  color: #64748B;
+  margin-bottom: 4px;
+}
+
+.rw-lc-capture-metrics b {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  font-weight: 800;
+  color: #0F172A;
+}
+
+.rw-lc-capture-metrics b svg {
+  color: #16A34A;
+}
+
+/* ── Right Column: Checklist & Certifications ── */
+.rw-lc-capture-side {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Seller Protection Card */
+.rw-lc-capture-protection {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 20px;
+  padding: 22px;
+  box-shadow: 0 4px 20px -4px rgba(15, 23, 42, 0.05);
+}
+
+.rw-lc-capture-protection h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 800;
+  color: #0F172A;
+  margin: 0 0 10px 0;
+}
+
+.rw-lc-capture-protection h3 svg {
+  color: #2563EB;
+}
+
+.rw-lc-capture-protection p {
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: #475569;
+  margin: 0 0 14px 0;
+}
+
+.rw-lc-capture-protection > span {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  font-size: 11.5px;
+  color: #334155;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.rw-lc-capture-protection > span b {
+  color: #16A34A;
+  font-size: 10px;
+  font-weight: 800;
+  background: #DCFCE7;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+/* Reference Standard Section */
+.rw-lc-capture-reference {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 20px;
+  padding: 22px;
+  box-shadow: 0 4px 20px -4px rgba(15, 23, 42, 0.05);
+}
+
+.rw-lc-capture-reference > b {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13.5px;
+  font-weight: 800;
+  color: #0F172A;
+  margin-bottom: 14px;
+}
+
+.rw-lc-capture-reference-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.rw-lc-capture-reference-grid figure {
+  position: relative;
+  height: 110px;
+  margin: 0;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #F1F5F9;
+  border: 1px solid #E2E8F0;
+}
+
+.rw-lc-capture-reference-grid img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.rw-lc-capture-reference-grid figure:hover img {
+  transform: scale(1.08);
+}
+
+.rw-lc-capture-reference-grid figcaption {
+  position: absolute;
+  inset-inline: 6px;
+  bottom: 6px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  background: rgba(15, 23, 42, 0.82);
+  color: #FFFFFF;
+  font-size: 10.5px;
+  font-weight: 600;
+  text-align: center;
+  backdrop-filter: blur(4px);
+}
+
+/* ── Responsive ── */
+@media (max-width: 1100px) {
+  .rw-lc-capture-grid {
+    grid-template-columns: 1fr;
+  }
+  .rw-lc-capture-metrics {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .rw-lc-capture-topline {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .rw-lc-capture-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .rw-lc-capture-actions button.primary {
+    margin-left: 0;
+  }
+  .rw-lc-capture-camera-meta {
+    flex-direction: column;
+    gap: 6px;
+    align-items: flex-start;
+  }
+}

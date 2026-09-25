@@ -1,0 +1,1078 @@
+/* ── Form Thông tin sản phẩm (Bước 01) ── */
+.rw-lc-info {
+  padding: 24px 26px 26px;
+}
+
+.rw-lc-info-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.018em;
+  color: #0f172a;
+}
+
+.rw-lc-info-sub {
+  margin: 7px 0 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #64748b;
+}
+
+.rw-lc-info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px 22px;
+  margin-top: 24px;
+}
+
+.rw-lc-info-field {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  min-width: 0;
+}
+
+.rw-lc-info-field.span-2 {
+  grid-column: 1 / -1;
+}
+
+.rw-lc-info-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* Nhãn + trường nhập */
+.rw-lc-info .rw-lc-label {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.rw-lc-info-label-opt {
+  font-weight: 500;
+  color: #94a3b8;
+}
+
+.rw-lc-info-link {
+  background: transparent;
+  border: none;
+  padding: 0;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: #2563eb;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.16s ease;
+}
+
+.rw-lc-info-link:hover {
+  color: #1d4ed8;
+  text-decoration: underline;
+}
+
+.rw-lc-info-counter {
+  font-size: 13px;
+  color: #94a3b8;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.rw-lc-info .rw-lc-input,
+.rw-lc-info .rw-lc-textarea {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 15px;
+  padding: 12px 15px;
+}
+
+.rw-lc-info .rw-lc-textarea {
+  min-height: 96px;
+  line-height: 1.6;
+}
+
+.rw-lc-info .rw-lc-input:hover,
+.rw-lc-info .rw-lc-textarea:hover {
+  border-color: #cbd8e8;
+}
+
+.rw-lc-info .rw-lc-input:focus,
+.rw-lc-info .rw-lc-textarea:focus {
+  border-color: #2e7cf6;
+  box-shadow: 0 0 0 4px rgba(46, 124, 246, 0.13);
+}
+
+.rw-lc-info .rw-lc-input.is-invalid,
+.rw-lc-info .rw-lc-textarea.is-invalid {
+  border-color: #dc2626;
+  background: #fffafa;
+}
+
+.rw-lc-info .rw-lc-input.is-invalid:focus,
+.rw-lc-info .rw-lc-textarea.is-invalid:focus {
+  border-color: #dc2626;
+  box-shadow: 0 0 0 4px rgba(220, 38, 38, .12);
+}
+
+.rw-lc-field-error {
+  color: #dc2626;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+/* =========================================================
+   HÀNG SECONDHAND
+   1. THÔNG TIN DANH MỤC & THƯƠNG HIỆU
+   Match reference UI
+   ========================================================= */
+
+.rw-lc-secondhand-info {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 18px 20px 26px;
+  background: #ffffff;
+}
+
+/* =========================================================
+   HEADER
+   ========================================================= */
+
+.rw-lc-sh-title {
+  display: flex;
+  align-items: center;
+  min-height: 31px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e7edf7;
+}
+
+.rw-lc-sh-title-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.rw-lc-sh-title-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  flex: 0 0 15px;
+  color: #0f172a;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.rw-lc-sh-title h2 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 14px;
+  line-height: 1.25;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.rw-lc-sh-priority {
+  margin-left: auto;
+  padding: 4px 8px;
+  border-radius: 3px;
+  background: #f1f5fb;
+  color: #64748b;
+  font-size: 9px;
+  line-height: 1.2;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* =========================================================
+   COMMON BLOCK
+   ========================================================= */
+
+.rw-lc-sh-block {
+  margin-top: 18px;
+}
+
+.rw-lc-sh-field-label {
+  display: block;
+  margin: 0;
+  color: #475569;
+  font-size: 10px;
+  line-height: 1.35;
+  font-weight: 500;
+}
+
+.rw-lc-sh-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.rw-lc-sh-label-row .rw-lc-sh-field-label {
+  flex: 1;
+  min-width: 0;
+}
+
+.rw-lc-sh-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+  color: #2563eb;
+  font-size: 9px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.rw-lc-sh-status-dot {
+  color: #4f8cff;
+  font-size: 13px;
+  line-height: 1;
+}
+
+/* =========================================================
+   CATEGORY / BRAND / SEGMENT BUTTONS
+   ========================================================= */
+
+.rw-lc-sh-options {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 7px;
+  margin-top: 8px;
+}
+
+.rw-lc-sh-options button {
+  box-sizing: border-box;
+  min-width: 0;
+  min-height: 30px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 6px;
+  outline: none;
+  background: #edf3ff;
+  color: #17243b;
+  font-family: inherit;
+  font-size: 10px;
+  line-height: 1.2;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.rw-lc-sh-options button:hover {
+  background: #e5edfc;
+}
+
+.rw-lc-sh-options button.active {
+  background: #05070b;
+  color: #ffffff;
+}
+
+.rw-lc-sh-options button.active:hover {
+  background: #05070b;
+}
+
+/* =========================================================
+   BRAND
+   ========================================================= */
+
+.rw-lc-sh-options.brands {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.rw-lc-sh-options.brands button {
+  min-height: 48px;
+  padding: 7px 5px 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-align: center;
+}
+
+.rw-lc-sh-brand-name {
+  display: block;
+  color: inherit;
+  font-size: 9px;
+  line-height: 1.1;
+  font-weight: 800;
+  letter-spacing: 0.055em;
+  white-space: nowrap;
+}
+
+.rw-lc-sh-brand-sub {
+  display: block;
+  color: #7b8799;
+  font-size: 7.5px;
+  line-height: 1.1;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+}
+
+.rw-lc-sh-options.brands button.active .rw-lc-sh-brand-sub {
+  color: #9ca7b9;
+}
+
+/* =========================================================
+   SEGMENT
+   ========================================================= */
+
+.rw-lc-sh-options.segments {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.rw-lc-sh-options.segments button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 30px;
+  padding: 0 7px;
+  font-size: 9px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.rw-lc-sh-segment-icon {
+  font-size: 9px;
+  line-height: 1;
+}
+
+/* =========================================================
+   EVIDENCE NOTE
+   ========================================================= */
+
+.rw-lc-sh-note {
+  box-sizing: border-box;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  width: 100%;
+  margin: 9px 0 0;
+  padding: 9px 10px;
+  border: 1px solid #d9e3f4;
+  border-radius: 4px;
+  background: #eef4ff;
+  color: #475569;
+  font-size: 9px;
+  line-height: 1.45;
+}
+
+.rw-lc-sh-note-icon {
+  flex: 0 0 auto;
+  color: #334155;
+  font-size: 10px;
+  line-height: 1.3;
+}
+
+.rw-lc-sh-note strong {
+  color: #334155;
+  font-weight: 800;
+}
+
+/* =========================================================
+   PRODUCT NAME + COLOR
+   ========================================================= */
+
+.rw-lc-sh-form-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 9px;
+  margin-top: 18px;
+}
+
+.rw-lc-sh-input-field {
+  display: block;
+  min-width: 0;
+}
+
+.rw-lc-sh-input-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 14px;
+  color: #475569;
+  font-size: 10px;
+  line-height: 1.3;
+}
+
+.rw-lc-sh-counter {
+  flex: 0 0 auto;
+  color: #334155;
+  font-size: 9px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.rw-lc-sh-input-wrap {
+  position: relative;
+  width: 100%;
+  margin-top: 5px;
+}
+
+.rw-lc-secondhand-info .rw-lc-sh-input-wrap input {
+  margin-top: 0;
+  padding: 11px 30px 11px 12px;
+}
+
+.rw-lc-sh-input-icon {
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  transform: translateY(-50%);
+  color: #64748b;
+  font-size: 10px;
+  pointer-events: none;
+}
+
+/* =========================================================
+   ALL INPUTS
+   ========================================================= */
+
+.rw-lc-secondhand-info input,
+.rw-lc-secondhand-info textarea {
+  box-sizing: border-box;
+  width: 100%;
+  border: 0;
+  outline: 0;
+  border-radius: 7px;
+  background: #edf3ff;
+  color: #1e293b;
+  font-family: inherit;
+  font-size: 11px;
+  line-height: 1.35;
+  padding: 11px 12px;
+}
+
+.rw-lc-secondhand-info input::placeholder,
+.rw-lc-secondhand-info textarea::placeholder {
+  color: #94a3b8;
+}
+
+.rw-lc-secondhand-info input:focus,
+.rw-lc-secondhand-info textarea:focus {
+  background: #e9f1ff;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.08);
+}
+
+/* =========================================================
+   SIZE
+   ========================================================= */
+
+.rw-lc-sh-size-block {
+  margin-top: 18px;
+}
+
+.rw-lc-sh-size-link {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #2563eb;
+  font-family: inherit;
+  font-size: 9px;
+  line-height: 1.2;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.rw-lc-sh-size-link:hover {
+  text-decoration: underline;
+}
+
+.rw-lc-sh-options.sizes {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.rw-lc-sh-options.sizes button {
+  min-height: 34px;
+  padding: 4px 5px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+}
+
+.rw-lc-sh-options.sizes button span {
+  display: block;
+  font-size: 10px;
+  line-height: 1;
+  font-weight: 600;
+}
+
+.rw-lc-sh-options.sizes button small {
+  display: block;
+  color: #ffffff;
+  font-size: 6.5px;
+  line-height: 1;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.rw-lc-sh-options.sizes button:not(.active) small {
+  color: transparent;
+}
+
+/* =========================================================
+   PRICE
+   ========================================================= */
+
+.rw-lc-sh-price-block {
+  margin-top: 18px;
+}
+
+.rw-lc-sh-price-input-wrap {
+  position: relative;
+  width: 100%;
+  margin-top: 5px;
+}
+
+.rw-lc-secondhand-info .rw-lc-sh-price {
+  margin-top: 0;
+  padding: 11px 32px 11px 14px;
+  font-size: 16px !important;
+  line-height: 1.2;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.rw-lc-sh-price-currency {
+  position: absolute;
+  top: 50%;
+  right: 11px;
+  transform: translateY(-50%);
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 600;
+  pointer-events: none;
+}
+
+/* =========================================================
+   PRICE SUMMARY
+   ========================================================= */
+
+.rw-lc-sh-summary {
+  box-sizing: border-box;
+  width: 100%;
+  margin-top: 9px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #edf3ff;
+}
+
+.rw-lc-sh-summary-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 3px 0;
+  color: #475569;
+  font-size: 9px;
+  line-height: 1.35;
+}
+
+.rw-lc-sh-summary-row>span {
+  min-width: 0;
+}
+
+.rw-lc-sh-summary-row b {
+  flex: 0 0 auto;
+  color: #dc2626;
+  font-size: 9px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.rw-lc-sh-summary-row b.is-blue {
+  color: #0f172a;
+}
+
+.rw-lc-sh-summary-icon {
+  display: inline-block;
+  margin-right: 4px;
+  color: #475569;
+  font-size: 8px;
+}
+
+.rw-lc-sh-summary-total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  margin-top: 5px;
+  padding-top: 7px;
+  border-top: 1px solid rgba(148, 163, 184, 0.14);
+}
+
+.rw-lc-sh-summary-total>div {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.rw-lc-sh-summary-total strong {
+  color: #0f172a;
+  font-size: 10px;
+  line-height: 1.25;
+  font-weight: 800;
+}
+
+.rw-lc-sh-summary-total small {
+  margin-top: 1px;
+  color: #64748b;
+  font-size: 7px;
+  line-height: 1.3;
+}
+
+.rw-lc-sh-summary-total em {
+  flex: 0 0 auto;
+  color: #2563eb;
+  font-size: 15px;
+  line-height: 1;
+  font-style: normal;
+  font-weight: 800;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* =========================================================
+   DESCRIPTION
+   ========================================================= */
+
+.rw-lc-sh-description-block {
+  margin-top: 18px;
+}
+
+.rw-lc-secondhand-info .rw-lc-sh-description-block textarea {
+  min-height: 52px;
+  margin-top: 5px;
+  resize: vertical;
+  line-height: 1.45;
+}
+
+/* Tăng khả năng đọc cho form Hàng Secondhand */
+.rw-lc-secondhand-info {
+  padding: 24px 28px 32px;
+  border: 1px solid #dfe8f6;
+  border-radius: 16px;
+  box-shadow: 0 18px 42px -32px rgba(31, 64, 122, 0.32);
+}
+.rw-lc-sh-title {
+  min-height: 38px;
+  padding-bottom: 14px;
+}
+.rw-lc-sh-title-icon {
+  width: 20px;
+  height: 20px;
+  flex-basis: 20px;
+  font-size: 17px;
+}
+.rw-lc-sh-title h2 {
+  font-size: 19px;
+  letter-spacing: -0.02em;
+}
+.rw-lc-sh-priority {
+  padding: 6px 10px;
+  font-size: 11px;
+}
+.rw-lc-sh-block {
+  margin-top: 23px;
+}
+.rw-lc-sh-field-label,
+.rw-lc-sh-input-label-row {
+  font-size: 13px;
+}
+.rw-lc-sh-options {
+  gap: 9px;
+  margin-top: 10px;
+}
+.rw-lc-sh-options button {
+  min-height: 40px;
+  padding: 0 11px;
+  border-radius: 8px;
+  font-size: 12px;
+}
+.rw-lc-sh-options.brands button {
+  min-height: 60px;
+  padding: 8px 6px;
+  gap: 4px;
+  font-size: 11px;
+}
+.rw-lc-sh-brand-name {
+  font-size: 11px;
+}
+.rw-lc-sh-brand-sub {
+  font-size: 9px;
+}
+.rw-lc-sh-options.segments button {
+  min-height: 40px;
+  padding: 0 9px;
+  font-size: 11px;
+}
+.rw-lc-sh-segment-hint,
+.rw-lc-sh-status,
+.rw-lc-sh-size-link {
+  font-size: 11px;
+}
+.rw-lc-sh-note {
+  margin-top: 12px;
+  padding: 11px 12px;
+  font-size: 11px;
+}
+.rw-lc-secondhand-info input,
+.rw-lc-secondhand-info textarea {
+  border-radius: 9px;
+  font-size: 13px;
+  padding: 13px 14px;
+}
+.rw-lc-secondhand-info .rw-lc-sh-input-wrap input {
+  padding: 13px 34px 13px 14px;
+}
+.rw-lc-sh-size-block,
+.rw-lc-sh-price-block,
+.rw-lc-sh-description-block {
+  margin-top: 23px;
+}
+.rw-lc-sh-options.sizes button {
+  min-height: 42px;
+}
+.rw-lc-sh-options.sizes button span {
+  font-size: 12px;
+}
+.rw-lc-sh-options.sizes button small {
+  font-size: 8px;
+}
+.rw-lc-secondhand-info .rw-lc-sh-price {
+  padding: 13px 36px 13px 15px;
+  font-size: 18px !important;
+}
+.rw-lc-sh-summary {
+  margin-top: 11px;
+  padding: 12px 14px;
+}
+.rw-lc-sh-summary-row {
+  font-size: 11px;
+}
+.rw-lc-sh-summary-total strong {
+  font-size: 12px;
+}
+.rw-lc-sh-summary-total em {
+  font-size: 17px;
+}
+
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
+
+@media (max-width: 620px) {
+  .rw-lc-secondhand-info {
+    padding: 16px 16px 22px;
+  }
+
+  .rw-lc-sh-title h2 {
+    font-size: 17px;
+  }
+
+  .rw-lc-sh-field-label,
+  .rw-lc-sh-input-label-row {
+    font-size: 12px;
+  }
+
+  .rw-lc-sh-options button {
+    min-height: 38px;
+    font-size: 11px;
+  }
+
+  .rw-lc-sh-options.brands {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .rw-lc-sh-options.sizes {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .rw-lc-sh-options {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .rw-lc-sh-options.segments {
+    grid-template-columns: 1fr;
+  }
+
+  .rw-lc-sh-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .rw-lc-sh-label-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .rw-lc-sh-status {
+    align-self: flex-end;
+  }
+
+  .rw-lc-sh-summary-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .rw-lc-sh-summary-total {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .rw-lc-sh-summary-total em {
+    align-self: flex-end;
+  }
+}
+
+.rw-lc-sh-segment-hint {
+  flex: 0 0 auto;
+  color: #64748b;
+  font-size: 9px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.rw-lc-sh-title-icon,
+.rw-lc-sh-category-icon,
+.rw-lc-sh-segment-icon,
+.rw-lc-sh-input-icon,
+.rw-lc-sh-note-icon,
+.rw-lc-sh-summary-icon {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rw-lc-sh-category-icon {
+  margin-right: 4px;
+}
+
+.rw-lc-sh-options button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.rw-lc-sh-options.segments button {
+  gap: 5px;
+}
+
+.rw-lc-sh-input-icon {
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  transform: translateY(-50%);
+  color: #64748b;
+  pointer-events: none;
+}
+
+.rw-lc-sh-note-icon {
+  flex: 0 0 auto;
+  margin-top: 1px;
+  color: #475569;
+}
+
+.rw-lc-sh-summary-icon {
+  margin-right: 4px;
+  vertical-align: -1px;
+  color: #64748b;
+}
+
+.rw-lc-sh-size-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+/* Chip chọn kích cỡ */
+.rw-lc-size-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.rw-lc-size-chip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 52px;
+  padding: 9px 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #ffffff;
+  font-size: 14px;
+  font-weight: 600;
+  color: #0f172a;
+  cursor: pointer;
+  transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease;
+}
+
+.rw-lc-size-chip:hover {
+  border-color: #cbd8e8;
+}
+
+.rw-lc-size-chip.active {
+  background: #0f172a;
+  border-color: #0f172a;
+  color: #ffffff;
+}
+
+.rw-lc-size-chip.active:hover {
+  background: #182444;
+  border-color: #182444;
+}
+
+.rw-lc-size-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.rw-lc-size-input:focus-visible+span {
+  text-decoration: underline;
+}
+
+/* Ô giá bán + hậu tố tiền tệ */
+.rw-lc-price-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.rw-lc-info .rw-lc-price-input {
+  padding-right: 64px;
+}
+
+.rw-lc-price-suffix {
+  position: absolute;
+  right: 15px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #94a3b8;
+  pointer-events: none;
+}
+
+/* Bảng phí giám định & khoản thực nhận */
+.rw-lc-fee-summary {
+  margin-top: 12px;
+  border: 1px solid #e9edf5;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.rw-lc-fee-box {
+  background: #f7f8fa;
+  padding: 15px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.rw-lc-fee-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: 14px;
+}
+
+.rw-lc-fee-row>span:first-child {
+  color: #475569;
+}
+
+.rw-lc-fee-value {
+  font-weight: 600;
+  color: #0f172a;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.rw-lc-fee-value.is-blue {
+  color: #2563eb;
+  font-weight: 700;
+}
+
+.rw-lc-fee-total {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  background: #ffffff;
+  border-top: 1px solid #e9edf5;
+  padding: 15px 18px;
+}
+
+.rw-lc-fee-total>span:first-child {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.rw-lc-fee-total-value {
+  font-size: 16.5px;
+  font-weight: 800;
+  color: #2563eb;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 820px) {
+  .rw-lc-info {
+    padding: 20px 18px 22px;
+  }
+
+  .rw-lc-info-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 18px;
+  }
+
+  .rw-lc-info-title {
+    font-size: 16.5px;
+  }
+
+  .rw-lc-info-sub {
+    font-size: 13px;
+  }
+
+  .rw-lc-info .rw-lc-input,
+  .rw-lc-info .rw-lc-textarea {
+    font-size: 14px;
+    padding: 11px 13px;
+  }
+
+  .rw-lc-info .rw-lc-price-input {
+    padding-right: 58px;
+  }
+
+  .rw-lc-fee-row {
+    font-size: 13px;
+  }
+}

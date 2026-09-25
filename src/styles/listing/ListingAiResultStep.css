@@ -1,0 +1,832 @@
+/* ============================================================
+   REWEAR AI — BƯỚC 05: KẾT QUẢ THẨM ĐỊNH & BẰNG CHỨNG QUANG HỌC
+   ============================================================ */
+
+.rw-lc-result {
+  padding: 18px 20px 26px;
+  border-radius: 24px;
+  color: #0f172a;
+  font-family: var(--rw-font, Inter, -apple-system, 'Segoe UI', Roboto, sans-serif);
+  background:
+    radial-gradient(760px 320px at 92% -70px, rgba(46, 124, 246, 0.1), transparent 62%),
+    radial-gradient(620px 300px at 0% 4%, rgba(20, 184, 166, 0.08), transparent 58%),
+    linear-gradient(158deg, #ffffff 0%, #eef4ff 46%, #f6faff 100%);
+  border: 1px solid #dfe8f6;
+  box-shadow: 0 26px 55px -34px rgba(31, 64, 122, 0.35);
+}
+
+/* ── Dải trạng thái ── */
+.rw-lc-result-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding-bottom: 12px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid #e6ecf6;
+}
+.rw-lc-result-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+}
+.rw-lc-result-eyebrow svg {
+  color: #2e7cfa;
+  flex-shrink: 0;
+}
+.rw-lc-result-latency {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 13px;
+  border-radius: 999px;
+  background: #e8f0fe;
+  border: 1px solid #d7e4fb;
+  color: #2e7cfa;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.rw-lc-result-latency-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #2e7cfa;
+}
+
+/* ── Tiêu đề ── */
+.rw-lc-result-hero {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  padding-bottom: 16px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid #e6ecf6;
+}
+.rw-lc-result-hero-main {
+  min-width: 0;
+  flex: 1;
+}
+.rw-lc-result-latency {
+  margin-top: 4px;
+}
+.rw-lc-result-title {
+  margin: 0;
+  color: #0f172a;
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: -0.025em;
+  line-height: 1.25;
+}
+.rw-lc-result-desc {
+  margin: 7px 0 0;
+  max-width: 720px;
+  color: #475569;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* ── Bố cục hai cột ── */
+.rw-lc-result-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 16px;
+  align-items: start;
+}
+.rw-lc-result-col-main,
+.rw-lc-result-col-side {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+/* ── Thẻ nội dung ── */
+.rw-lc-result-card {
+  padding: 16px 18px;
+  border-radius: 16px;
+  background: #ffffff;
+  border: 1px solid #e6ecf6;
+  box-shadow: 0 20px 45px -32px rgba(31, 64, 122, 0.34);
+}
+.rw-lc-result-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 12px;
+}
+.rw-lc-result-card-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: #0f172a;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -0.015em;
+  line-height: 1.35;
+}
+.rw-lc-result-card-title svg { color: #2e7cf6; flex: 0 0 auto; }
+.rw-lc-result-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 8px;
+  font-size: 10.5px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.rw-lc-result-chip.green { background: #dcfce7; color: #15803d; }
+.rw-lc-result-chip.indigo { background: #eef2ff; color: #3b5bdb; }
+.rw-lc-result-head-meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.rw-lc-result-head-note { color: #64748b; font-size: 11.5px; font-weight: 600; }
+
+/* ── Thẻ 1: Điểm tin cậy ── */
+.rw-lc-result-score {
+  display: grid;
+  grid-template-columns: 168px minmax(0, 1fr) auto;
+  gap: 20px;
+  align-items: center;
+}
+.rw-lc-result-donut-wrap { position: relative; width: 150px; height: 150px; }
+.rw-lc-result-donut { width: 100%; height: 100%; display: block; }
+.rw-lc-result-donut-track { fill: #f8fafd; stroke: #e8edf5; stroke-width: 13; }
+.rw-lc-result-donut-arc { fill: none; stroke: #2e7cf6; stroke-width: 13; stroke-linecap: round; }
+.rw-lc-result-donut-text {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  text-align: center;
+}
+.rw-lc-result-donut-text strong {
+  display: inline-flex;
+  align-items: flex-start;
+  color: #0f172a;
+  font-size: 30px;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+.rw-lc-result-donut-text strong small {
+  margin-left: 1px;
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1;
+}
+.rw-lc-result-donut-text span { color: #94a3b8; font-size: 9.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+.rw-lc-result-score-info { min-width: 0; }
+.rw-lc-result-score-badges { display: flex; flex-wrap: wrap; gap: 8px; }
+.rw-lc-result-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #64748b;
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+.rw-lc-result-badge.is-primary { background: #e6efff; color: #1d4ed8; }
+.rw-lc-result-score-heading {
+  margin-top: 12px;
+  color: #0f172a;
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+}
+.rw-lc-result-score-desc {
+  margin: 8px 0 0;
+  max-width: 560px;
+  color: #475569;
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+.rw-lc-result-escrow-state {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+}
+.rw-lc-result-escrow-state-label {
+  color: #94a3b8;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+}
+.rw-lc-result-escrow-state-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #0f172a;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -0.015em;
+  white-space: nowrap;
+}
+.rw-lc-result-escrow-state-value svg { color: #2e7cf6; flex-shrink: 0; }
+.rw-lc-result-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin: 16px 0 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #eef3fb;
+  border: 1px solid #e2eaf7;
+  color: #475569;
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+.rw-lc-result-note svg { flex: 0 0 auto; margin-top: 1px; color: #475569; }
+
+/* ── Thẻ 2: Phân loại tình trạng ── */
+.rw-lc-result-grade-header {
+  align-items: flex-start;
+  margin-bottom: 14px;
+}
+.rw-lc-result-grade-header-copy {
+  min-width: 0;
+  flex: 1;
+}
+.rw-lc-result-grade-subtitle {
+  margin: 4px 0 0;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+}
+.rw-lc-result-grade-layout {
+  display: grid;
+  grid-template-columns: minmax(180px, 260px) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+.rw-lc-result-grades {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.rw-lc-result-grade {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-height: 86px;
+  padding: 11px 12px;
+  border-radius: 12px;
+  background: #f8fafd;
+  border: 1px solid #e6ecf6;
+  transition: all 0.2s ease;
+}
+.rw-lc-result-grade.is-selected {
+  background: #edf5ff;
+  border-color: #bfd7ff;
+  box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.18);
+}
+.rw-lc-result-grade-step {
+  color: #94a3b8;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.rw-lc-result-grade-name {
+  color: #0f172a;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.rw-lc-result-grade.is-selected .rw-lc-result-grade-name { color: #1d4ed8; }
+.rw-lc-result-grade-caption { color: #94a3b8; font-size: 10.5px; font-weight: 600; }
+.rw-lc-result-grade-main { min-width: 0; }
+.rw-lc-result-conclusion {
+  margin: 0;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: #f5f8fd;
+  border: 1px solid #e6ecf6;
+  color: #475569;
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+.rw-lc-result-conclusion b { color: #0f172a; font-weight: 800; }
+.rw-lc-result-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+.rw-lc-result-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 96px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #f8fafd;
+  border: 1px solid #e6ecf6;
+}
+.rw-lc-result-metric-label {
+  color: #64748b;
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+.rw-lc-result-metric-value {
+  color: #2e7cf6;
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+.rw-lc-result-metric-note { color: #94a3b8; font-size: 10.5px; font-weight: 600; line-height: 1.45; }
+
+/* ── Thẻ 3: Chỉ số 5 điều kiện thẩm định ── */
+.rw-lc-result-evidence { display: flex; flex-direction: column; gap: 8px; }
+.rw-lc-result-evidence-row {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 12px;
+  border-radius: 12px;
+  background: #f8fafd;
+  border: 1px solid #e6ecf6;
+}
+.rw-lc-result-evidence-idx {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  color: #64748b;
+  font-size: 11.5px;
+  font-weight: 800;
+}
+.rw-lc-result-evidence-text { min-width: 0; }
+.rw-lc-result-evidence-title { color: #0f172a; font-size: 12.5px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.35; }
+.rw-lc-result-evidence-sub { margin-top: 2px; color: #64748b; font-size: 11.5px; line-height: 1.4; }
+.rw-lc-result-evidence-score {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  min-width: 96px;
+}
+.rw-lc-result-evidence-pct { color: #2e7cf6; font-size: 13.5px; font-weight: 900; letter-spacing: -0.01em; }
+.rw-lc-result-evidence-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #15803d;
+  font-size: 10px;
+  font-weight: 800;
+}
+.rw-lc-result-evidence-bar {
+  display: block;
+  width: 100%;
+  height: 7px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+}
+.rw-lc-result-evidence-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #60a5fa 0%, #2563eb 100%);
+}
+
+/* ── Thẻ 4: Minh bạch đối soát AI ── */
+.rw-lc-result-explain-header {
+  align-items: flex-start;
+  margin-bottom: 14px;
+}
+.rw-lc-result-explain-header-copy {
+  min-width: 0;
+  flex: 1;
+}
+.rw-lc-result-explain-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+.rw-lc-result-explain-subtitle {
+  margin: 4px 0 0;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+}
+.rw-lc-result-explain-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.rw-lc-result-explain {
+  padding: 14px 16px 16px;
+  border-radius: 14px;
+  background: #f8fafd;
+  border: 1px solid #e6ecf6;
+  min-height: 168px;
+}
+.rw-lc-result-explain-head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #0f172a;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -0.015em;
+}
+.rw-lc-result-explain-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(46, 124, 246, 0.08);
+  color: #2563eb;
+  flex: 0 0 auto;
+}
+.rw-lc-result-explain-head svg { color: #2e7cf6; flex: 0 0 auto; }
+.rw-lc-result-explain-body {
+  margin: 12px 0 0;
+  color: #475569;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.rw-lc-result-explain-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+  padding-top: 11px;
+  border-top: 1px dashed #e2e8f0;
+}
+.rw-lc-result-explain-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #475569;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+.rw-lc-result-explain-note svg { color: #94a3b8; flex: 0 0 auto; }
+.rw-lc-result-explain-license {
+  color: #94a3b8;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-family: 'SFMono-Regular', ui-monospace, 'Cascadia Mono', Consolas, monospace;
+}
+
+/* ── Cột phải: sản phẩm đã thẩm định ── */
+.rw-lc-result-preview-card {
+  padding-top: 14px;
+}
+.rw-lc-result-preview-header {
+  align-items: center;
+  margin-bottom: 12px;
+}
+.rw-lc-result-preview-title {
+  margin: 0;
+  color: #0f172a;
+  font-size: 16px;
+  font-weight: 900;
+  letter-spacing: -0.025em;
+}
+.rw-lc-result-preview-button {
+  border: 1px solid #dfe8f6;
+  background: #edf5ff;
+  color: #2563eb;
+  border-radius: 999px;
+  padding: 7px 14px;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.rw-lc-result-product-media {
+  position: relative;
+  aspect-ratio: 7 / 6;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #f6f8fc;
+  border: 1px solid #e6ecf6;
+}
+.rw-lc-result-product-media img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center; }
+.rw-lc-result-product-tag {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  padding: 4px 9px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid #e2e8f0;
+  color: #334155;
+  font-size: 10px;
+  font-weight: 800;
+}
+.rw-lc-result-product-verified {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(16, 24, 40, 0.86);
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 800;
+}
+.rw-lc-result-product-name {
+  margin: 12px 0 0;
+  color: #0f172a;
+  font-size: 14.5px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.35;
+}
+.rw-lc-result-product-subtitle {
+  margin-top: 6px;
+  color: #64748b;
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+.rw-lc-result-product-sku {
+  margin-top: 8px;
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  font-family: 'SFMono-Regular', ui-monospace, 'Cascadia Mono', Consolas, monospace;
+}
+.rw-lc-result-price-rows { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.rw-lc-result-price-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #f8fafd;
+  border: 1px solid #e6ecf6;
+}
+.rw-lc-result-price-row.is-strong { background: #eef4ff; border-color: #dbe6fb; }
+.rw-lc-result-price-label { flex: 1; min-width: 0; color: #64748b; font-size: 11px; font-weight: 700; }
+.rw-lc-result-price-value { color: #0f172a; font-size: 13px; font-weight: 900; letter-spacing: -0.01em; white-space: nowrap; }
+.rw-lc-result-price-delta {
+  padding: 3px 7px;
+  border-radius: 7px;
+  background: #dcfce7;
+  color: #15803d;
+  font-size: 10.5px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.rw-lc-result-escrow {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #edf4ff;
+  border: 1px solid #dbe6fb;
+  color: #475569;
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+.rw-lc-result-escrow svg { flex: 0 0 auto; margin-top: 2px; color: #64748b; }
+
+/* ── Cột phải: quy trình niêm yết tiếp theo ── */
+.rw-lc-result-next-desc { margin: 0; color: #475569; font-size: 12.5px; line-height: 1.55; }
+.rw-lc-result-highlight {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 11px;
+  margin-top: 12px;
+  padding: 12px 13px;
+  border-radius: 12px;
+  background: #eef4ff;
+  border: 1px solid #dde4fb;
+}
+.rw-lc-result-highlight-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 1px solid #dde4fb;
+  color: #3b5bdb;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1;
+  white-space: nowrap;
+}
+.rw-lc-result-highlight-title {
+  color: #1d4ed8;
+  font-size: 12.5px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+.rw-lc-result-highlight-body { margin: 5px 0 0; color: #475569; font-size: 11.5px; line-height: 1.55; }
+.rw-lc-result-next-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 12px 0 0;
+  color: #475569;
+  font-size: 11.5px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+.rw-lc-result-next-note svg { flex: 0 0 auto; margin-top: 2px; color: #64748b; }
+.rw-lc-result-next-cert {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0 0;
+  padding-top: 10px;
+  border-top: 1px dashed #e2e8f0;
+  color: #94a3b8;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.rw-lc-result-next-cert svg { flex: 0 0 auto; color: #2e7cf6; }
+.rw-lc-result-cta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  min-height: 76px;
+  margin-top: 8px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: #f3f7ff;
+  border: 1px solid #d8e4f8;
+  box-shadow: inset 0 0 0 1px rgba(46, 124, 246, 0.04);
+}
+.rw-lc-result-cta-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.rw-lc-result-cta-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+  color: #5b6472;
+}
+.rw-lc-result-cta-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.rw-lc-result-cta-text strong {
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+.rw-lc-result-cta-text > span {
+  color: #5f6877;
+  font-size: 10.5px;
+  font-weight: 500;
+  line-height: 1.35;
+}
+.rw-lc-result-cta-link {
+  flex: 0 0 auto;
+  border: none;
+  background: transparent;
+  color: #2e6df6;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.2;
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.16s ease;
+}
+.rw-lc-result-cta-link:hover { color: #1d4ed8; }
+
+/* ── Thanh hành động cố định (giống Bước 4) ── */
+.rw-lc-result-actionbar {
+  position: static;
+  margin-top: 18px;
+  padding: 14px 24px;
+  background: #f6f8fd;
+  border-top: 1px solid #e6ecf6;
+  border-radius: 14px;
+}
+.rw-lc-result-actionbar-inner {
+  max-width: 1360px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.rw-lc-result-actionbar-btns { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.rw-lc-result-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 18px;
+  border-radius: 12px;
+  background: #ffffff;
+  border: 1px solid #dbe3ef;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease, transform 0.16s ease, box-shadow 0.16s ease;
+}
+.rw-lc-result-btn:hover { background: #f8fafd; border-color: #b9c8e0; }
+.rw-lc-result-btn:active { transform: translateY(1px); }
+.rw-lc-result-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+.rw-lc-result-btn-primary {
+  background: linear-gradient(135deg, #1d4ed8 0%, #2e7cf6 100%);
+  border-color: #1d4ed8;
+  color: #ffffff;
+  box-shadow: 0 14px 26px -18px rgba(29, 78, 216, 0.9);
+}
+.rw-lc-result-btn-primary:hover { background: linear-gradient(135deg, #1a44c0 0%, #2563eb 100%); border-color: #1a44c0; color: #ffffff; }
+.rw-lc-result-btn-ghost { background: transparent; border-color: transparent; color: #475569; padding-left: 6px; padding-right: 12px; }
+.rw-lc-result-btn-ghost:hover { background: rgba(255, 255, 255, 0.7); border-color: #dbe3ef; color: #1d4ed8; }
+.rw-lc-result-actionbar-space { display: none; }
+
+/* ── Responsive ── */
+@media (max-width: 860px) {
+  .rw-lc-result-hero {
+    flex-direction: column;
+    gap: 10px;
+  }
+  .rw-lc-result-latency {
+    margin-top: 0;
+  }
+  .rw-lc-result { padding: 16px 14px 22px; border-radius: 20px; }
+  .rw-lc-result-title { font-size: 19px; }
+  .rw-lc-result-desc { font-size: 12.5px; }
+  .rw-lc-result-columns { grid-template-columns: minmax(0, 1fr); }
+  .rw-lc-result-score { grid-template-columns: minmax(0, 1fr); justify-items: center; text-align: center; }
+  .rw-lc-result-score-badges { justify-content: center; }
+  .rw-lc-result-score-desc { margin-left: auto; margin-right: auto; }
+  .rw-lc-result-escrow-state { align-items: center; }
+  .rw-lc-result-grades { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .rw-lc-result-metrics { grid-template-columns: minmax(0, 1fr); }
+  .rw-lc-result-explain-grid { grid-template-columns: minmax(0, 1fr); }
+  .rw-lc-result-evidence-row { grid-template-columns: 30px minmax(0, 1fr); }
+  .rw-lc-result-evidence-score {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .rw-lc-result-card { padding: 14px; }
+  .rw-lc-result-actionbar { padding: 12px 14px; }
+  .rw-lc-result-actionbar-inner { flex-direction: column-reverse; align-items: stretch; }
+  .rw-lc-result-actionbar-btns { flex-direction: column; align-items: stretch; }
+  .rw-lc-result-actionbar-btns .rw-lc-result-btn { justify-content: center; width: 100%; }
+  .rw-lc-result-btn-ghost { justify-content: center; width: 100%; padding: 8px 12px; }
+  .rw-lc-result-actionbar-space { display: none; }
+  .rw-lc-result-cta-row {
+    min-height: 112px;
+    padding: 18px;
+  }
+  .rw-lc-result-cta-copy { gap: 12px; }
+  .rw-lc-result-cta-text strong { font-size: 15px; }
+  .rw-lc-result-cta-text > span { font-size: 12.5px; }
+  .rw-lc-result-cta-link { font-size: 14px; }
+}
