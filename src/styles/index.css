@@ -6,6 +6,14 @@
 @import './dashboard/AiVerificationProcess.css';
 @import './dashboard/RecentListingsTable.css';
 @import './dashboard/DashboardFooterNote.css';
+@import './marketplace/BuyerTopbar.css';
+@import './marketplace/MarketplaceHero.css';
+@import './marketplace/MarketplaceToolbar.css';
+@import './marketplace/MarketplaceFilterPanel.css';
+@import './marketplace/ProductCard.css';
+@import './marketplace/MarketplacePagination.css';
+@import './marketplace/MarketplaceFooter.css';
+@import './marketplace/MarketplacePage.css';
 @import './listing/ListingCreate.css';
 @import './listing/ListingTopbar.css';
 @import './listing/ListingBreadcrumb.css';

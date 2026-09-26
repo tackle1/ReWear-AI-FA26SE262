@@ -1,0 +1,103 @@
+/* ============================ Assurance banner ============================ */
+.rw-mkt-assurance {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border: 1px solid #e2e9f5;
+  border-radius: 16px;
+  background: linear-gradient(120deg, #f4f8ff 0%, #eef4ff 55%, #f7fafd 100%);
+  box-shadow: 0 14px 32px -30px rgba(26, 54, 93, 0.55);
+}
+.rw-mkt-assurance-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: #fff;
+  border: 1px solid #dbe3ec;
+  color: #0f172a;
+  flex: 0 0 38px;
+  box-shadow: 0 6px 14px -10px rgba(15, 23, 42, 0.5);
+}
+.rw-mkt-assurance-text { flex: 1 1 auto; min-width: 0; }
+.rw-mkt-assurance-text b { display: block; margin-bottom: 3px; font-size: 13px; font-weight: 800; letter-spacing: -0.01em; color: #0f172a; }
+.rw-mkt-assurance-text p { margin: 0; font-size: 12.5px; line-height: 1.55; color: #5b6b82; max-width: none; }
+.rw-mkt-assurance-btn {
+  flex: 0 0 auto;
+  height: 38px;
+  padding: 0 16px;
+  border: 1px solid #dbe3ec;
+  border-radius: 10px;
+  background: #fff;
+  color: #0f172a;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.16s ease, border-color 0.16s ease;
+}
+.rw-mkt-assurance-btn:hover { background: #eef3f8; border-color: #c6d6ee; transform: none; }
+.rw-mkt-assurance-btn:focus-visible { outline: 2px solid #2e7cf6; outline-offset: 2px; }
+
+/* ================================ Footer ================================= */
+.rw-mkt-footer {
+  width: 100%;
+  max-width: var(--rw-shell-max, 1420px);
+  margin: 0 auto;
+  padding: 16px 24px 18px;
+  border-top: 1px solid #e8eef4;
+  background: #fbfcfe;
+  font-family: var(--rw-font, 'Be Vietnam Pro', Inter, -apple-system, 'Segoe UI', Roboto, sans-serif);
+}
+.rw-mkt-footer a { font-family: inherit; }
+.rw-mkt-footer-top { display: flex; align-items: center; justify-content: space-between; gap: 12px 18px; flex-wrap: wrap; }
+.rw-mkt-footer-badges { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; min-width: 0; }
+.rw-mkt-footer-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #334155;
+  font-size: 11.5px;
+  font-weight: 500;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+.rw-mkt-footer-badge b { font-weight: 700; color: #0f172a; }
+.rw-mkt-footer-badge svg { color: #0f172a; flex: 0 0 auto; }
+.rw-mkt-footer-dot { width: 3px; height: 3px; border-radius: 50%; background: #94a3b8; flex: 0 0 3px; }
+.rw-mkt-footer-copy { font-size: 11px; color: #64748b; text-align: right; line-height: 1.5; }
+.rw-mkt-footer-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 18px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed #e6ecf4;
+}
+.rw-mkt-footer-policy {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #475569;
+  text-decoration: none;
+}
+.rw-mkt-footer-policy:hover { color: #0f172a; text-decoration: underline; }
+.rw-mkt-footer-policy:focus-visible { outline: 2px solid #2e7cf6; outline-offset: 2px; border-radius: 4px; }
+
+@media (max-width: 900px) {
+  .rw-mkt-assurance { flex-direction: column; align-items: flex-start; gap: 12px; }
+  .rw-mkt-assurance-btn { width: 100%; }
+  .rw-mkt-footer { padding: 14px 14px 16px; }
+  .rw-mkt-footer-copy { text-align: left; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rw-mkt-assurance-btn { transition: none; }
+}
+

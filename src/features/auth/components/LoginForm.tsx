@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useLogin } from '../hooks/useLogin';
 import { LoginFormData } from '../types/auth.type';
 import storage from '../../../utils/storage';
+import ROUTES from '../../../routes/routes.config';
 
 export const LoginForm: React.FC = () => {
   const navigate = useNavigate();
@@ -34,7 +35,10 @@ export const LoginForm: React.FC = () => {
     const success = await login(formData);
     if (success) {
       const user = storage.getItem<{ role: string }>('rewear_current_user');
-      navigate(user?.role === 'SELLER' ? '/seller/dashboard' : '/marketplace');
+      // Người mua vào sàn giao dịch đã xác thực, người bán vào bảng điều khiển seller.
+      navigate(user?.role === 'SELLER' ? ROUTES.SELLER.DASHBOARD : ROUTES.MARKETPLACE.ROOT, {
+        replace: true,
+      });
     }
   };
 
