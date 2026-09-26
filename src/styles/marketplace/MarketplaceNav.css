@@ -1,0 +1,48 @@
+.rw-mkt-nav { position: sticky; top: 0; z-index: 50; background: var(--rw-navy, #0f1930); }
+.rw-mkt-nav::after { content: ""; position: absolute; left: 0; right: 0; bottom: -16px; height: 16px; background: linear-gradient(180deg, rgba(24, 34, 56, 0.28), transparent); pointer-events: none; }
+.rw-mkt-nav-row { width: 100%; max-width: var(--rw-shell-max, 1420px); margin: 0 auto; padding: 12px 24px; display: flex; align-items: center; gap: 14px; }
+.rw-mkt-brand { display: inline-flex; align-items: center; gap: 10px; flex: 0 0 auto; }
+.rw-mkt-brand-mark { width: 38px; height: 38px; border-radius: 11px; display: grid; place-items: center; background: #ffffff; color: #0f172a; font-size: 18px; font-weight: 800; box-shadow: 0 10px 22px -14px rgba(0, 0, 0, 0.7); }
+.rw-mkt-brand-word { display: flex; flex-direction: column; line-height: 1.15; }
+.rw-mkt-brand-word strong { font-size: 17px; font-weight: 800; letter-spacing: -0.01em; color: #ffffff; }
+.rw-mkt-brand-word em { font-style: normal; font-size: 10px; font-weight: 500; letter-spacing: 0.04em; color: #94a3b8; }
+.rw-mkt-search { flex: 1 1 auto; max-width: 620px; display: flex; align-items: center; gap: 9px; height: 42px; padding: 0 6px 0 14px; border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 12px; background: rgba(255, 255, 255, 0.07); }
+.rw-mkt-search svg { color: #8fa0bd; flex: 0 0 auto; }
+.rw-mkt-search input { flex: 1 1 auto; min-width: 0; border: 0; background: transparent; color: #f1f5f9; font-family: inherit; font-size: 13px; outline: none; }
+.rw-mkt-search input::placeholder { color: #7d8ba3; }
+.rw-mkt-search-btn { height: 32px; padding: 0 16px; border: 0; border-radius: 9px; background: #ffffff; color: #0f172a; font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer; transition: background-color 0.16s ease; }
+.rw-mkt-search-btn:hover { background: #e2e8f0; }
+
+/* Buttons and icons */
+.rw-mkt-icon-btn { position: relative; width: 38px; height: 38px; border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 11px; display: grid; place-items: center; background: rgba(255, 255, 255, 0.05); color: #e2e8f0; cursor: pointer; transition: background-color 0.16s ease; }
+.rw-mkt-icon-btn:hover { background: rgba(255, 255, 255, 0.12); }
+.rw-mkt-icon-badge { position: absolute; top: -5px; right: -5px; min-width: 17px; height: 17px; padding: 0 4px; border-radius: 999px; background: #2e7cf6; color: #ffffff; font-size: 10px; font-weight: 700; display: grid; place-items: center; }
+.rw-mkt-avatar { width: 38px; height: 38px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, 0.2); overflow: hidden; display: grid; place-items: center; background: #3450b4; color: #ffffff; font-size: 13px; font-weight: 700; cursor: pointer; transition: background-color 0.16s ease; }
+.rw-mkt-avatar:hover { background: #3d5cc9; }
+.rw-mkt-avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+/* Category strip */
+.rw-mkt-cats { background: #fbfcfe; border-bottom: 1px solid #e6ebf2; }
+.rw-mkt-cats-row { width: 100%; max-width: var(--rw-shell-max, 1420px); margin: 0 auto; padding: 8px 24px; display: flex; align-items: center; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+.rw-mkt-cats-row::-webkit-scrollbar { display: none; }
+.rw-mkt-chip { height: 30px; padding: 0 13px; border: 1px solid #e6ebf2; border-radius: 999px; background: #fff; color: #334155; font-family: inherit; font-size: 12px; font-weight: 500; white-space: nowrap; cursor: pointer; transition: background-color 0.16s ease, border-color 0.16s ease; }
+.rw-mkt-chip:hover { background: #f1f5f9; }
+.rw-mkt-chip--active { background: #0f172a; border-color: #0f172a; color: #ffffff; }
+.rw-mkt-chip--active:hover { background: #1c2a52; }
+
+/* Trust band */
+.rw-mkt-trust { background: #fbfcfe; border-bottom: 1px solid #e6ebf2; }
+.rw-mkt-trust-row { width: 100%; max-width: var(--rw-shell-max, 1420px); margin: 0 auto; padding: 8px 24px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.rw-mkt-trust-text { display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: #334155; }
+.rw-mkt-trust-text b { color: #0f172a; font-weight: 700; }
+.rw-mkt-trust-text svg { color: #0f172a; flex: 0 0 auto; }
+.rw-mkt-credibility { margin-left: auto; display: inline-flex; align-items: center; gap: 7px; height: 30px; padding: 0 10px; border: 1px solid #cbd5e1; border-radius: 999px; background: #ffffff; }
+.rw-mkt-credibility svg { color: #0f172a; flex: 0 0 auto; }
+.rw-mkt-credibility-label { font-size: 10.5px; color: #64748b; }
+.rw-mkt-credibility-value { font-size: 12px; font-weight: 700; color: #0f172a; }
+.rw-mkt-credibility-value em { font-style: normal; color: #cbd5e1; font-weight: 600; }
+
+@media (max-width: 1180px) { .rw-mkt-search { max-width: 420px; } }
+@media (max-width: 900px) { .rw-mkt-nav-row { flex-wrap: wrap; padding: 10px 14px; gap: 10px; } .rw-mkt-search { order: 3; flex-basis: 100%; max-width: none; } .rw-mkt-cats-row { padding: 8px 14px; } .rw-mkt-trust-row { padding: 8px 14px; } .rw-mkt-credibility { margin-left: 0; } }
+@media (max-width: 640px) { .rw-mkt-brand-word { display: none; } .rw-mkt-search-btn { display: none; } }
+@media (prefers-reduced-motion: reduce) { .rw-mkt-search-btn, .rw-mkt-icon-btn, .rw-mkt-avatar, .rw-mkt-chip { transition: none; } }

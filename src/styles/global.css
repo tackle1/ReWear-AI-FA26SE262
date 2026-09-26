@@ -1,0 +1,71 @@
+/* ============================================================
+   ReWear AI — nền tảng style toàn cục
+   Được nạp ngay tại main.tsx để mọi route đều có design token,
+   reset và typography cơ bản (không phụ thuộc thứ tự nạp CSS
+   của từng component).
+   ============================================================ */
+
+:root {
+  --rw-font: 'Be Vietnam Pro', Inter, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --rw-ink: #0f172a;
+  --rw-muted: #64748b;
+  --rw-line: #e6ecf6;
+  --rw-card: rgba(255, 255, 255, 0.94);
+  --rw-blue: #2e7cf6;
+  --rw-teal: #14b8a6;
+  --rw-navy: #0f1930;
+  --rw-page: #f8f9ff;
+  --rw-shell-max: 1420px;
+  --rw-shadow: 0 18px 40px -28px rgba(26, 54, 93, 0.35);
+  --rw-shadow-hover: 0 24px 48px -26px rgba(26, 54, 93, 0.42);
+
+  color-scheme: light;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: var(--rw-font);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--rw-ink);
+  background-color: var(--rw-page);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* Kế thừa font/colour cho form controls — tránh font hệ thống lệch nhịp thiết kế. */
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+  border-style: none;
+}
+
+::selection {
+  background: #dbe7ff;
+  color: #0f172a;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}

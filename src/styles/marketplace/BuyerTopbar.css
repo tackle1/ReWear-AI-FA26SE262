@@ -1,0 +1,51 @@
+.rw-buyer-topbar { position: sticky; top: 0; z-index: 45; background: rgba(255, 255, 255, 0.97); backdrop-filter: blur(10px); border-bottom: 1px solid #e8eef8; font-family: var(--rw-font, Inter, -apple-system, 'Segoe UI', Roboto, sans-serif); }
+.rw-buyer-topbar-inner { max-width: var(--rw-shell-max, 1420px); margin: 0 auto; display: flex; align-items: center; gap: 16px; padding: 10px 24px; }
+.rw-buyer-brand { display: flex; align-items: center; gap: 9px; flex: 0 0 auto; text-decoration: none; }
+.rw-buyer-brand-mark { width: 30px; height: 30px; border-radius: 9px; background: linear-gradient(135deg, #0f1930, #1e3a6e); display: grid; place-items: center; flex: 0 0 30px; }
+.rw-buyer-brand-text { display: flex; flex-direction: column; line-height: 1.06; }
+.rw-buyer-brand-text b { font-size: 15px; font-weight: 800; letter-spacing: -0.02em; color: #0f172a; }
+.rw-buyer-brand-text em { font-style: normal; font-size: 8.5px; font-weight: 700; letter-spacing: 0.14em; color: #64748b; }
+.rw-buyer-nav { display: flex; align-items: center; gap: 4px; flex: 0 0 auto; }
+.rw-buyer-nav-link, .rw-buyer-nav-link:link, .rw-buyer-nav-link:visited { position: relative; padding: 8px 10px; font-size: 13.5px; font-weight: 500; color: #5a6b86; text-decoration: none; white-space: nowrap; transition: color 0.16s ease; }
+.rw-buyer-nav-link:hover { color: #101828; }
+.rw-buyer-nav-link:focus-visible { outline: 2px solid #2e7cf6; outline-offset: 2px; border-radius: 8px; }
+.rw-buyer-nav-link.active { color: #101828; font-weight: 500; }
+.rw-buyer-nav-link.active::after { content: ""; position: absolute; left: 10px; right: 10px; bottom: 1px; height: 2px; border-radius: 2px; background: #101828; }
+.rw-buyer-search { flex: 1 1 auto; min-width: 160px; display: flex; align-items: center; gap: 9px; height: 38px; padding: 0 14px; border: 1px solid #e2e9f5; border-radius: 999px; background: #f5f8ff; color: #94a3b8; }
+.rw-buyer-search-input { flex: 1 1 auto; min-width: 0; border: 0; background: transparent; font-size: 13px; color: #0f172a; outline: none; font-family: inherit; }
+.rw-buyer-search-input::placeholder { color: #9aa7b8; }
+.rw-buyer-actions { display: flex; align-items: center; gap: 4px; flex: 0 0 auto; }
+.rw-buyer-icon-btn { position: relative; width: 36px; height: 36px; display: grid; place-items: center; border: 1px solid transparent; border-radius: 11px; background: transparent; color: #3b4a63; cursor: pointer; transition: background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease; }
+.rw-buyer-icon-btn:hover { background: #f2f6fd; border-color: #e3ebf8; color: #0f172a; }
+.rw-buyer-icon-btn:focus-visible { outline: 2px solid #2e7cf6; outline-offset: 2px; }
+.rw-buyer-dot { position: absolute; top: 5px; right: 5px; min-width: 14px; height: 14px; padding: 0 3px; border-radius: 999px; border: 2px solid #fff; display: grid; place-items: center; font-size: 9px; font-style: normal; font-weight: 700; color: #fff; }
+.rw-buyer-dot.danger { background: #ef4444; }
+.rw-buyer-dot.info { background: #2e7cf6; }
+.rw-buyer-dot.dark { background: #0f172a; }
+.rw-buyer-vdivider { width: 1px; height: 26px; background: #e6ecf6; margin: 0 8px; }
+.rw-buyer-region { display: inline-flex; align-items: center; gap: 7px; height: 36px; padding: 0 13px; border: 1px solid #e2e9f5; border-radius: 999px; background: #f5f8ff; color: #334155; font-size: 12.5px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: background-color 0.16s ease, border-color 0.16s ease; }
+.rw-buyer-region:hover { background: #eaf1fd; border-color: #cfe0fa; }
+.rw-buyer-account { position: relative; }
+.rw-buyer-account-trigger { display: flex; align-items: center; gap: 10px; padding: 4px 6px 4px 10px; border: 1px solid transparent; border-radius: 13px; background: transparent; color: #334155; cursor: pointer; font-family: inherit; transition: background-color 0.16s ease, border-color 0.16s ease; }
+.rw-buyer-account-trigger:hover, .rw-buyer-account-trigger[aria-expanded='true'] { background: #f1f5fb; border-color: #dbe5f3; }
+.rw-buyer-account-trigger:focus-visible { outline: 2px solid #2e7cf6; outline-offset: 2px; }
+.rw-buyer-user-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; min-width: 0; }
+.rw-buyer-user-meta b { font-size: 13px; font-weight: 700; color: #0f172a; white-space: nowrap; }
+.rw-buyer-user-line { display: inline-flex; align-items: center; gap: 5px; font-size: 10.5px; font-weight: 600; color: #64748b; white-space: nowrap; }
+.rw-buyer-verified-dot { width: 8px; height: 8px; border-radius: 50%; background: #2e7cf6; box-shadow: 0 0 0 3px rgba(46, 124, 246, 0.16); }
+.rw-buyer-avatar { width: 34px; height: 34px; border-radius: 50%; overflow: hidden; display: grid; place-items: center; background: linear-gradient(135deg, #dbe7fd, #eef4ff); flex: 0 0 34px; }
+.rw-buyer-avatar-img { width: 100%; height: 100%; object-fit: cover; }
+.rw-buyer-avatar-fallback { font-size: 13px; font-weight: 700; color: #1e3a6e; }
+.rw-buyer-menu { position: absolute; top: calc(100% + 10px); right: 0; z-index: 60; width: 248px; padding: 8px; border: 1px solid #e2e8f0; border-radius: 15px; background: rgba(255, 255, 255, 0.99); box-shadow: 0 24px 50px -20px rgba(15, 25, 48, 0.35); animation: rw-buyer-menu-in 0.16s ease both; }
+.rw-buyer-menu-head { display: flex; flex-direction: column; gap: 3px; padding: 8px 10px 10px; }
+.rw-buyer-menu-head span { font-size: 10.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #7b8799; }
+.rw-buyer-menu-head strong { font-size: 13.5px; font-weight: 700; color: #0f172a; }
+.rw-buyer-menu-item { display: flex; align-items: center; width: 100%; min-height: 40px; padding: 9px 10px; border: 0; border-top: 1px solid #edf1f7; background: transparent; border-radius: 9px; font-family: inherit; font-size: 13.5px; font-weight: 600; color: #334155; text-align: left; text-decoration: none; cursor: pointer; transition: background-color 0.16s ease, color 0.16s ease; }
+.rw-buyer-menu-item:hover { background: #f3f7fd; color: #0f172a; }
+.rw-buyer-logout { color: #dc2626; }
+.rw-buyer-logout:hover { background: #fff1f2; color: #b91c1c; }
+@keyframes rw-buyer-menu-in { from { opacity: 0; transform: translateY(-5px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@media (max-width: 1180px) { .rw-buyer-nav { display: none; } }
+@media (max-width: 900px) { .rw-buyer-topbar-inner { padding: 10px 14px; gap: 10px; } .rw-buyer-user-meta { display: none; } .rw-buyer-region span { display: none; } .rw-buyer-vdivider { display: none; } }
+@media (prefers-reduced-motion: reduce) { .rw-buyer-menu { animation: none; } }
+
