@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import sellerAvatar from '../../../assets/images/seller-avatar.png';
 import ROUTES from '../../../routes/routes.config';
+import { logout } from '../../../store/slices/authSlice';
+import storage, { tokenStorage } from '../../../utils/storage';
 import DashboardSidebar from '../../../components/layout/DashboardSidebar';
 import DashboardTopbar from '../../../components/layout/DashboardTopbar';
 import DashboardPageHeader from '../../../components/layout/DashboardPageHeader';
