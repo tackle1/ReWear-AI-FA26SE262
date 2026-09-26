@@ -12,8 +12,6 @@ import DashboardStats from '../../../components/layout/DashboardStats';
 import AiVerificationProcess from '../../../components/layout/AiVerificationProcess';
 import RecentListingsTable from '../../../components/layout/RecentListingsTable';
 import DashboardFooterNote from '../../../components/layout/DashboardFooterNote';
-import { logout } from '../../../store/slices/authSlice';
-import storage, { tokenStorage } from '../../../utils/storage';
 import '../../../styles/dashboard/DashboardTheme.css';
 
 export const SellerDashboardPage: React.FC = () => {
