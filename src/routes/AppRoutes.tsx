@@ -4,6 +4,8 @@ import ROUTES from './routes.config';
 import AuthLayout from '../layouts/AuthLayout';
 import RegisterPage from '../features/auth/pages/RegisterPage';
 import LoginPage from '../features/auth/pages/LoginPage';
+import BuyerMarketplacePage from '../features/marketplace/pages/BuyerMarketplacePage';
+import BuyerSectionPlaceholder from '../features/marketplace/pages/BuyerSectionPlaceholder';
 import SellerDashboardPage from '../features/seller/pages/SellerDashboardPage';
 import ListingCreatePage from '../features/listing/pages/ListingCreatePage';
 import SellerSectionPlaceholder from '../features/seller/pages/SellerSectionPlaceholder';
@@ -31,58 +33,50 @@ export const AppRoutes: React.FC = () => {
           }
         />
 
-        {/* Placeholder for protected marketplace */}
+        {/* ── Buyer: sàn giao dịch (màn hình sau đăng nhập) ── */}
+        <Route path={ROUTES.MARKETPLACE.ROOT} element={<BuyerMarketplacePage />} />
         <Route
-          path={ROUTES.MARKETPLACE.ROOT}
+          path={ROUTES.BUYER.WISHLIST}
           element={
-            <div
-              style={{
-                minHeight: '100vh',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: '#F4F6FB',
-                fontFamily: 'system-ui, sans-serif',
-                flexDirection: 'column',
-                gap: '16px',
-              }}
-            >
-              <div
-                style={{
-                  backgroundColor: '#FFFFFF',
-                  padding: '48px',
-                  borderRadius: '20px',
-                  textAlign: 'center',
-                  maxWidth: '440px',
-                  boxShadow: '0 8px 32px -8px rgba(15, 23, 42, 0.08)',
-                  border: '1px solid #E5E9F2',
-                }}
-              >
-                <div style={{ fontSize: '32px', marginBottom: '12px' }}>✅</div>
-                <h2 style={{ fontSize: '20px', fontWeight: 800, color: '#0F172A', marginBottom: '8px' }}>
-                  Đăng nhập thành công!
-                </h2>
-                <p style={{ fontSize: '14px', color: '#64748B', marginBottom: '24px', lineHeight: 1.5 }}>
-                  Chào mừng bạn đến với ReWear AI.<br />
-                  Marketplace đang được triển khai.
-                </p>
-                <a
-                  href={ROUTES.AUTH.LOGIN}
-                  style={{
-                    display: 'inline-block',
-                    padding: '12px 24px',
-                    borderRadius: '10px',
-                    backgroundColor: '#0F172A',
-                    color: '#FFFFFF',
-                    fontWeight: 600,
-                    textDecoration: 'none',
-                    fontSize: '14px',
-                  }}
-                >
-                  ← Quay lại Đăng nhập
-                </a>
-              </div>
-            </div>
+            <BuyerSectionPlaceholder
+              title="Danh sách yêu thích"
+              description="Các sản phẩm đã xác thực AI mà bạn đang theo dõi sẽ được tổng hợp tại đây."
+              activeNavKey="explore"
+              icon="💙"
+            />
+          }
+        />
+        <Route
+          path={ROUTES.BUYER.PURCHASES}
+          element={
+            <BuyerSectionPlaceholder
+              title="Đơn mua của tôi"
+              description="Theo dõi tiến trình ký quỹ, xác nhận nhận hàng và mở khiếu nại trong 7 ngày."
+              activeNavKey="purchases"
+              icon="🛍️"
+            />
+          }
+        />
+        <Route
+          path={ROUTES.BUYER.ORDERS}
+          element={
+            <BuyerSectionPlaceholder
+              title="Đơn hàng &amp; Ký quỹ"
+              description="Lịch sử đơn hàng và trạng thái giải ngân escrow cho từng giao dịch."
+              activeNavKey="orders"
+              icon="📦"
+            />
+          }
+        />
+        <Route
+          path={ROUTES.BUYER.MESSAGES}
+          element={
+            <BuyerSectionPlaceholder
+              title="Tin nhắn"
+              description="Tin nhắn với người bán và hỗ trợ khách hàng."
+              activeNavKey="messages"
+              icon="🧾"
+            />
           }
         />
 

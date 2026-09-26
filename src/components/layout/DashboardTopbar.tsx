@@ -34,34 +34,44 @@ export const DashboardTopbar: React.FC<DashboardTopbarProps> = ({
   onAvatarClick,
   onLogout,
 }) => {
-  const [inner, setInner] = useState('');
-  const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
-  const accountMenuRef = useRef<HTMLDivElement>(null);
+  const [inner, setInner] = React.useState('');
+  const [isAccountMenuOpen, setIsAccountMenuOpen] = React.useState(false);
+  const accountMenuRef = React.useRef<HTMLDivElement>(null);
+  const accountTriggerRef = React.useRef<HTMLButtonElement>(null);
+  const logoutMenuItemRef = React.useRef<HTMLButtonElement>(null);
   const value = searchValue ?? inner;
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (!isAccountMenuOpen) return;
 
-    const handleDocumentClick = (event: MouseEvent) => {
+    const closeOnOutsideClick = (event: PointerEvent) => {
       if (!accountMenuRef.current?.contains(event.target as Node)) {
         setIsAccountMenuOpen(false);
       }
     };
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setIsAccountMenuOpen(false);
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsAccountMenuOpen(false);
+        accountTriggerRef.current?.focus();
+      }
     };
 
-    document.addEventListener('mousedown', handleDocumentClick);
-    document.addEventListener('keydown', handleEscape);
+    document.addEventListener('pointerdown', closeOnOutsideClick);
+    document.addEventListener('keydown', closeOnEscape);
     return () => {
-      document.removeEventListener('mousedown', handleDocumentClick);
-      document.removeEventListener('keydown', handleEscape);
+      document.removeEventListener('pointerdown', closeOnOutsideClick);
+      document.removeEventListener('keydown', closeOnEscape);
     };
   }, [isAccountMenuOpen]);
 
-  const handleAvatarClick = () => {
-    onAvatarClick?.();
+  const handleAccountButtonClick = () => {
     setIsAccountMenuOpen((isOpen) => !isOpen);
+    onAvatarClick?.();
+  };
+
+  const handleLogout = () => {
+    setIsAccountMenuOpen(false);
+    onLogout?.();
   };
 
   return (
@@ -102,54 +112,67 @@ export const DashboardTopbar: React.FC<DashboardTopbarProps> = ({
           </svg>
           {hasUnread && <i className="rw-bell-dot" />}
         </button>
-        <div className="rw-account-menu-wrap" ref={accountMenuRef}>
-          <button
-            type="button"
-            className={`rw-avatar-btn${isAccountMenuOpen ? ' is-open' : ''}`}
-            onClick={handleAvatarClick}
-            aria-label={`Mở menu tài khoản của ${userName}`}
-            aria-expanded={isAccountMenuOpen}
-            aria-haspopup="menu"
-          >
-            {avatarSrc ? (
-              <img className="rw-avatar-img" src={avatarSrc} alt={userName} />
-            ) : (
-              <span className="rw-avatar-fallback">{userName.charAt(0)}</span>
-            )}
-          </button>
-          {isAccountMenuOpen && (
-            <div className="rw-account-menu" role="menu" aria-label="Menu tài khoản">
-              <div className="rw-account-menu-header">
-                <span className="rw-account-menu-name">{userName}</span>
-                <span className="rw-account-menu-subtitle">{verifiedLabel}</span>
+        {onLogout && (
+          <div className="rw-account" ref={accountMenuRef}>
+            <button
+              ref={accountTriggerRef}
+              type="button"
+              className="rw-account-trigger"
+              onClick={handleAccountButtonClick}
+              onKeyDown={(event) => {
+                if (event.key === 'ArrowDown') {
+                  event.preventDefault();
+                  setIsAccountMenuOpen(true);
+                  window.requestAnimationFrame(() => logoutMenuItemRef.current?.focus());
+                }
+              }}
+              aria-label={`Mở menu tài khoản của ${userName}`}
+              aria-haspopup="menu"
+              aria-expanded={isAccountMenuOpen}
+              aria-controls="rw-account-menu"
+            >
+              <span className="rw-avatar-btn">
+                {avatarSrc ? (
+                  <img className="rw-avatar-img" src={avatarSrc} alt="" />
+                ) : (
+                  <span className="rw-avatar-fallback" aria-hidden="true">{userName.charAt(0)}</span>
+                )}
+              </span>
+              <span className="rw-user-meta">
+                <span className="rw-user-line1">
+                  <b>{userName}</b>
+                  <span className="rw-verified-badge">{verifiedLabel}</span>
+                </span>
+                <span className="rw-user-line2">{userSubtitle}</span>
+              </span>
+              <svg className="rw-account-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="m6 9 6 6 6-6" />
+              </svg>
+            </button>
+            {isAccountMenuOpen && (
+              <div id="rw-account-menu" className="rw-account-menu" role="menu" aria-label="Tùy chọn tài khoản">
+                <div className="rw-account-menu-header" aria-hidden="true">
+                  <span>Tài khoản seller</span>
+                  <strong>{userName}</strong>
+                </div>
+                <button
+                  ref={logoutMenuItemRef}
+                  type="button"
+                  className="rw-account-menu-item rw-logout"
+                  onClick={handleLogout}
+                  role="menuitem"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M10 17l5-5-5-5" />
+                    <path d="M15 12H3" />
+                    <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+                  </svg>
+                  <span>Đăng xuất</span>
+                </button>
               </div>
-              <div className="rw-account-menu-divider" />
-              <button
-                type="button"
-                className="rw-account-menu-item rw-account-menu-logout"
-                role="menuitem"
-                onClick={() => {
-                  setIsAccountMenuOpen(false);
-                  onLogout?.();
-                }}
-              >
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M10 17l5-5-5-5" />
-                  <path d="M15 12H3" />
-                  <path d="M21 19V5a2 2 0 0 0-2-2h-5" />
-                </svg>
-                <span>Đăng xuất</span>
-              </button>
-            </div>
-          )}
-        </div>
-        <div className="rw-user-meta">
-          <div className="rw-user-line1">
-            <b>{userName}</b>
-            <span className="rw-verified-badge">{verifiedLabel}</span>
+            )}
           </div>
-          <span className="rw-user-line2">{userSubtitle}</span>
-        </div>
+        )}
       </div>
     </header>
   );

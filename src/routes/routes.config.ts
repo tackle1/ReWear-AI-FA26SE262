@@ -10,6 +10,12 @@ export const ROUTES = {
     CATALOG: '/marketplace/catalog',
     PRODUCT_DETAIL: '/marketplace/product/:id',
   },
+  BUYER: {
+    PURCHASES: '/buyer/purchases',
+    ORDERS: '/buyer/orders',
+    MESSAGES: '/buyer/messages',
+    WISHLIST: '/buyer/wishlist',
+  },
   LISTING: {
     CREATE: '/listing/create',
     REVIEW: '/listing/review',

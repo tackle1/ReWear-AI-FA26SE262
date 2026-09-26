@@ -12,6 +12,8 @@ import DashboardStats from '../../../components/layout/DashboardStats';
 import AiVerificationProcess from '../../../components/layout/AiVerificationProcess';
 import RecentListingsTable from '../../../components/layout/RecentListingsTable';
 import DashboardFooterNote from '../../../components/layout/DashboardFooterNote';
+import { logout } from '../../../store/slices/authSlice';
+import storage, { tokenStorage } from '../../../utils/storage';
 import '../../../styles/dashboard/DashboardTheme.css';
 
 export const SellerDashboardPage: React.FC = () => {
@@ -20,9 +22,9 @@ export const SellerDashboardPage: React.FC = () => {
   const [activeMenu, setActiveMenu] = useState('dashboard');
 
   const handleLogout = () => {
-    dispatch(logout());
-    tokenStorage.clearTokens();
     storage.removeItem('rewear_current_user');
+    tokenStorage.clearTokens();
+    dispatch(logout());
     navigate(ROUTES.AUTH.LOGIN, { replace: true });
   };
 
