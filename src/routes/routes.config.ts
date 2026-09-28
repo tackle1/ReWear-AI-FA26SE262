@@ -13,8 +13,12 @@ export const ROUTES = {
   BUYER: {
     PURCHASES: '/buyer/purchases',
     ORDERS: '/buyer/orders',
+    /** Chi tiết một đơn (mở từ nút "Xem chi tiết" ở trang Đơn hàng). */
+    ORDER_DETAIL: '/buyer/orders/:orderId',
     MESSAGES: '/buyer/messages',
     WISHLIST: '/buyer/wishlist',
+    /** Trang tài khoản người mua (mở từ menu tài khoản trên thanh điều hướng). */
+    ACCOUNT: '/buyer/account',
   },
   LISTING: {
     CREATE: '/listing/create',
@@ -28,6 +32,8 @@ export const ROUTES = {
   },
   ESCROW: {
     CHECKOUT: '/escrow/checkout',
+    PAYMENT: '/escrow/payment',
+    SUCCESS: '/escrow/success',
     STATUS: '/escrow/status/:orderId',
   },
   DISPUTE: {

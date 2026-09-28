@@ -12,11 +12,12 @@ import buyerAvatar from '../../../assets/images/seller-avatar.png';
 import ROUTES from '../../../routes/routes.config';
 import { logout } from '../../../store/slices/authSlice';
 import storage, { tokenStorage } from '../../../utils/storage';
+import useWishlist from '../hooks/useWishlist';
 import {
-  BUYER_PRODUCTS,
   CATEGORY_CHIPS,
   FILTER_CATEGORY_MAP,
   FILTER_CONDITION_MAP,
+  MARKETPLACE_CATALOG as CATALOG,
   MARKETPLACE_TOTALS,
 } from '../data/marketplace.data';
 import type {
@@ -57,8 +58,9 @@ export const BuyerMarketplacePage: React.FC = () => {
   const [viewMode, setViewMode] = useState<MarketplaceViewMode>('grid');
   const [filters, setFilters] = useState<MarketplaceFilters>(INITIAL_FILTERS);
   const [page, setPage] = useState(1);
-  // Danh sách yêu thích luôn bắt đầu rỗng: chỉ cộng khi người dùng bấm tim ở product card.
-  const [savedIds, setSavedIds] = useState<string[]>([]);
+  // Danh sách yêu thích dùng chung với trang "Danh sách yêu thích" nên bấm tim ở
+  // product card sẽ xuất hiện ngay trong trang đó (và ngược lại).
+  const { savedIds, isSaved, toggleSave } = useWishlist();
   const [toast, setToast] = useState<string | null>(null);
   // Tên hiển thị lấy từ phiên đăng nhập, rơi về tên mặc định trên ảnh tham chiếu.
   const currentUser = storage.getItem<{ name?: string }>('rewear_current_user');
@@ -87,11 +89,9 @@ export const BuyerMarketplacePage: React.FC = () => {
   };
 
   const handleToggleSave = (id: string) => {
-    setSavedIds((prev) => {
-      const isSaved = prev.includes(id);
-      setToast(isSaved ? 'Đã bỏ khỏi danh sách yêu thích.' : 'Đã lưu vào danh sách yêu thích.');
-      return isSaved ? prev.filter((item) => item !== id) : [...prev, id];
-    });
+    const wasSaved = isSaved(id);
+    toggleSave(id);
+    setToast(wasSaved ? 'Đã bỏ khỏi danh sách yêu thích.' : 'Đã lưu vào danh sách yêu thích.');
   };
 
   const handleLogout = () => {
@@ -238,10 +238,15 @@ export const BuyerMarketplacePage: React.FC = () => {
                     key={product.id}
                     product={product}
                     layout={viewMode}
-                    isSaved={savedIds.includes(product.id)}
+                    isSaved={isSaved(product.id)}
                     onToggleSave={handleToggleSave}
                     onViewDetails={(item) =>
-                      setToast(`Đang mở chi tiết "${item.title}".`)
+                      navigate(
+                        ROUTES.MARKETPLACE.PRODUCT_DETAIL.replace(
+                          ':id',
+                          encodeURIComponent(item.id),
+                        ),
+                      )
                     }
                   />
                 ))}
@@ -288,14 +293,3 @@ export const BuyerMarketplacePage: React.FC = () => {
 };
 
 export default BuyerMarketplacePage;
-
-const CATALOG: BuyerProduct[] = Array.from(
-  { length: MARKETPLACE_TOTALS.totalResults },
-  (_, index) => {
-    const source = BUYER_PRODUCTS[index % BUYER_PRODUCTS.length];
-    // listedAt giảm dần để chế độ "Mới nhất" trải đều 16 mẫu gốc trên trang đầu tiên.
-    return index < BUYER_PRODUCTS.length
-      ? { ...source, listedAt: index }
-      : { ...source, id: `${source.id}-${index}`, listedAt: index };
-  }
-);

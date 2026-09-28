@@ -14,6 +14,10 @@
 @import './marketplace/MarketplacePagination.css';
 @import './marketplace/MarketplaceFooter.css';
 @import './marketplace/MarketplacePage.css';
+@import './marketplace/BuyerWishlistPage.css';
+@import './marketplace/BuyerAccountPage.css';
+@import './marketplace/ProductDetailPage.css';
+@import './marketplace/MessagesPage.css';
 @import './listing/ListingCreate.css';
 @import './listing/ListingTopbar.css';
 @import './listing/ListingBreadcrumb.css';

@@ -17,10 +17,9 @@ export const MarketplaceAssuranceBanner: React.FC<MarketplaceAssuranceBannerProp
   return (
     <section className="rw-mkt-assurance">
       <span className="rw-mkt-assurance-icon" aria-hidden="true">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round">
-          <path d="M3.5 12a8.5 8.5 0 1 0 2.5-6" />
-          <path d="M3.5 3.5V8H8" />
-          <path d="M12 7.5V12l3 2" />
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 2.8 4.5 5.4v5.8c0 4.8 3.2 8.4 7.5 10.4 4.3-2 7.5-5.6 7.5-10.4V5.4L12 2.8Z" />
+          <path d="m9 12 2.2 2.2L15.2 10" />
         </svg>
       </span>
       <div className="rw-mkt-assurance-text">

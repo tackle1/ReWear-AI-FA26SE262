@@ -22,6 +22,8 @@ export interface RegisterResponseData {
   userId: string;
   email: string;
   name: string;
+  /** SĐT đã đăng ký — trả về luôn để màn hình sau đăng ký hiển thị đúng. */
+  phone: string;
   role: AuthRole;
   accessToken?: string;
   refreshToken?: string;
@@ -51,6 +53,7 @@ export interface LoginPayload {
 export interface LoginResponseData {
   userId: string;
   email: string;
+  phone: string;
   name: string;
   role: AuthRole;
   accessToken: string;

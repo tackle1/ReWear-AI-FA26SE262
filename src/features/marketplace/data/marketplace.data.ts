@@ -15,6 +15,34 @@ import burberryScarf from '../../../assets/images/products/Burberry-Check-Cashme
 import burberryKensington from '../../../assets/images/Burberry-Trench-Coat-Folded.png';
 import burberryCrossbody from '../../../assets/images/products/Burberry-Leather-Crossbody.png';
 import burberryCheckShirt from '../../../assets/images/products/Burberry-Check-Shirt.png';
+import jordanSideProfile from '../../../assets/images/products/parts/jordan-1-side-profile.jpg';
+import jordanFrontView from '../../../assets/images/products/parts/jordan-1-front-view.jpg';
+import jordanHeelWingsView from '../../../assets/images/products/parts/jordan-1-heel-wings-logo-view.jpg';
+import jordanTopFrontView from '../../../assets/images/products/parts/jordan-1-front-3-4-view.jpg';
+import jordanOutsole from '../../../assets/images/products/parts/jordan-1-outsole-detail.jpg';
+import jordanTongueLabel from '../../../assets/images/products/parts/jordan-1-tongue-label-detail.jpg';
+import jordanSwoosh from '../../../assets/images/products/parts/jordan-1-swoosh-detail.jpg';
+import jordanWingsLogo from '../../../assets/images/products/parts/jordan-1-wings-logo-detail.jpg';
+import jordanToeBox from '../../../assets/images/products/parts/jordan-1-toe-box-detail.jpg';
+
+/**
+ * Bộ 10 góc ảnh thật của Nike Air Jordan 1 Retro High.
+ * Thứ tự PHẢI khớp với `PHOTO_ANGLES` trong BuyerProductDetailPage:
+ * 01 Tổng thể, 02 Mặt trong, 03 Mặt ngoài, 04 Gót giày, 05 Mặt trên,
+ * 06 Đế giày, 07 Cổ giày, 08 May, 09 Logo, 10 Da.
+ */
+const JORDAN_1_ANGLES = [
+  jordanSideProfile,   // 01: Tổng thể
+  jordanFrontView,     // 02: Mặt trong
+  nikeJordan1High,     // 03: Mặt ngoài
+  jordanHeelWingsView, // 04: Gót giày
+  jordanTopFrontView,  // 05: Mặt trên
+  jordanOutsole,       // 06: Đế giày
+  jordanTongueLabel,   // 07: Cổ giày
+  jordanSwoosh,        // 08: May
+  jordanWingsLogo,     // 09: Logo
+  jordanToeBox,        // 10: Da
+];
 
 /** Định nghĩa nhóm danh mục của bộ lọc. Số lượng được SUY RA từ BUYER_PRODUCTS ở cuối file. */
 const CATEGORY_FILTER_DEFS = [
@@ -143,13 +171,17 @@ export const BUYER_PRODUCTS: BuyerProduct[] = [
     sellerVerified: true,
     sellerRating: 4.9,
     sellerReviewCount: 124,
-    sellerHandle: '@sneaker_vault_',
+    sellerHandle: '@sneaker_vault_vn',
     sellerAvatar: 'SV',
     sku: 'AJ1-555088',
     brandTier: 'LUXURY / MAJOR BRAND',
     aiScore: 92,
     conditionTag: 'Like New / Full Box',
+    color: 'Red / White / Black',
+    sizeUs: '8.5 US',
+    conditionNote: 'Bao gồm: Hộp gốc nguyên bản, dây giày phụ kèm theo, tag giày Nike.',
     escrowReady: true,
+    angles: JORDAN_1_ANGLES,
   },
   {
     id: 'BP-1003',
@@ -196,6 +228,7 @@ export const BUYER_PRODUCTS: BuyerProduct[] = [
     aiScore: 91,
     conditionTag: 'Good',
     escrowReady: true,
+    soldOut: true,
   },
   {
     id: 'BP-1005',
@@ -242,6 +275,7 @@ export const BUYER_PRODUCTS: BuyerProduct[] = [
     aiScore: 90,
     conditionTag: 'Good',
     escrowReady: true,
+    soldOut: true,
   },
   {
     id: 'BP-1007', title: 'Coolmate Premium Hoodie', brand: 'Coolmate', category: 'Áo thun',
@@ -284,6 +318,7 @@ export const BUYER_PRODUCTS: BuyerProduct[] = [
     location: 'TP. Hồ Chí Minh', sellerName: 'Minimal Closet', sellerVerified: true, aiScore: 91, escrowReady: true,
     sku: 'UQ-JN-44', brandTier: 'POPULAR / MASS-MARKET BRAND', conditionTag: 'Like New',
     sellerHandle: '@minimalcloset', sellerAvatar: 'MC', sellerRating: 4.9, sellerReviewCount: 96,
+    soldOut: true,
   },
   {
     id: 'BP-1013', title: 'Burberry Check Cashmere Scarf', brand: 'Burberry', category: 'Phụ kiện',
@@ -370,3 +405,92 @@ export const BRAND_OPTIONS: FilterOption[] = BRAND_CATALOG.map((brand) => ({
   group: brand.group,
 }));
 
+/**
+ * Các tab lọc của trang Danh sách yêu thích.
+ * Số lượng được page đếm trực tiếp trên danh sách đã lưu nên luôn khớp thực tế.
+ */
+export const WISHLIST_TABS = [
+  { key: 'all', label: 'Tất cả' },
+  { key: 'discounted', label: 'Đang giảm giá' },
+  { key: 'available', label: 'Còn hàng' },
+  { key: 'sold-out', label: 'Đã bán / Hết hàng' },
+] as const;
+
+export type WishlistTabKey = (typeof WISHLIST_TABS)[number]['key'];
+
+/** Cách sắp xếp danh sách yêu thích. */
+export const WISHLIST_SORT_OPTIONS = [
+  { key: 'newest', label: 'Mới nhất' },
+  { key: 'price-asc', label: 'Giá thấp đến cao' },
+  { key: 'price-desc', label: 'Giá cao đến thấp' },
+  { key: 'name-asc', label: 'Tên A - Z' },
+] as const;
+
+export type WishlistSortKey = (typeof WISHLIST_SORT_OPTIONS)[number]['key'];
+
+/**
+ * Nhóm danh mục của bộ lọc yêu thích. Mỗi nhóm gom nhiều `category` thật
+ * của sản phẩm về một mục hiển thị cho gọn.
+ */
+export const WISHLIST_CATEGORY_GROUPS = [
+  { key: 'all', label: 'Tất cả', categories: [] as string[] },
+  { key: 'shoes', label: 'Giày dép', categories: ['Giày sneaker'] },
+  {
+    key: 'clothing',
+    label: 'Quần áo',
+    categories: ['Áo thun', 'Áo sơ mi', 'Quần dài', 'Áo khoác & Măng tô'],
+  },
+  { key: 'bags', label: 'Túi xách & Balo', categories: ['Túi xách'] },
+  { key: 'accessories', label: 'Phụ kiện', categories: ['Phụ kiện'] },
+] as const;
+
+/** Nhóm phân khúc thương hiệu (khớp với `brandTier` của sản phẩm). */
+export const WISHLIST_TIER_GROUPS = [
+  { key: 'LUXURY / MAJOR BRAND', label: 'Luxury / Major Brand' },
+  { key: 'POPULAR / MASS-MARKET BRAND', label: 'Popular / Mass-market' },
+  { key: 'LOCAL BRAND', label: 'Local Brand' },
+] as const;
+
+/** Tình trạng phẩm cấp (khớp với `conditionTag` của sản phẩm). */
+export const WISHLIST_CONDITION_GROUPS = [
+  { key: 'Like New', label: 'Like New / 99%' },
+  { key: 'Good', label: 'Good / Tốt' },
+] as const;
+
+/**
+ * Kiểm tra `conditionTag` của sản phẩm có thuộc nhóm tình trạng hay không.
+ * Khớp theo TIỀN TỐ để gom các biến thể như `Like New / Full Box` về đúng
+ * nhóm `Like New` — so khớp chính xác sẽ làm sản phẩm rơi ra khỏi mọi nhóm.
+ */
+export const isInConditionGroup = (conditionTag: string | undefined, groupKey: string) =>
+  (conditionTag ?? '').startsWith(groupKey);
+
+/** Mức tin cậy AI — dùng radio, chỉ chọn được một mức. */
+export const WISHLIST_AI_OPTIONS = [
+  { key: 'all', label: 'Tất cả mức độ' },
+  { key: '90', label: '≥ 90% Tin cậy cao' },
+  { key: '80', label: '≥ 80% Đạt kiểm định' },
+] as const;
+
+/** Nội dung banner kêu gọi giảm định ở chân trang trang Danh sách yêu thích. */
+export const WISHLIST_VERIFY_CTA = {
+  title: 'Bạn có món đồ muốn giảm định lại?',
+  description:
+    'Tất cả sản phẩm yêu thích đều được lưu kết quả trắc nghiệm quang phổ AI và bảo chứng tiền gửi',
+  actionLabel: 'Xem quy chuẩn giảm định',
+} as const;
+
+/**
+ * Danh mục đầy đủ dùng chung cho sàn giao dịch và trang Danh sách yêu thích,
+ * để sản phẩm đã lưu ở trang này vẫn tìm thấy đúng tin trong CATALOG.
+ */
+export const MARKETPLACE_CATALOG: BuyerProduct[] = Array.from(
+  { length: MARKETPLACE_TOTALS.totalResults },
+  (_, index) => {
+    const source = BUYER_PRODUCTS[index % BUYER_PRODUCTS.length];
+    // listedAt giảm dần để chế độ "Mới nhất" trải đều 16 mẫu gốc trên trang đầu tiên.
+    return index < BUYER_PRODUCTS.length
+      ? { ...source, listedAt: index }
+      : { ...source, id: `${source.id}-${index}`, listedAt: index };
+  },
+);
