@@ -1,17 +1,27 @@
-import React from 'react';
+import React, { useEffect, useMemo } from 'react';
 import {
+  AlertTriangle,
   BadgeCheck,
   CircleCheck,
+  CircleX,
+  FileText,
   Headphones,
   Info,
   ListChecks,
+  Loader,
   Lock,
   Rocket,
   ShieldCheck,
   SlidersHorizontal,
   Sparkles,
+  Timer,
 } from 'lucide-react';
 import trenchCoatImage from '../../assets/images/Burberry-Trench-Coat-Folded.png';
+import useVerificationThresholds from '../../features/listing/hooks/useVerificationThresholds';
+import {
+  ConfidenceEvaluation,
+  VerificationThresholds,
+} from '../../types/verification.type';
 import '../../styles/listing/ListingAiResultStep.css';
 
 /* ─── Types ─────────────────────────────────────────── */
@@ -117,16 +127,61 @@ export const RESULT_EVIDENCE_ROWS: ResultEvidenceRow[] = [
   },
 ];
 
-export const RESULT_EXPLAIN_ITEMS: ResultExplainItem[] = [
-  {
-    title: 'Tại sao điểm đạt 94.0%?',
-    body: 'Điểm số tổng hợp được tính toán dựa trên độ sắc nét vi mô của sợi dệt, độ đồng đều sắc thái và mức độ bám sát mô hình chuẩn ReWear Lab. Những sai lệch nhỏ còn lại nằm dưới ngưỡng cảnh báo, nên không làm giảm khả năng niêm yết.',
-  },
-  {
-    title: 'Tại sao chưa đạt tuyệt đối 100%?',
-    body: 'Không phát hiện dấu hiệu tráo hàng hoặc phục dựng. Tuy nhiên, sai lệch nhỏ về độ bão hòa màu và độ đàn hồi của vải khiến hồ sơ chưa đạt mức tuyệt đối 100% theo tiêu chuẩn phân loại kỹ thuật.',
-  },
-];
+/** Nội dung giải thích thứ hai — không phụ thuộc điểm số. */
+const EXPLAIN_ITEM_NO_PERFECT_SCORE: ResultExplainItem = {
+  title: 'Tại sao chưa đạt tuyệt đối 100%?',
+  body: 'Không phát hiện dấu hiệu tráo hàng hoặc phục dựng. Tuy nhiên, sai lệch nhỏ về độ bão hòa màu và độ đàn hồi của vải khiến hồ sơ chưa đạt mức tuyệt đối 100% theo tiêu chuẩn phân loại kỹ thuật.',
+};
+
+/**
+ * Sinh nội dung giải thích theo điểm thực tế của hồ sơ.
+ *
+ * Nội dung cố định sẽ không khớp với điểm sau khi áp cấu hình chấm điểm
+ * (đặc biệt khi bị trừ điểm vì thiếu hóa đơn), nên phần đầu được sinh theo
+ * `evaluation` thay vì viết cứng.
+ */
+const buildExplainItems = (
+  evaluation: ConfidenceEvaluation,
+  thresholds: VerificationThresholds,
+): ResultExplainItem[] => {
+  const { baseScore, penalty, finalScore, hasBill, outcome } = evaluation;
+
+  const baseExplanation =
+    `Điểm số tổng hợp được tính toán dựa trên độ sắc nét vi mô của sợi dệt, ` +
+    `độ đồng đều sắc thái và mức độ bám sát mô hình chuẩn ReWear Lab.`;
+
+  // Không bị trừ điểm — giải thích thẳng điểm cuối.
+  if (penalty === 0) {
+    return [
+      {
+        title: `Tại sao điểm đạt ${finalScore.toFixed(1)}%?`,
+        body: `${baseExplanation} Điểm AI gốc là ${baseScore}%, không bị trừ thêm vì ${
+          hasBill ? 'hồ sơ đã có hóa đơn' : 'hình thức hàng không yêu cầu hóa đơn'
+        }. Điểm này đã vượt ngưỡng đăng tin tự động (${thresholds.autoPublishThreshold}%).`,
+      },
+      EXPLAIN_ITEM_NO_PERFECT_SCORE,
+    ];
+  }
+
+  // Có trừ điểm — nói rõ điểm gốc, điểm trừ và kết quả.
+  const outcomeText =
+    outcome === 'auto-publish'
+      ? `Điểm sau khi trừ vẫn đạt ngưỡng đăng tin tự động (${thresholds.autoPublishThreshold}%).`
+      : outcome === 'manual-review'
+        ? `Điểm sau khi trừ rơi vào vùng chuyển chuyên viên xem xét (${thresholds.autoRejectThreshold}% – ${thresholds.autoPublishThreshold}%).`
+        : `Điểm sau khi trừ thấp hơn ngưỡng tối thiểu (${thresholds.autoRejectThreshold}%), hồ sơ bị từ chối tự động.`;
+
+  return [
+    {
+      title: `Tại sao điểm là ${finalScore.toFixed(1)}%?`,
+      body:
+        `${baseExplanation} Điểm AI gốc ${baseScore}%, ` +
+        `bị trừ ${penalty} điểm vì chưa tải hóa đơn hoặc bằng chứng mua hàng ` +
+        `(mức trừ ${thresholds.missingBillPenaltyPercent} điểm). ${outcomeText}`,
+    },
+    EXPLAIN_ITEM_NO_PERFECT_SCORE,
+  ];
+};
 
 const PRODUCT_DEFAULT: Required<ResultProduct> = {
   image: trenchCoatImage,
@@ -207,10 +262,35 @@ export interface ListingAiResultStepProps {
   onBack?: () => void;
   onDownloadReport?: () => void;
   onApprove?: () => void;
+  /** Người bán đã tải hóa đơn hay chưa — quyết định có bị trừ điểm hay không. */
+  hasBill?: boolean;
+  /** Có bị chặn đăng tin khi điểm dưới ngưỡng tự động. */
+  canPublish?: boolean;
+  /** Báo ra ngoài khi trạng thái đăng tin thay đổi, để khóa nút ở action bar. */
+  onCanPublishChange?: (canPublish: boolean) => void;
 }
 
 const DONUT_RADIUS = 52;
 const DONUT_CIRCUMFERENCE = 2 * Math.PI * DONUT_RADIUS;
+
+/** Nhãn và biểu tượng cho từng kết luận tự động. */
+const DECISION_COPY = {
+  'auto-publish': {
+    tone: 'success' as const,
+    icon: CircleCheck,
+    title: 'Đạt điều kiện đăng tin tự động',
+  },
+  'auto-reject': {
+    tone: 'danger' as const,
+    icon: CircleX,
+    title: 'Từ chối tự động',
+  },
+  'manual-review': {
+    tone: 'warning' as const,
+    icon: Timer,
+    title: 'Chuyển chuyên viên xem xét',
+  },
+};
 
 /* ─── Component ─────────────────────────────────────── */
 export const ListingAiResultStep: React.FC<ListingAiResultStepProps> = ({
@@ -221,7 +301,7 @@ export const ListingAiResultStep: React.FC<ListingAiResultStepProps> = ({
   confidence = 94,
   scoreScaleLabel = 'XÁC THỰC',
   scoreHeadingLabel = 'Độ trùng khớp quang phổ cấu trúc:',
-  scoreBadgePrimary = 'Độ khớp cao • Đủ điều kiện đăng tin tự động',
+  scoreBadgePrimary,
   scoreBadgeSecondary = 'Tier–1 Curation',
   scoreDescription = 'Mô hình thị giác máy tính ReWear Vision v4.2 xác nhận toàn bộ chỉ số hình học, mật độ chỉ và quang sai màu nằm trong giới hạn nguyên bản.',
   escrowStatusLabel = 'TRẠNG THÁI ESCROW',
@@ -239,25 +319,101 @@ export const ListingAiResultStep: React.FC<ListingAiResultStepProps> = ({
   explainTitle = 'Minh bạch chẩn đoán AI (Explainable AI Engine)',
   explainSubtitle = 'Cơ sở lý luận & Thuật toán phân định rủi ro',
   explainBadge = 'Có sẵn để kiểm tra',
-  explainItems = RESULT_EXPLAIN_ITEMS,
+  explainItems,
   explainNote = 'Cần có sự đồng ý của người bán (tùy chọn) khi trích xuất dữ liệu giải trình.',
   explainLicense = 'LICENSE: REWEAR-XAI-1.0',
   showExplainFooter = false,
   product,
   nextListingTitle = 'Quy trình xử lý ngoại lệ',
-  nextListingDesc = 'Nếu sản phẩm trong tương lai lại đạt điểm < 80%, hệ thống sẽ tự động chuyển đối soát cho cơ chế chấm điểm kèm bản log kiểm tra.',
-  nextListingHighlight = {
-    badge: '•',
-    title: 'Điểm mô phỏng: 72%',
-    body: 'Cần kiểm tra thêm • Đang chờ chuyển về cơ chế kiểm tra và định tuyến xác thực theo từng bước.',
-  },
+  nextListingDesc,
+  nextListingHighlight,
   nextListingNote = 'Bảo vệ danh tính và dữ liệu ĐỘNG lệch theo tiêu chuẩn cơ chế chấm điểm.',
   nextListingCert = 'Chứng thực giám định: License REWEAR-CERT-2024',
+  hasBill = true,
+  canPublish = true,
+  onCanPublishChange,
 }) => {
+  const {
+    thresholds,
+    status: thresholdsStatus,
+    isFallback: isThresholdFallback,
+    reload: reloadThresholds,
+    evaluate,
+  } = useVerificationThresholds();
+
+  /**
+   * Điểm AI gốc do Bước 04 trả về, sau đó áp cấu hình ngưỡng:
+   * trừ điểm nếu thiếu hóa đơn và suy ra kết luận tự động.
+   */
+  const evaluation: ConfidenceEvaluation = useMemo(
+    () => evaluate(confidence, hasBill),
+    [evaluate, confidence, hasBill],
+  );
+
   const productData = withProductDefaults(product);
-  const safeConfidence = Math.min(100, Math.max(0, confidence));
-  const roundedConfidence = Math.round(safeConfidence);
-  const arcLength = (safeConfidence / 100) * DONUT_CIRCUMFERENCE;
+  const roundedConfidence = evaluation.finalScore;
+  const arcLength = (evaluation.finalScore / 100) * DONUT_CIRCUMFERENCE;
+
+  const DecisionIcon = DECISION_COPY[evaluation.outcome].icon;
+  const isRejected = evaluation.outcome === 'auto-reject';
+
+  /**
+   * Nội dung giải thích phải khớp với điểm thực tế, nên sinh động theo
+   * `evaluation`. Prop `explainItems` vẫn được ưu tiên nếu muốn ghi đè.
+   */
+  const resolvedExplainItems: ResultExplainItem[] = useMemo(
+    () => explainItems ?? buildExplainItems(evaluation, thresholds),
+    [evaluation, explainItems, thresholds],
+  );
+
+  /** Badge chính phản ánh kết luận thật, không viết cứng "đủ điều kiện đăng tin". */
+  const resolvedScoreBadgePrimary =
+    scoreBadgePrimary ??
+    (evaluation.outcome === 'auto-publish'
+      ? `Điểm đạt • Đủ điều kiện đăng tin tự động`
+      : evaluation.outcome === 'manual-review'
+        ? `Điểm đạt • Cần chuyên viên xem xét`
+        : `Điểm chưa đạt • Từ chối tự động`);
+
+  /** Mô tả quy trình xử lý tiếp theo, bám theo kết luận thực tế. */
+  const resolvedNextListingDesc =
+    nextListingDesc ??
+    (evaluation.outcome === 'auto-publish'
+      ? `Điểm cuối đã vượt ngưỡng đăng tin tự động (${thresholds.autoPublishThreshold}%), nên tin đăng được phát hành ngay. Nếu sau này điểm rơi xuống dưới ${thresholds.autoRejectThreshold}%, hệ thống sẽ tự động chuyển đối soát kèm bản log kiểm tra.`
+      : evaluation.outcome === 'auto-reject'
+        ? `Điểm cuối thấp hơn ngưỡng tối thiểu (${thresholds.autoRejectThreshold}%), hệ thống từ chối tự động và lưu lại bản log để đối chiếu khiếu nại.`
+        : `Điểm cuối nằm trong vùng ${thresholds.autoRejectThreshold}% – ${thresholds.autoPublishThreshold}%, hệ thống chuyển chuyên viên đối soát thủ công kèm bản log kiểm tra.`);
+
+  /** Khối nhấn mạnh trong card quy trình, cũng bám theo kết luận. */
+  const resolvedNextListingHighlight =
+    nextListingHighlight ??
+    (evaluation.outcome === 'auto-publish'
+      ? {
+          badge: '✓',
+          title: `Điểm cuối: ${evaluation.finalScore}%`,
+          body: `Vượt ngưỡng đăng tin tự động (${thresholds.autoPublishThreshold}%) — không cần chuyên viên xem xét thêm.`,
+        }
+      : evaluation.outcome === 'auto-reject'
+        ? {
+            badge: '✕',
+            title: `Điểm cuối: ${evaluation.finalScore}%`,
+            body: `Dưới ngưỡng tối thiểu (${thresholds.autoRejectThreshold}%) — cần chụp lại ảnh hoặc bổ sung hóa đơn rồi chạy lại kiểm định.`,
+          }
+        : {
+            badge: '•',
+            title: `Điểm cuối: ${evaluation.finalScore}%`,
+            body: `Thuộc vùng chuyển xem xét — đang chờ chuyên viên đối chiếu theo từng bước.`,
+          });
+
+  /**
+   * Hồ sơ bị từ chối tự động thì không được phê duyệt đăng tin.
+   * Biến này được nối ra ngoài để action bar khóa nút "Phê duyệt và Đăng tin".
+   */
+  useEffect(() => {
+    onCanPublishChange?.(!isRejected && canPublish);
+  }, [canPublish, isRejected, onCanPublishChange]);
+
+  const isPublishBlocked = isRejected || !canPublish;
 
   return (
     <>
@@ -293,7 +449,7 @@ export const ListingAiResultStep: React.FC<ListingAiResultStepProps> = ({
                     viewBox="0 0 132 132"
                     className="rw-lc-result-donut"
                     role="img"
-                    aria-label={`Điểm tin cậy ${safeConfidence}%`}
+                    aria-label={`Điểm tin cậy ${evaluation.finalScore}%`}
                   >
                     <circle cx="66" cy="66" r={DONUT_RADIUS} className="rw-lc-result-donut-track" />
                     <circle
@@ -313,11 +469,11 @@ export const ListingAiResultStep: React.FC<ListingAiResultStepProps> = ({
 
                 <div className="rw-lc-result-score-info">
                   <div className="rw-lc-result-score-badges">
-                    <span className="rw-lc-result-badge is-primary">{scoreBadgePrimary}</span>
+                    <span className="rw-lc-result-badge is-primary">{resolvedScoreBadgePrimary}</span>
                     <span className="rw-lc-result-badge">{scoreBadgeSecondary}</span>
                   </div>
                   <h3 className="rw-lc-result-score-heading">
-                    {scoreHeadingLabel} {safeConfidence.toFixed(1)} / 100
+                    {scoreHeadingLabel} {evaluation.finalScore.toFixed(1)} / 100
                   </h3>
                   <p className="rw-lc-result-score-desc">{scoreDescription}</p>
                 </div>
@@ -329,6 +485,134 @@ export const ListingAiResultStep: React.FC<ListingAiResultStepProps> = ({
                     {escrowStatusValue}
                   </span>
                 </div>
+              </div>
+
+              {/* ═══ Cấu hình confidence score từ API ═══ */}
+              <div className="rw-lc-result-config">
+                <div className="rw-lc-result-config-head">
+                  <h3 className="rw-lc-result-config-title">
+                    <SlidersHorizontal width={15} height={15} aria-hidden="true" />
+                    Cấu hình chấm điểm tự động
+                  </h3>
+
+                  <span className="rw-lc-result-config-source">
+                    {thresholdsStatus === 'loading' ? (
+                      <>
+                        <Loader width={11} height={11} aria-hidden="true" />
+                        Đang tải
+                      </>
+                    ) : isThresholdFallback ? (
+                      <>
+                        <AlertTriangle width={11} height={11} aria-hidden="true" />
+                        Dùng cấu hình dự phòng
+                      </>
+                    ) : (
+                      <>
+                        <BadgeCheck width={11} height={11} aria-hidden="true" />
+                        Đồng bộ từ máy chủ
+                      </>
+                    )}
+                  </span>
+                </div>
+
+                {/* Bảng ngưỡng */}
+                <div className="rw-lc-result-config-grid">
+                  <div className="rw-lc-result-config-cell is-reject">
+                    <span>Điểm từ chối</span>
+                    <strong>≤ {thresholds.autoRejectThreshold}%</strong>
+                  </div>
+                  <div className="rw-lc-result-config-cell is-review">
+                    <span>Chuyển xem xét</span>
+                    <strong>
+                      {thresholds.autoRejectThreshold}&ndash;{thresholds.autoPublishThreshold}%
+                    </strong>
+                  </div>
+                  <div className="rw-lc-result-config-cell is-publish">
+                    <span>Điểm đăng tin</span>
+                    <strong>≥ {thresholds.autoPublishThreshold}%</strong>
+                  </div>
+                  <div className="rw-lc-result-config-cell is-penalty">
+                    <span>Thiếu hóa đơn</span>
+                    <strong>−{thresholds.missingBillPenaltyPercent}%</strong>
+                  </div>
+                </div>
+
+                {isThresholdFallback && (
+                  <button
+                    type="button"
+                    className="rw-lc-result-config-retry"
+                    onClick={reloadThresholds}
+                  >
+                    Không tải được cấu hình — bấm để thử lại
+                  </button>
+                )}
+
+                {/* Bảng tính điểm của hồ sơ này */}
+                <div className="rw-lc-result-config-calc">
+                  <div className="rw-lc-result-config-calc-row">
+                    <span>Điểm AI gốc</span>
+                    <b>{evaluation.baseScore}%</b>
+                  </div>
+
+                  <div
+                    className={`rw-lc-result-config-calc-row${evaluation.penalty > 0 ? ' is-penalty' : ''}`}
+                  >
+                    <span>
+                      Thiếu hóa đơn
+                      <em>
+                        {hasBill
+                          ? 'Đã tải hóa đơn — không bị trừ'
+                          : `Không có hóa đơn — trừ ${thresholds.missingBillPenaltyPercent}%`}
+                      </em>
+                    </span>
+                    <b>
+                      {evaluation.penalty > 0 ? `−${evaluation.penalty}%` : '0'}
+                    </b>
+                  </div>
+
+                  <div className="rw-lc-result-config-calc-row is-total">
+                    <span>Điểm cuối cùng</span>
+                    <b>{evaluation.finalScore}%</b>
+                  </div>
+                </div>
+
+                {/* Kết luận */}
+                <div
+                  className={`rw-lc-result-decision is-${DECISION_COPY[evaluation.outcome].tone}`}
+                  role="status"
+                >
+                  <DecisionIcon width={17} height={17} aria-hidden="true" />
+                  <div>
+                    <strong>{DECISION_COPY[evaluation.outcome].title}</strong>
+                    <p>
+                      {evaluation.outcome === 'auto-publish' &&
+                        `Điểm cuối ${evaluation.finalScore}% từ ngưỡng đăng tin tự động (${thresholds.autoPublishThreshold}%). Tin đăng sẽ được phát hành ngay.`}
+                      {evaluation.outcome === 'auto-reject' &&
+                        `Điểm cuối ${evaluation.finalScore}% không đạt ngưỡng tối thiểu (${thresholds.autoRejectThreshold}%). Hồ sơ bị từ chối và không thể đăng tin.`}
+                      {evaluation.outcome === 'manual-review' &&
+                        `Điểm cuối ${evaluation.finalScore}% nằm trong vùng chuyển xem xét. Hồ sơ sẽ được gửi chuyên viên đối chiếu thủ công.`}
+                    </p>
+                  </div>
+                </div>
+
+                {evaluation.penalty > 0 && (
+                  <p className="rw-lc-result-config-tip">
+                    <FileText width={13} height={13} aria-hidden="true" />
+                    Bạn có thể tải lại hóa đơn ở Bước 01 để được giữ nguyên điểm
+                    AI gốc.
+                  </p>
+                )}
+
+                {isPublishBlocked && (
+                  <div className="rw-lc-result-config-blocked">
+                    <AlertTriangle width={14} height={14} aria-hidden="true" />
+                    <span>
+                      Không thể phê duyệt đăng tin khi hồ sơ bị từ chối tự
+                      động. Hãy chụp lại ảnh rõ hơn hoặc bổ sung hóa đơn rồi
+                      chạy lại kiểm định.
+                    </span>
+                  </div>
+                )}
               </div>
 
               <p className="rw-lc-result-note">
@@ -431,7 +715,7 @@ export const ListingAiResultStep: React.FC<ListingAiResultStepProps> = ({
               </div>
 
               <div className="rw-lc-result-explain-grid">
-                {explainItems.map((item) => (
+                {resolvedExplainItems.map((item) => (
                   <div className="rw-lc-result-explain" key={item.title}>
                     <div className="rw-lc-result-explain-head">
                       <span className="rw-lc-result-explain-icon" aria-hidden="true">
@@ -512,13 +796,13 @@ export const ListingAiResultStep: React.FC<ListingAiResultStepProps> = ({
                 <Rocket width={17} height={17} aria-hidden="true" />
                 {nextListingTitle}
               </h3>
-              <p className="rw-lc-result-next-desc">{nextListingDesc}</p>
+              <p className="rw-lc-result-next-desc">{resolvedNextListingDesc}</p>
 
               <div className="rw-lc-result-highlight">
-                <span className="rw-lc-result-highlight-badge">{nextListingHighlight.badge}</span>
+                <span className="rw-lc-result-highlight-badge">{resolvedNextListingHighlight.badge}</span>
                 <div>
-                  <div className="rw-lc-result-highlight-title">{nextListingHighlight.title}</div>
-                  <p className="rw-lc-result-highlight-body">{nextListingHighlight.body}</p>
+                  <div className="rw-lc-result-highlight-title">{resolvedNextListingHighlight.title}</div>
+                  <p className="rw-lc-result-highlight-body">{resolvedNextListingHighlight.body}</p>
                 </div>
               </div>
 

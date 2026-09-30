@@ -16,13 +16,14 @@ import {
   Truck,
   CircleDollarSign,
   List,
+  X,
 } from 'lucide-react';
+import { usePremiumBrands } from '../../features/listing/hooks/usePremiumBrands';
 
 export interface ListingInfoSectionProps {
   variant?: 'clearance' | 'secondhand';
   title?: string;
   sub?: string;
-  referenceLinkLabel?: string;
   sizes?: string[];
   maxNameLength?: number;
   feeLabel?: string;
@@ -79,53 +80,12 @@ const SECONDHAND_BRAND_GROUPS: Record<
     value: string;
   }[]
 > = {
-  luxury: [
-    {
-      name: 'BURBERRY',
-      sub: 'London',
-      value: 'Burberry',
-    },
-    {
-      name: 'CHANEL',
-      sub: 'Paris',
-      value: 'Chanel',
-    },
-    {
-      name: 'HERMÈS',
-      sub: 'Paris',
-      value: 'Hermès',
-    },
-    {
-      name: 'GUCCI',
-      sub: 'Firenze',
-      value: 'Gucci',
-    },
-    {
-      name: 'LOUIS VUITTON',
-      sub: 'Malletier',
-      value: 'Louis Vuitton',
-    },
-    {
-      name: 'DIOR',
-      sub: 'Paris',
-      value: 'Dior',
-    },
-    {
-      name: 'CELINE',
-      sub: 'Paris',
-      value: 'Celine',
-    },
-    {
-      name: 'PRADA',
-      sub: 'Milano',
-      value: 'Prada',
-    },
-    {
-      name: 'Khác...',
-      sub: 'Nhập tay',
-      value: '',
-    },
-  ],
+  /**
+   * Nhóm "luxury" không khai báo ở đây: danh sách thương hiệu bảo chứng được
+   * lấy động từ API `GET /api/ListingsExample/premium-brands`.
+   * Xem `usePremiumBrands` và phần render nhánh secondhand.
+   */
+  luxury: [],
 
   popular: [
     {
@@ -245,15 +205,14 @@ const SECONDHAND_SEGMENTS = [
 export const ListingInfoSection: React.FC<ListingInfoSectionProps> = ({
   variant = 'clearance',
   title = 'Thông tin sản phẩm',
-  sub = 'Dữ liệu gốc phục vụ nạp mô hình mạng nơ-ron nhận diện đối tượng quang học.',
-  referenceLinkLabel = 'Khóa mẫu cần chiếu',
+  sub = 'Các thông tin này hiển thị trên tin đăng và giúp AI đối chiếu chính xác hơn.',
   sizes = ['XS', 'S', 'M (IT 48)', 'L', 'XL'],
   maxNameLength = 120,
-  feeLabel = 'Phí giám định quang học AI & Ký quỹ hợp đồng (3.5%):',
+  feeLabel = 'Phí kiểm định & ký quỹ (3,5%):',
   feeValue = '-297.500 đ',
   shippingLabel = 'Bảo hiểm vận chuyển chuyên biệt:',
   shippingValue = 'Miễn phí (Ưu đãi Cấp 1)',
-  totalLabel = 'Khoản thực nhận ước tính:',
+  totalLabel = 'Bạn nhận:',
   totalValue = '8.202.500 đ',
   showValidation = false,
   onValidityChange,
@@ -271,6 +230,43 @@ export const ListingInfoSection: React.FC<ListingInfoSectionProps> = ({
 
   const [selectedSegment, setSelectedSegment] =
     useState<BrandSegment>('luxury');
+
+  /**
+   * Ô nhập thương hiệu thủ công mở ra khi chọn "Khác..." — dùng cho trường hợp
+   * sản phẩm không thuộc danh sách gợi ý (kể cả danh sách lấy từ API).
+   */
+  const [isCustomBrandOpen, setIsCustomBrandOpen] = useState(false);
+
+  /** Danh sách thương hiệu bảo chứng lấy từ API, dùng cho nhóm "luxury". */
+  const {
+    brands: premiumBrands,
+    status: premiumBrandsStatus,
+    error: premiumBrandsError,
+    reload: reloadPremiumBrands,
+  } = usePremiumBrands();
+
+  /** Lựa chọn "thương hiệu khác" luôn có sẵn ở cuối mỗi nhóm. */
+  const OTHER_BRAND_OPTION = {
+    name: 'Khác...',
+    sub: 'Nhập tay',
+    value: '',
+  };
+
+  /**
+   * Nhóm "luxury" lấy động từ API; "popular" và "local" vẫn dùng danh sách khai báo.
+   * Danh sách API đã ở dạng tên hiển thị nên `name` và `value` dùng chung giá trị.
+   */
+  const premiumBrandOptions = premiumBrands.map((brand) => ({
+    name: brand,
+    sub: 'Thương hiệu bảo chứng',
+    value: brand,
+  }));
+
+  const brandGroups: Record<BrandSegment, typeof SECONDHAND_BRAND_GROUPS[BrandSegment]> =
+    {
+      ...SECONDHAND_BRAND_GROUPS,
+      luxury: [...premiumBrandOptions, OTHER_BRAND_OPTION],
+    };
 
   const price = Number(form.price.replace(/\D/g, ''));
 
@@ -346,7 +342,7 @@ export const ListingInfoSection: React.FC<ListingInfoSectionProps> = ({
    */
 
   if (variant === 'secondhand') {
-    const brands = SECONDHAND_BRAND_GROUPS[selectedSegment];
+    const brands = brandGroups[selectedSegment];
 
     const selectedCategory = SECONDHAND_CATEGORIES.some(
       (category) => category.label === form.category
@@ -427,19 +423,49 @@ export const ListingInfoSection: React.FC<ListingInfoSectionProps> = ({
         <div className="rw-lc-sh-block">
           <div className="rw-lc-sh-label-row">
             <label className="rw-lc-sh-field-label">
-              Thương hiệu xa xỉ bảo chứng
+              {selectedSegment === 'luxury'
+                ? 'Thương hiệu bảo chứng'
+                : 'Thương hiệu theo phân khúc'}
             </label>
 
             <span className="rw-lc-sh-status">
               <span className="rw-lc-sh-status-dot">
                 •
               </span>
-              Kho lưu trữ v4.2 đang kích hoạt
+              {selectedSegment === 'luxury'
+                ? premiumBrandsStatus === 'loading'
+                  ? 'Đang tải danh sách...'
+                  : `${premiumBrands.length} thương hiệu`
+                : 'Kho lưu trữ v4.2 đang kích hoạt'}
             </span>
           </div>
 
+          {/* Trạng thái tải / lỗi chỉ áp dụng cho nhóm lấy từ API */}
+          {selectedSegment === 'luxury' &&
+            (premiumBrandsStatus === 'loading' ||
+              premiumBrandsStatus === 'error') && (
+              <p
+                className="rw-lc-sh-brand-feedback"
+                role={premiumBrandsStatus === 'error' ? 'alert' : 'status'}
+              >
+                {premiumBrandsStatus === 'loading'
+                  ? 'Đang tải danh sách thương hiệu bảo chứng...'
+                  : premiumBrandsError}
+
+                {premiumBrandsStatus === 'error' && (
+                  <button
+                    type="button"
+                    onClick={reloadPremiumBrands}
+                  >
+                    Thử lại
+                  </button>
+                )}
+              </p>
+            )}
+
           <div className="rw-lc-sh-options brands">
             {brands.map((brand) => {
+              const isOther = brand.name === 'Khác...';
               const isActive = selectedBrand === brand.name;
 
               return (
@@ -447,13 +473,19 @@ export const ListingInfoSection: React.FC<ListingInfoSectionProps> = ({
                   key={`${selectedSegment}-${brand.name}`}
                   type="button"
                   className={isActive ? 'active' : ''}
+                  disabled={
+                    selectedSegment === 'luxury' &&
+                    premiumBrandsStatus === 'loading'
+                  }
                   onClick={() => {
-                    if (brand.name === 'Khác...') {
+                    if (isOther) {
+                      // Mở ô nhập tay và xoá giá trị cũ để tránh
+                      // bị hiểu nhầm là đã chọn đúng thương hiệu.
                       setForm((prev) => ({
                         ...prev,
                         brand: '',
                       }));
-
+                      setIsCustomBrandOpen(true);
                       return;
                     }
 
@@ -461,6 +493,8 @@ export const ListingInfoSection: React.FC<ListingInfoSectionProps> = ({
                       ...prev,
                       brand: brand.value,
                     }));
+                    // Chọn thương hiệu có sẵn thì đóng ô nhập tay.
+                    setIsCustomBrandOpen(false);
                   }}
                 >
                   <span className="rw-lc-sh-brand-name">
@@ -474,6 +508,67 @@ export const ListingInfoSection: React.FC<ListingInfoSectionProps> = ({
               );
             })}
           </div>
+
+          {/* Ô nhập tay: mở khi chọn "Khác..." */}
+          {isCustomBrandOpen && (
+            <div className="rw-lc-sh-brand-custom">
+              <label
+                className="rw-lc-sh-brand-custom-label"
+                htmlFor="rw-li-custom-brand"
+              >
+                Nhập tên thương hiệu
+                <span className="rw-lc-sh-required">*</span>
+              </label>
+
+              <div className="rw-lc-sh-brand-custom-wrap">
+                <input
+                  id="rw-li-custom-brand"
+                  className={`rw-lc-sh-brand-custom-input${
+                    showValidation && errors.brand ? ' is-invalid' : ''
+                  }`}
+                  value={form.brand}
+                  onChange={update('brand')}
+                  maxLength={60}
+                  placeholder="VD: Hermes, Kenzo, Uniqlo..."
+                  aria-invalid={Boolean(
+                    showValidation && errors.brand
+                  )}
+                  autoFocus
+                />
+
+                <button
+                  type="button"
+                  className="rw-lc-sh-brand-custom-close"
+                  aria-label="Đóng ô nhập thương hiệu thủ công"
+                  onClick={() => {
+                    setIsCustomBrandOpen(false);
+                    setForm((prev) => ({
+                      ...prev,
+                      brand: '',
+                    }));
+                  }}
+                >
+                  <X
+                    className="rw-lc-sh-brand-custom-close-icon"
+                    size={12}
+                    strokeWidth={2.2}
+                    aria-hidden="true"
+                  />
+                </button>
+              </div>
+
+              <p className="rw-lc-sh-brand-custom-hint">
+                Thương hiệu không có trong danh sách gợi ý? Nhập tay tại
+                đây, tối đa 60 ký tự.
+              </p>
+
+              {showValidation && errors.brand && (
+                <p className="rw-lc-sh-brand-custom-error" role="alert">
+                  {errors.brand}
+                </p>
+              )}
+            </div>
+          )}
         </div>
 
         {/* =========================================================
@@ -504,15 +599,22 @@ export const ListingInfoSection: React.FC<ListingInfoSectionProps> = ({
                   onClick={() => {
                     setSelectedSegment(segment.key);
 
+                    /*
+                     * Chọn thương hiệu đầu tiên của nhóm mới.
+                     * Nhóm "luxury" đến từ API nên có thể đang rỗng lúc
+                     * đang tải hoặc khi API lỗi — khi đó để người dùng
+                     * tự nhập ở ô "Thương hiệu" phía dưới.
+                     */
                     const firstBrand =
-                      SECONDHAND_BRAND_GROUPS[
-                      segment.key
-                      ][0];
+                      brandGroups[segment.key][0];
 
                     setForm((prev) => ({
                       ...prev,
-                      brand: firstBrand.value,
+                      brand: firstBrand?.value ?? '',
                     }));
+
+                    // Đổi phân khúc thì đóng ô nhập tay cho gọn.
+                    setIsCustomBrandOpen(false);
                   }}
                 >
                   <Icon
@@ -775,6 +877,7 @@ export const ListingInfoSection: React.FC<ListingInfoSectionProps> = ({
                 ? ' is-invalid'
                 : ''
               }`}
+            placeholder="VD: Áo khoác & Măng tô"
             value={form.category}
             onChange={update('category')}
             aria-invalid={Boolean(
@@ -791,22 +894,13 @@ export const ListingInfoSection: React.FC<ListingInfoSectionProps> = ({
 
         {/* BRAND */}
         <div className="rw-lc-info-field">
-          <div className="rw-lc-info-label-row">
-            <label
-              className="rw-lc-label"
-              htmlFor="rw-li-brand"
-            >
-              Thương hiệu{' '}
-              <span className="rw-lc-req">*</span>
-            </label>
-
-            <button
-              type="button"
-              className="rw-lc-info-link"
-            >
-              {referenceLinkLabel}
-            </button>
-          </div>
+          <label
+            className="rw-lc-label"
+            htmlFor="rw-li-brand"
+          >
+            Thương hiệu{' '}
+            <span className="rw-lc-req">*</span>
+          </label>
 
           <input
             id="rw-li-brand"
@@ -814,6 +908,7 @@ export const ListingInfoSection: React.FC<ListingInfoSectionProps> = ({
                 ? ' is-invalid'
                 : ''
               }`}
+            placeholder="VD: Burberry"
             value={form.brand}
             onChange={update('brand')}
             aria-invalid={Boolean(
@@ -850,6 +945,7 @@ export const ListingInfoSection: React.FC<ListingInfoSectionProps> = ({
                 ? ' is-invalid'
                 : ''
               }`}
+            placeholder="VD: Áo măng tô Burberry hai hàng cực, lót Nova Check"
             value={form.name}
             maxLength={maxNameLength}
             onChange={update('name')}
@@ -925,6 +1021,7 @@ export const ListingInfoSection: React.FC<ListingInfoSectionProps> = ({
                 ? ' is-invalid'
                 : ''
               }`}
+            placeholder="VD: Beige / Họa tiết kẻ Nova"
             value={form.pattern}
             onChange={update('pattern')}
             maxLength={80}
@@ -943,7 +1040,7 @@ export const ListingInfoSection: React.FC<ListingInfoSectionProps> = ({
             className="rw-lc-label"
             htmlFor="rw-li-price"
           >
-            Giá bán niêm yết &amp; Ký quỹ (VND){' '}
+            Giá bán (VND){' '}
             <span className="rw-lc-req">*</span>
           </label>
 
@@ -954,6 +1051,7 @@ export const ListingInfoSection: React.FC<ListingInfoSectionProps> = ({
                   ? ' is-invalid'
                   : ''
                 }`}
+              placeholder="VD: 8500000"
               value={form.price}
               inputMode="numeric"
               onChange={update('price')}
@@ -1017,6 +1115,7 @@ export const ListingInfoSection: React.FC<ListingInfoSectionProps> = ({
                 ? ' is-invalid'
                 : ''
               }`}
+            placeholder="VD: BUR-84729-LIQ"
             value={form.sku}
             onChange={update('sku')}
             maxLength={64}

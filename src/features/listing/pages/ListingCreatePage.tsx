@@ -64,6 +64,10 @@ export const ListingCreatePage: React.FC = () => {
   const [infoValid, setInfoValid] = useState(true);
   const [photoValid, setPhotoValid] = useState(true);
   const [isLuxuryBrand, setIsLuxuryBrand] = useState(true);
+  /** Người bán đã tải hóa đơn ở Bước 01 hay chưa — quyết định có bị trừ điểm ở Bước 05. */
+  const [hasBill, setHasBill] = useState(false);
+  /** Bước Kết quả báo lại: hồ sơ có được phép đăng tin hay đã bị từ chối tự động. */
+  const [canPublishResult, setCanPublishResult] = useState(true);
   const [warningToast, setWarningToast] = useState<WarningToast | null>(null);
   const [showInfoValidation, setShowInfoValidation] = useState(false);
   const [pdfState, setPdfState] = useState<'idle' | 'preparing' | 'ready'>('idle');
@@ -115,7 +119,6 @@ export const ListingCreatePage: React.FC = () => {
               stepNumber={stepNumber}
               stepTitle={step.title}
               description={step.description}
-              showModel={stepIndex !== 1 && stepIndex !== 2}
             />
           </>
         )}
@@ -148,6 +151,8 @@ export const ListingCreatePage: React.FC = () => {
               name: productInfo.name || undefined,
               sku: productInfo.sku ? `SKU: ${productInfo.sku}` : undefined,
             }}
+            hasBill={hasBill}
+            onCanPublishChange={setCanPublishResult}
             onBack={handleBack}
             onApprove={handleNext}
           />
@@ -193,19 +198,13 @@ export const ListingCreatePage: React.FC = () => {
               <ListingUsageSection />
             )}
             {condition === 'secondhand' ? (
-              <>
-                <ListingReferencePhotoSection
-                  onPhotoChange={setReferencePhoto}
-                  onValidityChange={setPhotoValid}
-                />
-              </>
+              <ListingReferencePhotoSection
+                onPhotoChange={setReferencePhoto}
+                onValidityChange={setPhotoValid}
+              />
             ) : (
               <>
-                <ListingEvidenceSection
-                  variant="clearance"
-                  isLuxuryBrand={isLuxuryBrand}
-                  onNoInvoice={showMissingBillWarning}
-                />
+                <ListingEvidenceSection variant="clearance" />
                 <ListingPhotoSection
                   variant="clearance"
                   onValidityChange={setPhotoValid}
@@ -218,6 +217,7 @@ export const ListingCreatePage: React.FC = () => {
                 variant="secondhand"
                 isLuxuryBrand={isLuxuryBrand}
                 onNoInvoice={showMissingBillWarning}
+                onBillChange={setHasBill}
               />
             )}
           </div>
@@ -265,9 +265,12 @@ export const ListingCreatePage: React.FC = () => {
                 ? 'Đăng tin'
                 : undefined
           }
+          nextDisabled={stepIndex === 4 && !canPublishResult}
           note={
             stepIndex === 4
-              ? 'Kết quả kiểm định đã sẵn sàng để phê duyệt'
+              ? canPublishResult
+                ? 'Kết quả kiểm định đã sẵn sàng để phê duyệt'
+                : 'Hồ sơ bị từ chối tự động — không thể đăng tin'
               : stepIndex === 5
                 ? 'Kiểm tra lần cuối trước khi phát hành tin đăng'
                 : undefined

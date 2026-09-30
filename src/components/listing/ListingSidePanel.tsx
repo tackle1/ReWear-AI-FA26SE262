@@ -104,15 +104,13 @@ export const ListingSidePanel: React.FC<ListingSidePanelProps> = ({
               <div className="rw-lc-clearance-condition"><span>Tình trạng:</span><b>Like New / Chưa qua SD</b></div>
               <div className="rw-lc-clearance-prices">
                 <div><span>Giá niêm yết:</span><b>{data.price ? `${data.price} ₫` : 'Chưa nhập giá'}</b></div>
-                <div><span>SKU:</span><b>{data.sku || 'Chưa nhập SKU'}</b></div>
               </div>
-              <p>Chưa cập trạng thái xác thực (Cần hoàn thành Bước 04 AI)</p>
+              <p>Trạng thái xác thực sẽ được cập nhật ở Bước 04.</p>
             </div>
           </div>
         ) : <>
         <div className="rw-lc-search-head">
-          <span className="rw-lc-search-title"><EyeIcon /> Xem trước thẻ tìm kiếm</span>
-          <span className="rw-lc-search-sync">LIVE SYNC</span>
+          <span className="rw-lc-search-title"><EyeIcon /> Xem trước tin đăng</span>
         </div>
 
         <div className="rw-lc-search-card">
@@ -123,7 +121,6 @@ export const ListingSidePanel: React.FC<ListingSidePanelProps> = ({
             <div className="rw-lc-upload-thumb" style={{ height: 208, borderRadius: 0 }} aria-hidden="true" />
           )}
             <span className="rw-lc-search-sku">MÃ: {data.sku || 'Chưa có mã'}</span>
-            <span className="rw-lc-preview-tag">◉ Kiểm định cấp 1</span>
           </div>
 
           <div className="rw-lc-preview-body">
@@ -144,7 +141,7 @@ export const ListingSidePanel: React.FC<ListingSidePanelProps> = ({
             </div>
           </div>
         </div>
-        <p className="rw-lc-search-note">Hình ảnh đại diện sẽ được cập nhật tự động bằng bức ảnh góc chụp toàn cảnh (Front Silhouette) có điểm số kiểm định cao nhất ở Bước 3.</p>
+        <p className="rw-lc-search-note">Ảnh đại diện sẽ được chọn từ ảnh có điểm kiểm định cao nhất ở Bước 03.</p>
         </>}
       </section>
 
@@ -158,15 +155,15 @@ export const ListingSidePanel: React.FC<ListingSidePanelProps> = ({
                   <path d="M7.5 10V7.7a3.3 3.3 0 0 1 6.6 0V10M15 13h4.5V5.5a2 2 0 0 0-2-2H12" />
                 </svg>
               </span>
-              <div><h3>Bảo vệ khỏi tráo hàng (Anti–Swap)</h3><p>Công nghệ ghim mã hàm băm kỹ thuật số</p></div>
+              <div><h3>Bảo vệ khỏi tráo hàng</h3><p>Ảnh bạn chụp được dùng làm bằng chứng</p></div>
             </div>
-            <p className="rw-lc-anti-swap-desc">Khi người mua nhận kiện hàng, họ bắt buộc phải đối chiếu vi vết đường chỉ &amp; tem vải thông qua ứng dụng ReWear để mở khóa ký quỹ. Nếu xảy ra hoàn hàng, hệ thống sử dụng vân mã ảnh Bước 3 để ngăn ngừa tráo hàng nhái.</p>
+            <p className="rw-lc-anti-swap-desc">Khi người mua nhận hàng, họ sẽ phải đối chiếu sản phẩm thật với ảnh bạn đã tải lên để mở khoản ký quỹ. Nếu không khớp, hệ thống sẽ từ chối giải ngân.</p>
             <div className="rw-lc-anti-swap-signature">
-              <div><b>CHỮ KÝ QUANG HỌC</b><b>SHA-256: 9E4A...7F01</b></div>
+              <div><b>ẢNH ĐÃ ĐƯỢC LƯU BẰNG CHỨNG</b><b>Sẵn sàng khi lưu tin</b></div>
               <span><i /></span>
               <p>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="4" y="10" width="11" height="9" rx="1.6" /><path d="M7.5 10V7.7a3.3 3.3 0 0 1 6.6 0V10M15 13h4.5V5.5a2 2 0 0 0-2-2H12" /></svg>
-                Khóa ký quỹ tự động kích hoạt khi lưu tin
+                Ký quỹ được kích hoạt tự động khi lưu tin
               </p>
             </div>
           </div>

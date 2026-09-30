@@ -19,6 +19,8 @@ export interface ListingEvidenceSectionProps {
   initialFile?: BrandEvidenceFile | null;
   isLuxuryBrand?: boolean;
   onNoInvoice?: () => void;
+  /** Báo người dùng có tải hóa đơn hay không — dùng để tính điểm ở Bước 05. */
+  onBillChange?: (hasBill: boolean) => void;
 }
 
 const DocumentIcon = () => (
@@ -42,6 +44,7 @@ export const ListingEvidenceSection: React.FC<ListingEvidenceSectionProps> = ({
   initialFile = null,
   isLuxuryBrand = true,
   onNoInvoice,
+  onBillChange,
 }) => {
   const [brand, setBrand] = useState('luxury');
   const [hasInvoice, setHasInvoice] = useState(true);
@@ -52,8 +55,8 @@ export const ListingEvidenceSection: React.FC<ListingEvidenceSectionProps> = ({
   if (variant === 'clearance') {
     return (
       <section className="rw-lc-card rw-lc-ev rw-lc-ev-clearance">
-        <h2 className="rw-lc-ev-title">Phân loại thương hiệu &amp; Bằng chứng mua hàng</h2>
-        <p className="rw-lc-ev-sub">Phân loại thương hiệu chỉ quyết định việc yêu cầu bằng chứng mua hàng, không phải loại sản phẩm.</p>
+        <h2 className="rw-lc-ev-title">Phân khúc thương hiệu</h2>
+        <p className="rw-lc-ev-sub">Giúp hệ thống đối chiếu chính xác hơn. Hàng thanh lý không cần hóa đơn.</p>
         <div className="rw-lc-ev-seg" role="tablist" aria-label="Phân loại thương hiệu">
           {[
             ['luxury', 'Luxury / Major Brand'],
@@ -65,50 +68,6 @@ export const ListingEvidenceSection: React.FC<ListingEvidenceSectionProps> = ({
             </button>
           ))}
         </div>
-        <div className="rw-lc-ev-divider" aria-hidden="true" />
-        <div className="rw-lc-ev-label-row">
-          <span className="rw-lc-ev-label">Hóa đơn / Bằng chứng mua hàng <span className="rw-lc-ev-requirement">{brand === 'luxury' ? '(Bắt buộc đối với Luxury)' : '(Không bắt buộc)'}</span></span>
-          <span className="rw-lc-ev-hint">PDF, JPG, PNG (tối đa 10MB)</span>
-        </div>
-        <input
-          ref={inputRef}
-          type="file"
-          accept=".pdf,.jpg,.jpeg,.png"
-          className="rw-lc-ev-file-input"
-          onChange={(event) => {
-            const picked = event.target.files?.[0];
-            if (!picked) return;
-            const validType = ['application/pdf', 'image/jpeg', 'image/png'].includes(picked.type)
-              || /\.(pdf|jpe?g|png)$/i.test(picked.name);
-            if (!validType || picked.size > 10 * 1024 * 1024) {
-              setFile(null);
-              setError('File phải là PDF, JPG hoặc PNG và dung lượng không vượt quá 10MB.');
-              event.target.value = '';
-              return;
-            }
-            setError(null);
-            setFile({
-              extension: (picked.name.split('.').pop() ?? 'file').toUpperCase().slice(0, 4),
-              name: picked.name,
-              meta: `${(picked.size / (1024 * 1024)).toFixed(1)} MB`,
-            });
-          }}
-        />
-        {file ? (
-          <div className="rw-lc-file-row">
-            <span className="rw-lc-file-badge">{file.extension}</span>
-            <span className="rw-lc-file-text"><span className="rw-lc-file-name">{file.name}</span><span className="rw-lc-file-meta">{file.meta} • Đã tải lên</span></span>
-            <button type="button" className="rw-lc-file-remove" aria-label="Xóa tệp" onClick={() => setFile(null)}>×</button>
-          </div>
-        ) : (
-          <button type="button" className="rw-lc-file-empty rw-lc-file-add" onClick={() => inputRef.current?.click()}>
-            <DocumentIcon />
-            <span>Chọn file hóa đơn / bằng chứng mua hàng</span>
-            <small>PDF, JPG hoặc PNG · tối đa 10MB</small>
-          </button>
-        )}
-        <p className="rw-lc-ev-legal">Ghi chú pháp lý: Bằng chứng mua hàng là tài liệu bổ sung (Supporting Evidence) và không thay thế quá trình kiểm định thị giác quang học AI.</p>
-        {error && <p className="rw-lc-ev-error" role="alert">{error}</p>}
       </section>
     );
   }
@@ -118,7 +77,8 @@ export const ListingEvidenceSection: React.FC<ListingEvidenceSectionProps> = ({
     if (!value && isLuxuryBrand) onNoInvoice?.();
     if (!value) {
       setFile(null);
-      setError(null);
+      // Không có hóa đơn thì báo ra ngoài để Bước 05 áp dụng điểm trừ.
+      onBillChange?.(false);
     }
   };
 
@@ -182,6 +142,7 @@ export const ListingEvidenceSection: React.FC<ListingEvidenceSectionProps> = ({
                 name: picked.name,
                 meta: `${(picked.size / (1024 * 1024)).toFixed(1)} MB`,
               });
+              onBillChange?.(true);
             }}
           />
           {file ? (
@@ -191,7 +152,10 @@ export const ListingEvidenceSection: React.FC<ListingEvidenceSectionProps> = ({
                 {file.name}
               </button>
               <span>{file.meta}</span>
-              <button type="button" className="rw-lc-ev-file-remove" aria-label="Xóa file" onClick={() => setFile(null)}>×</button>
+              <button type="button" className="rw-lc-ev-file-remove" aria-label="Xóa file" onClick={() => {
+                setFile(null);
+                onBillChange?.(false);
+              }}>×</button>
             </div>
           ) : (
             <button type="button" className="rw-lc-ev-upload" onClick={() => inputRef.current?.click()}>

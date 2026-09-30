@@ -8,9 +8,9 @@ export interface ListingNotesSectionProps {
 }
 
 export const ListingNotesSection: React.FC<ListingNotesSectionProps> = ({
-  title = 'Tình trạng sản phẩm (Hàng thanh lý)',
-  statusTitle = 'Like New / Chưa qua sử dụng (Full Tag)',
-  statusDesc = 'Vì đây là hàng thanh lý chưa qua sử dụng, tình trạng sản phẩm được mặc định là Like New. Hệ thống tự động bỏ qua khai báo lịch sử sử dụng, tần suất và hao mòn cơ học.',
+  title = 'Tình trạng sản phẩm',
+  statusTitle = 'Like New — Chưa qua sử dụng',
+  statusDesc = 'Bạn không cần khai báo thêm. Thông tin này được tự động điền khi chọn "Hàng thanh lý" ở trên.',
 }) => {
   return (
     <section className="rw-lc-card rw-lc-notes">

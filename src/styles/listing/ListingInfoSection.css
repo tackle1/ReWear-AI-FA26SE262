@@ -55,24 +55,6 @@
   color: #94a3b8;
 }
 
-.rw-lc-info-link {
-  background: transparent;
-  border: none;
-  padding: 0;
-  font-family: inherit;
-  font-size: 13px;
-  font-weight: 600;
-  color: #2563eb;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: color 0.16s ease;
-}
-
-.rw-lc-info-link:hover {
-  color: #1d4ed8;
-  text-decoration: underline;
-}
-
 .rw-lc-info-counter {
   font-size: 13px;
   color: #94a3b8;
@@ -232,6 +214,128 @@
   color: #4f8cff;
   font-size: 13px;
   line-height: 1;
+}
+
+/* Thông báo trạng thái tải / lỗi của danh sách thương hiệu từ API */
+.rw-lc-sh-brand-feedback {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0 0;
+  color: #64748b;
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+.rw-lc-sh-brand-feedback[role='alert'] {
+  color: #dc2626;
+}
+.rw-lc-sh-brand-feedback button {
+  padding: 3px 9px;
+  border: 1px solid currentColor;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  font-size: 11px;
+  line-height: 1.3;
+  cursor: pointer;
+}
+.rw-lc-sh-brand-feedback button:hover {
+  background: rgba(0, 0, 0, .04);
+}
+
+/* Danh sách thương hiệu đang tải thì không cho bấm nhầm */
+.rw-lc-sh-options.brands button:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+}
+
+/* =========================================================
+   Ô NHẬP THƯƠNG HIỆU THỦ CÔNG (chọn "Khác...")
+   ========================================================= */
+.rw-lc-sh-brand-custom {
+  margin-top: 14px;
+  padding: 14px 16px 15px;
+  border: 1px solid #dce5f2;
+  border-radius: 11px;
+  background: #f8fbff;
+}
+.rw-lc-sh-brand-custom-label {
+  display: block;
+  margin-bottom: 8px;
+  color: #4b5563;
+  font-size: 12px;
+  font-weight: 700;
+}
+.rw-lc-sh-required {
+  margin-left: 3px;
+  color: #dc2626;
+}
+.rw-lc-sh-brand-custom-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.rw-lc-sh-brand-custom-input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 40px;
+  padding: 10px 38px 10px 12px;
+  border: 1px solid #d3dded;
+  border-radius: 9px;
+  outline: none;
+  background: #ffffff;
+  color: #17243b;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.4;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+.rw-lc-sh-brand-custom-input::placeholder {
+  color: #9aa6b8;
+}
+.rw-lc-sh-brand-custom-input:focus {
+  border-color: #5794ee;
+  box-shadow: 0 0 0 3px rgba(87, 148, 238, .18);
+}
+.rw-lc-sh-brand-custom-input.is-invalid {
+  border-color: #f0a3a3;
+  background: #fff7f7;
+}
+.rw-lc-sh-brand-custom-input.is-invalid:focus {
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, .16);
+}
+.rw-lc-sh-brand-custom-close {
+  position: absolute;
+  right: 6px;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #7b8799;
+  cursor: pointer;
+  transition: background-color .15s ease, color .15s ease;
+}
+.rw-lc-sh-brand-custom-close:hover {
+  background: #e8eff9;
+  color: #17243b;
+}
+.rw-lc-sh-brand-custom-hint {
+  margin: 8px 0 0;
+  color: #7b8799;
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+.rw-lc-sh-brand-custom-error {
+  margin: 6px 0 0;
+  color: #dc2626;
+  font-size: 11.5px;
+  line-height: 1.4;
 }
 
 /* =========================================================
@@ -802,6 +906,10 @@
 
   .rw-lc-sh-options.brands {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .rw-lc-sh-brand-custom {
+    padding: 12px 13px 13px;
   }
 
   .rw-lc-sh-options.sizes {

@@ -18,7 +18,7 @@ export const LISTING_STEPS: ListingStep[] = [
     short: 'Thông tin SP',
     title: 'Thông tin sản phẩm',
     description:
-      'Nhập các thông số cốt lõi và dữ liệu tham chiếu để hệ thống AI kích hoạt mô hình đối sánh quang học trước khi sang Bước 02 (Chụp ảnh).',
+      'Nhập thông tin sản phẩm và tải ảnh chính. Hệ thống dùng dữ liệu này để đối chiếu ở Bước 02.',
   },
   {
     id: 2,

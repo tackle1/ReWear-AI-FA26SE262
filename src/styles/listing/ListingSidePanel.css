@@ -21,22 +21,10 @@
 .rw-lc-search-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 0 16px; }
 .rw-lc-search-title { display: inline-flex; align-items: center; gap: 8px; color: #182235; font-size: 14px; font-weight: 800; }
 .rw-lc-search-title svg { color: #4b5563; }
-.rw-lc-search-sync { padding: 5px 9px; border-radius: 5px; background: #eaf1ff; color: #182235; font-size: 10px; font-weight: 800; letter-spacing: .04em; }
 .rw-lc-search-card { overflow: hidden; border-radius: 12px; background: #edf3ff; }
 .rw-lc-preview-media { position: relative; overflow: hidden; aspect-ratio: 1 / 1; background: #f1f5fb; }
 .rw-lc-preview-media img { display: block; width: 100%; height: 100%; object-fit: cover; transition: transform 0.4s ease; }
 .rw-lc-preview-media:hover img { transform: scale(1.04); }
-.rw-lc-preview-tag {
-  position: absolute;
-  right: 10px;
-  bottom: 10px;
-  font-size: 10px;
-  font-weight: 800;
-  color: #182235;
-  background: rgba(255, 255, 255, .94);
-  border-radius: 999px;
-  padding: 5px 9px;
-}
 .rw-lc-search-sku { position: absolute; top: 11px; left: 11px; padding: 4px 8px; border-radius: 5px; background: rgba(255,255,255,.94); color: #182235; font-size: 10px; font-weight: 800; letter-spacing: .04em; }
 .rw-lc-preview-body { padding: 12px 14px 14px; }
 .rw-lc-search-line { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: #4b5563; font-size: 10px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }

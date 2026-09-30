@@ -15,8 +15,8 @@ export interface ListingPhotoSectionProps {
 
 export const ListingPhotoSection: React.FC<ListingPhotoSectionProps> = ({
   variant = 'secondhand',
-  title = 'Tải ảnh sản phẩm chính chủ',
-  sub = 'Ảnh rõ nét, đủ sáng và chụp trực tiếp tại nhà giúp AI đối soát vi cấu trúc chính xác hơn.',
+  title = 'Ảnh sản phẩm',
+  sub = 'Tải lên ảnh rõ nét, đủ sáng để hệ thống đối chiếu chính xác hơn.',
   maxFiles = 5,
   initialThumbnail,
   initialCaption = 'Ảnh chính chủ • đã tải lên',
@@ -73,8 +73,8 @@ export const ListingPhotoSection: React.FC<ListingPhotoSectionProps> = ({
       <section className="rw-lc-card rw-lc-clearance-photos">
         <div className="rw-lc-card-head">
           <div>
-            <h2 className="rw-lc-card-title">Ảnh sản phẩm tham chiếu ban đầu</h2>
-            <p className="rw-lc-card-sub">Tải lên ảnh đại diện tổng quát để hồ sơ kích hoạt chỉ dẫn quang học.</p>
+            <h2 className="rw-lc-card-title">Ảnh sản phẩm</h2>
+            <p className="rw-lc-card-sub">Tải lên ảnh rõ nét, đủ sáng. Ảnh đầu tiên sẽ là ảnh đại diện.</p>
           </div>
           <span className="rw-lc-head-pill" style={{ cursor: 'default' }}>{uploadedCount} / {maxFiles} Ảnh</span>
         </div>
@@ -90,11 +90,8 @@ export const ListingPhotoSection: React.FC<ListingPhotoSectionProps> = ({
             </button>
           )}
           <div className="rw-lc-clearance-photo-copy">
-            <strong>Ảnh đại diện chính chủ đã sẵn sàng</strong>
-            <span>Định dạng: JPG, PNG tối đa 10MB.</span>
-            <button type="button" onClick={() => inputRef.current?.click()}>
-              Ảnh chụp 5 góc quang học chuyên sâu phục vụ AI sẽ được hướng dẫn tại Bước 02.
-            </button>
+            <strong>{primaryThumbnail ? 'Ảnh đại diện đã được chọn' : 'Chưa có ảnh đại diện'}</strong>
+            <span>JPG hoặc PNG, mỗi ảnh tối đa 10MB.</span>
           </div>
         </div>
         {thumbnails.length > 1 && (
