@@ -164,6 +164,46 @@
   line-height: 1;
   cursor: pointer;
 }
+
+/* Trạng thái tạo tin đăng: đang gửi / thành công / lỗi */
+.rw-lc-submit-toast {
+  position: fixed;
+  right: 24px;
+  bottom: 86px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  max-width: 390px;
+  padding: 13px 14px;
+  border: 1px solid #b7e3c8;
+  border-radius: 12px;
+  background: #eefaf2;
+  color: #14532d;
+  box-shadow: 0 18px 40px -20px rgba(20, 83, 45, .35);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.rw-lc-submit-toast.is-error {
+  border-color: #fecaca;
+  background: #fef2f2;
+  color: #991b1b;
+  box-shadow: 0 18px 40px -20px rgba(153, 27, 27, .35);
+}
+
+.rw-lc-submit-toast button {
+  flex: 0 0 auto;
+  align-self: flex-start;
+  padding: 0 2px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
 @media (max-width: 800px) {
   .rw-lc-actionbar { padding: 12px 14px; }
   .rw-lc-actionbar-inner { flex-wrap: wrap; }
@@ -171,4 +211,5 @@
   .rw-lc-actionbar-btns { width: 100%; }
   .rw-lc-btn-ghost, .rw-lc-btn-primary { flex: 1 1 0; justify-content: center; }
   .rw-lc-warning-toast { right: 14px; bottom: 76px; left: 14px; max-width: none; }
+  .rw-lc-submit-toast { right: 14px; bottom: 76px; left: 14px; max-width: none; }
 }

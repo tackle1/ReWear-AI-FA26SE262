@@ -1,4 +1,5 @@
 import React from 'react';
+import useCurrentUser from '../../hooks/useCurrentUser';
 import '../../styles/dashboard/DashboardTopbar.css';
 
 export interface DashboardTopbarProps {
@@ -20,7 +21,7 @@ export interface DashboardTopbarProps {
 
 export const DashboardTopbar: React.FC<DashboardTopbarProps> = ({
   avatarSrc,
-  userName = 'Mai Linh Vintage',
+  userName,
   verifiedLabel = 'Người bán đã xác thực',
   userSubtitle = 'Đối tác ký quỹ • Quận 1',
   regionLabel = 'VND / HCM City',
@@ -40,6 +41,14 @@ export const DashboardTopbar: React.FC<DashboardTopbarProps> = ({
   const accountTriggerRef = React.useRef<HTMLButtonElement>(null);
   const logoutMenuItemRef = React.useRef<HTMLButtonElement>(null);
   const value = searchValue ?? inner;
+
+  /*
+   * Tên hiển thị lấy từ tài khoản đang đăng nhập; prop `userName` vẫn ưu tiên
+   * để trang khác tự truyền tên khi cần. Chỉ rơi về tên mẫu khi chưa đăng
+   * nhập (ví dụ khi xem giao diện ở môi trường demo).
+   */
+  const { name: currentUserName } = useCurrentUser();
+  const displayName = userName || currentUserName || 'Mai Linh Vintage';
 
   React.useEffect(() => {
     if (!isAccountMenuOpen) return;
@@ -126,7 +135,7 @@ export const DashboardTopbar: React.FC<DashboardTopbarProps> = ({
                   window.requestAnimationFrame(() => logoutMenuItemRef.current?.focus());
                 }
               }}
-              aria-label={`Mở menu tài khoản của ${userName}`}
+              aria-label={`Mở menu tài khoản của ${displayName}`}
               aria-haspopup="menu"
               aria-expanded={isAccountMenuOpen}
               aria-controls="rw-account-menu"
@@ -135,12 +144,12 @@ export const DashboardTopbar: React.FC<DashboardTopbarProps> = ({
                 {avatarSrc ? (
                   <img className="rw-avatar-img" src={avatarSrc} alt="" />
                 ) : (
-                  <span className="rw-avatar-fallback" aria-hidden="true">{userName.charAt(0)}</span>
+                  <span className="rw-avatar-fallback" aria-hidden="true">{displayName.charAt(0)}</span>
                 )}
               </span>
               <span className="rw-user-meta">
                 <span className="rw-user-line1">
-                  <b>{userName}</b>
+                  <b>{displayName}</b>
                   <span className="rw-verified-badge">{verifiedLabel}</span>
                 </span>
                 <span className="rw-user-line2">{userSubtitle}</span>
@@ -153,7 +162,7 @@ export const DashboardTopbar: React.FC<DashboardTopbarProps> = ({
               <div id="rw-account-menu" className="rw-account-menu" role="menu" aria-label="Tùy chọn tài khoản">
                 <div className="rw-account-menu-header" aria-hidden="true">
                   <span>Tài khoản seller</span>
-                  <strong>{userName}</strong>
+                  <strong>{displayName}</strong>
                 </div>
                 <button
                   ref={logoutMenuItemRef}

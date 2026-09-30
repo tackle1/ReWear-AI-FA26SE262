@@ -36,6 +36,42 @@
   grid-column: 1 / -1;
 }
 
+/*
+ * Mỗi nhóm là một khối `div` (role="group") thay vì `fieldset/legend`:
+ * `legend` được trình duyệt đặt đè lên mép viền nên rất khó căn chỉnh ổn
+ * định giữa các trình duyệt. Ở đây tiêu đề là `<h3>` thuần nên canh chuẩn xác.
+ */
+.rw-lc-info-group {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 16px 18px 18px;
+  border-radius: 14px;
+  background: #f8fafc;
+  box-shadow: inset 0 0 0 1px #e8eef7;
+}
+
+/* Tiêu đề nằm trong luồng, thẳng hàng với các trường bên dưới. */
+.rw-lc-info-group-title {
+  margin: 0;
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.rw-lc-info-group-body {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  margin-top: 14px;
+}
+
+/* Các nhóm lồng nhau không cần nền riêng, chỉ cách nhau bằng khoảng trắng. */
+.rw-lc-info-group + .rw-lc-info-group {
+  margin-top: 4px;
+}
+
 .rw-lc-info-label-row {
   display: flex;
   align-items: center;
@@ -89,20 +125,42 @@
 
 .rw-lc-info .rw-lc-input.is-invalid,
 .rw-lc-info .rw-lc-textarea.is-invalid {
-  border-color: #dc2626;
+  border-color: #e5484d;
   background: #fffafa;
 }
 
 .rw-lc-info .rw-lc-input.is-invalid:focus,
 .rw-lc-info .rw-lc-textarea.is-invalid:focus {
   border-color: #dc2626;
-  box-shadow: 0 0 0 4px rgba(220, 38, 38, .12);
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, .1);
 }
 
+/*
+ * Thông báo lỗi: có icon cảnh báo để dễ nhận ra ngay khi đọc form, và
+ * nằm ngoài `.rw-lc-price-wrap` để không chen vào hàng flex của ô giá.
+ */
 .rw-lc-field-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
   color: #dc2626;
   font-size: 12px;
-  line-height: 1.35;
+  line-height: 1.4;
+}
+.rw-lc-field-error::before {
+  content: '!';
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 13px;
+  height: 13px;
+  margin-top: 1px;
+  border-radius: 50%;
+  background: #dc2626;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1;
 }
 
 /* =========================================================
@@ -454,38 +512,6 @@
 }
 
 /* =========================================================
-   EVIDENCE NOTE
-   ========================================================= */
-
-.rw-lc-sh-note {
-  box-sizing: border-box;
-  display: flex;
-  align-items: flex-start;
-  gap: 6px;
-  width: 100%;
-  margin: 9px 0 0;
-  padding: 9px 10px;
-  border: 1px solid #d9e3f4;
-  border-radius: 4px;
-  background: #eef4ff;
-  color: #475569;
-  font-size: 9px;
-  line-height: 1.45;
-}
-
-.rw-lc-sh-note-icon {
-  flex: 0 0 auto;
-  color: #334155;
-  font-size: 10px;
-  line-height: 1.3;
-}
-
-.rw-lc-sh-note strong {
-  color: #334155;
-  font-weight: 800;
-}
-
-/* =========================================================
    PRODUCT NAME + COLOR
    ========================================================= */
 
@@ -576,6 +602,33 @@
   box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.08);
 }
 
+/*
+ * Trạng thái lỗi của form Hàng Secondhand.
+ * Các rule `is-invalid` phía trên chỉ áp dụng cho `.rw-lc-info` (nhánh hàng
+ * thanh lý) nên nhánh Secondhand cần khai báo riêng, dùng chung hệ màu để
+ * người dùng nhận ra lỗi giống nhau ở cả hai nhánh.
+ */
+.rw-lc-secondhand-info input.is-invalid,
+.rw-lc-secondhand-info textarea.is-invalid {
+  background: #fff5f5;
+  box-shadow: inset 0 0 0 1.4px #e5484d;
+}
+
+.rw-lc-secondhand-info input.is-invalid:focus,
+.rw-lc-secondhand-info textarea.is-invalid:focus {
+  background: #fff5f5;
+  box-shadow: inset 0 0 0 1.4px #dc2626;
+}
+
+/*
+ * Ô kích thước thật nằm trong `<label>` dạng cột nên thông báo lỗi cần khoảng
+ * cách nhỏ phía trên cho khớp với các khối khác.
+ */
+.rw-lc-sh-size-measure .rw-lc-field-error {
+  margin-top: 1px;
+  font-size: 11px;
+}
+
 /* =========================================================
    SIZE
    ========================================================= */
@@ -584,24 +637,24 @@
   margin-top: 18px;
 }
 
-.rw-lc-sh-size-link {
-  border: 0;
-  padding: 0;
-  background: transparent;
-  color: #2563eb;
-  font-family: inherit;
-  font-size: 9px;
-  line-height: 1.2;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.rw-lc-sh-size-link:hover {
-  text-decoration: underline;
-}
-
 .rw-lc-sh-options.sizes {
   grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+/*
+ * Size giày có 7 mức (39–45), không chia hết cho 6 cột.
+ * Dùng 4 cột để thành 2 hàng cân đối thay vì hàng 1 đầy, hàng 2 lẻ 2 ô.
+ */
+.rw-lc-sh-options.sizes.is-shoes {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+/*
+ * Giới tính có 2 lựa chọn (Nam / Nữ); dùng 2 cột để chip rộng đều nhau,
+ * tránh dồn vào 1/4 cột đầu và để lỗ hổng bên phải.
+ */
+.rw-lc-sh-options.genders {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .rw-lc-sh-options.sizes button {
@@ -621,13 +674,32 @@
   font-weight: 600;
 }
 
-.rw-lc-sh-options.sizes button small {
-  display: block;
-  color: #ffffff;
-  font-size: 6.5px;
-  line-height: 1;
-  font-weight: 400;
-  white-space: nowrap;
+/* Ô nhập kích thước thật cho túi xách & phụ kiện */
+.rw-lc-sh-size-measure {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 10px;
+}
+
+/*
+ * Nhóm túi/phụ kiện không có dòng label phía trên nên cần bỏ khoảng cách,
+ * tránh tạo khoảng trống thừa ở đầu khối.
+ */
+.rw-lc-sh-size-measure.is-first {
+  margin-top: 0;
+}
+
+.rw-lc-sh-size-measure > span {
+  font-size: 10.5px;
+  font-weight: 650;
+  color: #4a5568;
+}
+
+.rw-lc-sh-size-measure small {
+  font-size: 9.5px;
+  line-height: 1.45;
+  color: #8a94a6;
 }
 
 .rw-lc-sh-options.sizes button:not(.active) small {
@@ -756,21 +828,12 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Ô "Mô tả" đã gỡ khỏi form Secondhand nên các rule dưới đây không còn
+   selector tương ứng. */
+
 /* =========================================================
-   DESCRIPTION
+   RESPONSIVE
    ========================================================= */
-
-.rw-lc-sh-description-block {
-  margin-top: 18px;
-}
-
-.rw-lc-secondhand-info .rw-lc-sh-description-block textarea {
-  min-height: 52px;
-  margin-top: 5px;
-  resize: vertical;
-  line-height: 1.45;
-}
-
 /* Tăng khả năng đọc cho form Hàng Secondhand */
 .rw-lc-secondhand-info {
   padding: 24px 28px 32px;
@@ -789,8 +852,8 @@
   font-size: 17px;
 }
 .rw-lc-sh-title h2 {
-  font-size: 19px;
-  letter-spacing: -0.02em;
+  font-size: 17.5px;
+  letter-spacing: -0.015em;
 }
 .rw-lc-sh-priority {
   padding: 6px 10px;
@@ -831,13 +894,7 @@
   font-size: 11px;
 }
 .rw-lc-sh-segment-hint,
-.rw-lc-sh-status,
-.rw-lc-sh-size-link {
-  font-size: 11px;
-}
-.rw-lc-sh-note {
-  margin-top: 12px;
-  padding: 11px 12px;
+.rw-lc-sh-status {
   font-size: 11px;
 }
 .rw-lc-secondhand-info input,
@@ -850,18 +907,38 @@
   padding: 13px 34px 13px 14px;
 }
 .rw-lc-sh-size-block,
-.rw-lc-sh-price-block,
-.rw-lc-sh-description-block {
+.rw-lc-sh-price-block {
   margin-top: 23px;
+}
+/*
+ * Đồng bộ các nhãn/phụ đề còn sót lại cỡ 7–10.5px với thang chữ của thẻ
+ * (nhãn trường 13px, nút 11–12px). Trước đây tiêu đề 19px nằm cạnh chữ 7px
+ * nên nhìn lệch cỡ rõ rệt. Giữ thứ bậc: tên > phụ đề.
+ */
+.rw-lc-sh-size-measure > span {
+  font-size: 13px;
+  font-weight: 650;
+}
+.rw-lc-sh-brand-name {
+  font-size: 12.5px;
+}
+.rw-lc-sh-size-measure small,
+.rw-lc-sh-summary-total small,
+.rw-lc-sh-status,
+.rw-lc-sh-segment-hint,
+.rw-lc-sh-counter {
+  font-size: 12px;
+  line-height: 1.45;
+}
+.rw-lc-sh-brand-sub {
+  font-size: 11.5px;
+  line-height: 1.4;
 }
 .rw-lc-sh-options.sizes button {
   min-height: 42px;
 }
 .rw-lc-sh-options.sizes button span {
   font-size: 12px;
-}
-.rw-lc-sh-options.sizes button small {
-  font-size: 8px;
 }
 .rw-lc-secondhand-info .rw-lc-sh-price {
   padding: 13px 36px 13px 15px;
@@ -872,10 +949,10 @@
   padding: 12px 14px;
 }
 .rw-lc-sh-summary-row {
-  font-size: 11px;
+  font-size: 12.5px;
 }
 .rw-lc-sh-summary-total strong {
-  font-size: 12px;
+  font-size: 13px;
 }
 .rw-lc-sh-summary-total em {
   font-size: 17px;
@@ -891,7 +968,7 @@
   }
 
   .rw-lc-sh-title h2 {
-    font-size: 17px;
+    font-size: 16.5px;
   }
 
   .rw-lc-sh-field-label,
@@ -966,7 +1043,6 @@
 .rw-lc-sh-category-icon,
 .rw-lc-sh-segment-icon,
 .rw-lc-sh-input-icon,
-.rw-lc-sh-note-icon,
 .rw-lc-sh-summary-icon {
   flex: 0 0 auto;
   display: inline-flex;
@@ -998,22 +1074,21 @@
   pointer-events: none;
 }
 
-.rw-lc-sh-note-icon {
-  flex: 0 0 auto;
-  margin-top: 1px;
-  color: #475569;
-}
-
 .rw-lc-sh-summary-icon {
   margin-right: 4px;
   vertical-align: -1px;
   color: #64748b;
 }
 
-.rw-lc-sh-size-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
+/*
+ * Ô giá có `font-size: 18px !important` + `font-weight: 700` để con số nhập
+ * vào nổi bật. Placeholder không phải dữ liệu thật nên phải nhỏ lại, nếu không
+ * chữ gợi ý to bằng giá trị thật và nhìn như đã nhập sẵn.
+ */
+.rw-lc-secondhand-info .rw-lc-sh-price::placeholder {
+  font-size: 14px;
+  font-weight: 500;
+  color: #94a3b8;
 }
 
 /* Chip chọn kích cỡ */
@@ -1073,18 +1148,31 @@
   position: relative;
   display: flex;
   align-items: center;
+  min-width: 0;
 }
 
+/*
+ * Input phải chiếm hết chiều rộng còn lại. Nếu không, flex co input về độ
+ * rộng nội dung (vài chữ số) còn hậu tố "VND" định vị absolute vẫn nằm ở mép
+ * phải container — nhìn như lệch hàng, hai đầu cách xa nhau.
+ */
 .rw-lc-info .rw-lc-price-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: 100%;
   padding-right: 64px;
 }
 
 .rw-lc-price-suffix {
   position: absolute;
-  right: 15px;
-  font-size: 14px;
-  font-weight: 600;
-  color: #94a3b8;
+  right: 16px;
+  padding: 3px 9px;
+  border-radius: 6px;
+  background: #eef2f7;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #64748b;
   pointer-events: none;
 }
 

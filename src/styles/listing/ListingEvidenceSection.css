@@ -15,6 +15,11 @@
 .rw-lc-ev-radios input:checked + .rw-lc-ev-radio { border-color: #111827; }
 .rw-lc-ev-radios input:checked + .rw-lc-ev-radio::after { content: ''; position: absolute; inset: 3px; border-radius: 50%; background: #111827; }
 .rw-lc-ev-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 27px; }
+/*
+ * Nhánh Hàng thanh lý chỉ có một trường (tải tài liệu). Nếu để lưới 2 cột
+ * thì trường này co về nửa chiều rộng, trông như cắt cụt. Ép 1 cột.
+ */
+.rw-lc-ev-fields-single { grid-template-columns: minmax(0, 1fr); margin-top: 14px; }
 .rw-lc-ev-field { min-width: 0; }
 .rw-lc-ev-select, .rw-lc-ev-file, .rw-lc-ev-upload { box-sizing: border-box; width: 100%; min-height: 44px; margin-top: 7px; border: 1px solid #e0e7f2; border-radius: 9px; background: #edf3ff; }
 .rw-lc-ev-select { display: flex; align-items: center; padding: 0 16px; color: #334155; font-size: 14px; }
@@ -24,7 +29,34 @@
 .rw-lc-ev-file-name { min-width: 0; overflow: hidden; padding: 0; border: 0; background: none; color: #334155; font: inherit; font-size: 14px; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
 .rw-lc-ev-file > span { flex: 0 0 auto; color: #64748b; font-size: 12px; }
 .rw-lc-ev-file-remove { flex: 0 0 auto; margin-left: auto; padding: 0 3px; border: 0; background: none; color: #64748b; font-size: 23px; line-height: 1; cursor: pointer; }
-.rw-lc-ev-upload { border-style: dashed; color: #2563eb; font: inherit; font-size: 13px; cursor: pointer; }
+/*
+ * Vùng tải file: nhỏ lại so với bản cũ (cao 60px, chữ 13.5px, viền 1.5px)
+ * vì đây chỉ là hành động phụ, không phải trọng tâm của bước. Vẫn giữ trên
+ * 44px — ngưỡng tối thiểu cho vùng chạm trên thiết bị cảm ứng.
+ */
+.rw-lc-ev-upload {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 48px;
+  margin-top: 8px;
+  padding: 0 14px;
+  border: 1.2px dashed #c3d3ec;
+  border-radius: 9px;
+  background: #f8fbff;
+  color: #2f6fed;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color .18s ease, background .18s ease, color .18s ease;
+}
+.rw-lc-ev-upload:hover {
+  border-color: #2f6fed;
+  background: #eff5ff;
+  color: #1d4ed8;
+}
 .rw-lc-ev-error { margin: 7px 0 0; color: #dc2626; font-size: 11px; line-height: 1.35; }
 .rw-lc-ev-note { display: flex; align-items: flex-start; gap: 10px; margin-top: 16px; padding: 12px 14px; border: 1px solid #dce5f5; border-radius: 8px; background: #edf3ff; color: #475569; font-size: 12px; line-height: 1.45; }
 .rw-lc-ev-note svg { width: 17px; height: 17px; flex: 0 0 auto; fill: none; stroke: #334155; stroke-width: 1.8; }
@@ -76,6 +108,31 @@
   border-color: #050816;
   background: #050816;
   color: #fff;
+}
+
+/* Tiêu đề khối hóa đơn tùy chọn trong nhánh Hàng thanh lý */
+.rw-lc-ev-optional-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+}
+.rw-lc-ev-optional-head svg {
+  flex: 0 0 auto;
+  width: 19px;
+  height: 19px;
+  color: #64748b;
+}
+.rw-lc-ev-optional-head b {
+  display: block;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #1e293b;
+}
+.rw-lc-ev-optional-head p {
+  margin: 3px 0 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: #64748b;
 }
 .rw-lc-clearance-photos {
   padding: 24px 30px 25px;

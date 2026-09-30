@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import ROUTES from '../../routes/routes.config';
+import useCurrentUser from '../../hooks/useCurrentUser';
 import '../../styles/listing/ListingTopbar.css';
 
 export interface ListingNavItem {
@@ -40,7 +41,7 @@ export const ListingTopbar: React.FC<ListingTopbarProps> = ({
   activeKey = 'listings',
   items = LISTING_NAV_ITEMS,
   regionLabel = 'VND / TP. Hồ Chí Minh',
-  userName = 'Mai Linh Vintage',
+  userName,
   userMeta = 'Cấp 1 • Đã xác thực',
   hasUnread = true,
   onBack,
@@ -48,6 +49,14 @@ export const ListingTopbar: React.FC<ListingTopbarProps> = ({
   onNotificationClick,
   onAvatarClick,
 }) => {
+  /*
+   * Tên hiển thị lấy từ tài khoản đang đăng nhập; prop `userName` vẫn ưu tiên
+   * để các trang khác tự truyền tên khi cần. Chỉ rơi về tên mẫu khi chưa
+   * có phiên đăng nhập.
+   */
+  const { name: currentUserName } = useCurrentUser();
+  const displayName = userName || currentUserName || 'Mai Linh Vintage';
+
   return (
     <header className="rw-lc-topbar">
       <div className="rw-lc-topbar-inner">
@@ -103,15 +112,15 @@ export const ListingTopbar: React.FC<ListingTopbarProps> = ({
 
         <div className="rw-lc-user">
           <div className="rw-lc-user-text">
-            <b>{userName}</b>
+            <b>{displayName}</b>
             <span>{userMeta}</span>
           </div>
-          <button type="button" className="rw-lc-avatar" onClick={onAvatarClick} aria-label={userName}>
+          <button type="button" className="rw-lc-avatar" onClick={onAvatarClick} aria-label={displayName}>
             {avatarSrc ? (
-              <img className="rw-lc-avatar-img" src={avatarSrc} alt={userName} />
+              <img className="rw-lc-avatar-img" src={avatarSrc} alt={displayName} />
             ) : (
               <span className="rw-lc-avatar-fallback" aria-hidden="true">
-                {userName.charAt(0)}
+                {displayName.charAt(0)}
               </span>
             )}
           </button>

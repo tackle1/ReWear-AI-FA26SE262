@@ -268,6 +268,11 @@ export interface ListingAiResultStepProps {
   canPublish?: boolean;
   /** Báo ra ngoài khi trạng thái đăng tin thay đổi, để khóa nút ở action bar. */
   onCanPublishChange?: (canPublish: boolean) => void;
+  /**
+   * Báo điểm cuối (đã trừ theo cấu hình) ra ngoài, để Bước 06 hiển thị
+   * đúng kết quả thẩm định thay vì dùng con số mặc định.
+   */
+  onConfidenceChange?: (finalScore: number) => void;
 }
 
 const DONUT_RADIUS = 52;
@@ -332,6 +337,7 @@ export const ListingAiResultStep: React.FC<ListingAiResultStepProps> = ({
   hasBill = true,
   canPublish = true,
   onCanPublishChange,
+  onConfidenceChange,
 }) => {
   const {
     thresholds,
@@ -412,6 +418,14 @@ export const ListingAiResultStep: React.FC<ListingAiResultStepProps> = ({
   useEffect(() => {
     onCanPublishChange?.(!isRejected && canPublish);
   }, [canPublish, isRejected, onCanPublishChange]);
+
+  /**
+   * Bước 06 hiển thị lại điểm đã thẩm định, nên phải truyền đúng điểm cuối
+   * (đã áp trừ hóa đơn) ra ngoài thay vì để Bước 06 tự mặc định 94.
+   */
+  useEffect(() => {
+    onConfidenceChange?.(evaluation.finalScore);
+  }, [evaluation.finalScore, onConfidenceChange]);
 
   const isPublishBlocked = isRejected || !canPublish;
 

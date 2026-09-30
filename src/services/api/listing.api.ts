@@ -1,13 +1,27 @@
 import axiosClient from '../axiosClient';
 import { ApiResponse } from '../../types/apiResponse.type';
-import { ListingItem } from '../../types/listing.type';
+import { CreateListingPayload, CreateListingResult, ListingItem } from '../../types/listing.type';
 import { VerificationThresholds } from '../../types/verification.type';
 
 export const listingApi = {
-  createListing: (data: Partial<ListingItem>) =>
-    axiosClient.post<never, ApiResponse<ListingItem>>('/listings', data),
   getListingById: (id: string) =>
     axiosClient.get<never, ApiResponse<ListingItem>>(`/listings/${id}`),
+  /**
+   * Tạo tin đăng mới: `POST /api/ListingsExample/create?userId={guid}`.
+   *
+   * `userId` là GUID của seller đã đăng nhập và truyền ở QUERY STRING
+   * (backend khai báo `string($guid)` dạng query param), phần còn lại nằm
+   * trong body.
+   *
+   * Dùng `baseURL: ''` để đi qua proxy của Vite dev server giống các endpoint
+   * `/api/ListingsExample/*` khác (backend .NET chạy HTTPS self-signed).
+   */
+  createListing: (userId: string, data: CreateListingPayload) =>
+    axiosClient.post<never, ApiResponse<CreateListingResult>>(
+      `/api/ListingsExample/create?userId=${encodeURIComponent(userId)}`,
+      data,
+      { baseURL: '' },
+    ),
   verifyPhotosWithAI: (formData: FormData) =>
     axiosClient.post<never, ApiResponse<{ grade: string; confidence: number }>>('/listings/ai-verify', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },

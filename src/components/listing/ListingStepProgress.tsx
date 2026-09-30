@@ -25,7 +25,7 @@ export const LISTING_STEPS: ListingStep[] = [
     short: 'Chụp ảnh',
     title: 'Chụp ảnh sản phẩm theo hướng dẫn',
     description:
-      'Chụp đủ 5 góc theo khung ngắm hướng dẫn để AI trích xuất đặc trưng vi cấu trúc của sản phẩm trước khi thẩm định.',
+      'Chụp đủ 4 góc theo khung ngắm hướng dẫn để AI trích xuất đặc trưng vi cấu trúc của sản phẩm trước khi thẩm định.',
   },
   {
     id: 3,

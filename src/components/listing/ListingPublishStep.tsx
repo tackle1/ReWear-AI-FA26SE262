@@ -2,11 +2,9 @@ import React from 'react';
 import {
   BadgeCheck,
   Check,
-  CircleCheck,
   ClipboardCheck,
   FileCheck2,
   Fingerprint,
-  Hourglass,
   Landmark,
   LockKeyhole,
   PackageCheck,
@@ -69,7 +67,7 @@ export const ListingPublishStep: React.FC<ListingPublishStepProps> = ({
 
         <div className="rw-publish-header-top">
           <div className="rw-publish-kicker">
-            <span className="rw-publish-protocol">GIAO THUẬT PHÁT HÀNH MF-01</span>
+            <span className="rw-publish-protocol">GIAO THUẬT PHÁT HÀNH</span>
             <span className="rw-publish-final">BƯỚC CUỐI CÙNG</span>
           </div>
           <span className="rw-publish-reference">
@@ -108,17 +106,6 @@ export const ListingPublishStep: React.FC<ListingPublishStepProps> = ({
           <span><Fingerprint width={14} height={14} aria-hidden="true" /> Mã hóa fingerprint SHA-256 bất biến</span>
         </div>
       </header>
-
-      <div className="rw-publish-status-strip">
-        <span className="is-ready">
-          <CircleCheck width={19} height={19} aria-hidden="true" />
-          <strong>Trạng thái A:</strong> Độ tin cậy cao ({safeConfidence}%) — Sẵn sàng phát sóng
-        </span>
-        <span className="is-review">
-          <Hourglass width={18} height={18} aria-hidden="true" />
-          <strong>Trạng thái B:</strong> Cần kiểm tra thêm (71%) — Chờ quản trị viên duyệt
-        </span>
-      </div>
 
       <div className="rw-publish-grid">
         <div className="rw-publish-main">

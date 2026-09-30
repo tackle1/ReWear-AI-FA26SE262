@@ -164,6 +164,11 @@ const ISO_CRITERIA = [
 interface ListingPhotoReviewStepProps {
   /** Errors returned by the photo-review API, keyed by the evidence angle. */
   serverErrors?: PhotoReviewServerError[];
+  /**
+   * Ảnh thật đã chụp ở Bước 02 (id góc → data URL).
+   * Có ảnh thì hiển thị ảnh người dùng chụp, không có thì dùng ảnh mẫu.
+   */
+  photos?: Record<string, string>;
 }
 
 const applyServerErrors = (serverErrors: PhotoReviewServerError[] = []) =>
@@ -189,12 +194,26 @@ const applyServerErrors = (serverErrors: PhotoReviewServerError[] = []) =>
     };
   });
 
-export const ListingPhotoReviewStep: React.FC<ListingPhotoReviewStepProps> = ({ serverErrors }) => {
+export const ListingPhotoReviewStep: React.FC<ListingPhotoReviewStepProps> = ({
+  serverErrors,
+  photos = {},
+}) => {
   const [items, setItems] = useState<EvidenceItem[]>(() => applyServerErrors(serverErrors));
 
   useEffect(() => {
     setItems(applyServerErrors(serverErrors));
   }, [serverErrors]);
+
+  // Ảnh người dùng chụp thay cho ảnh mẫu; góc chưa chụp vẫn giữ ảnh mẫu.
+  useEffect(() => {
+    setItems((prev) =>
+      prev.map((item) =>
+        photos[item.id] && photos[item.id] !== item.image
+          ? { ...item, image: photos[item.id] }
+          : item,
+      ),
+    );
+  }, [photos]);
 
   const handleRetake = (id: string) => {
     // In production: open retake camera for that angle

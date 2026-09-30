@@ -51,7 +51,15 @@ const CATEGORY_FILTER_DEFS = [
   {
     key: 'apparel',
     label: 'Quần áo & Áo khoác',
-    categories: ['Áo khoác & Măng tô', 'Áo sơ mi', 'Áo thun', 'Áo len', 'Quần dài'],
+    categories: [
+      // 'Quần áo & Áo khoác' là nhãn danh mục mới do form đăng tin phát ra.
+      'Quần áo & Áo khoác',
+      'Áo khoác & Măng tô',
+      'Áo sơ mi',
+      'Áo thun',
+      'Áo len',
+      'Quần dài',
+    ],
   },
   { key: 'bags', label: 'Túi xách & Balo', categories: ['Túi xách', 'Phụ kiện'] },
 ];
@@ -438,7 +446,13 @@ export const WISHLIST_CATEGORY_GROUPS = [
   {
     key: 'clothing',
     label: 'Quần áo',
-    categories: ['Áo thun', 'Áo sơ mi', 'Quần dài', 'Áo khoác & Măng tô'],
+    categories: [
+      'Áo thun',
+      'Áo sơ mi',
+      'Quần dài',
+      'Quần áo & Áo khoác',
+      'Áo khoác & Măng tô',
+    ],
   },
   { key: 'bags', label: 'Túi xách & Balo', categories: ['Túi xách'] },
   { key: 'accessories', label: 'Phụ kiện', categories: ['Phụ kiện'] },
