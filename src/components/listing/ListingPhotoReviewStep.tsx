@@ -1,30 +1,50 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   ShieldCheck,
   CheckCircle2,
   AlertTriangle,
   RotateCcw,
   ScanLine,
-  Cpu,
   ImageOff,
-  ZoomIn,
-  CheckCheck,
-  Circle,
 } from 'lucide-react';
-import coatImage from '../../assets/images/Burberry-Trench-Coat-full.png';
-import labelImage from '../../assets/images/Burberry-Brand-Label.png';
-import fabricImage from '../../assets/images/Burberry-Check-Pattern-Detail.png';
-import buttonImage from '../../assets/images/Burberry-Buckle-Button-Detail.png';
-import stitchImage from '../../assets/images/Burberry-Stitching-Detail.png';
+import {
+  LISTING_ANGLES,
+  ListingAngle,
+} from '../../features/listing/constants/listingAngles';
 import '../../styles/listing/ListingPhotoReviewStep.css';
 
 /* ─── Types ─────────────────────────────────────────── */
-type EvidenceStatus = 'ok' | 'flagged';
+export type EvidenceStatus = 'ok' | 'warn' | 'missing';
 
+/**
+ * Lỗi rà soát cho một góc ảnh, dựng từ kết quả server.
+ *
+ * Danh sách này CHỈ chứa những góc KHÔNG ĐẠT — component dùng nó để tô viền
+ * đỏ đúng khung ảnh lỗi, nên đừng truyền cả các góc đạt.
+ */
 export interface PhotoReviewServerError {
-  angleId: string;
+  angleType: string;
   code?: 'BLUR' | 'WRONG_ANGLE' | 'GLARE' | string;
   message?: string;
+}
+
+/**
+ * Chỉ số đo THẬT của server cho từng góc ảnh — Bước 03.
+ *
+ * Gộp cùng dữ liệu `serverErrors` để component hiển thị độ nét/độ sáng đo
+ * được, thay vì tự suy đoán từ kích thước file.
+ */
+export interface PhotoMetrics {
+  angleType: string;
+  isAcceptable: boolean;
+  issues: string[];
+  /** Điểm độ nét (Laplacian variance) — càng cao càng rõ nét. */
+  sharpnessScore: number;
+  /** Độ sáng trung bình 0-255. */
+  brightness: number;
+  /** CHỈ ĐỂ HIỂN THỊ — backend không dùng kích thước để quyết định đạt/trượt. */
+  width: number;
+  height: number;
 }
 
 interface MetaTag {
@@ -32,207 +52,176 @@ interface MetaTag {
   value: string;
 }
 
+/** Một góc ảnh trong danh sách rà soát, dựng hoàn toàn từ dữ liệu thật. */
 interface EvidenceItem {
-  id: string;
-  badgeLabel: string;
-  title: string;
-  subtitle: string;
+  angle: ListingAngle;
+  /** Data URL từ Bước 02, `null` nếu góc này chưa chụp. */
+  image: string | null;
   status: EvidenceStatus;
   statusLabel: string;
-  description: string;
-  meta: MetaTag[];
-  image: string;
+  /** Ghi chú cần người bán xử lý, chỉ hiện khi có vấn đề thật. */
   warning?: string;
   serverError?: PhotoReviewServerError;
 }
 
-/* ─── Static Evidence Data ───────────────────────────── */
-const EVIDENCE_ITEMS: EvidenceItem[] = [
-  {
-    id: '01',
-    badgeLabel: '01 • TỔNG QUAN',
-    title: 'Toàn bộ sản phẩm (Front Silhouette)',
-    subtitle: 'Đã xác thực khung hình ',
-    status: 'ok',
-    statusLabel: 'Đã xác thực khung hình ',
-    description:
-      'Tỷ lệ khung hình khớp hình khối di sản. Đã nhận diện trọn vẹn vải áo kép, 10 cúc ngực và đai vai đối xứng.',
-    meta: [
-      { label: 'Độ phân giải', value: '3840×2160 px' },
-      { label: 'Nhiệt độ màu', value: '5400K' },
-      { label: 'Độ nét', value: '98.4%' },
-    ],
-    image: coatImage,
-  },
-  {
-    id: '02',
-    badgeLabel: '02 • BRAND LABEL',
-    title: 'Nhãn dệt thương hiệu (Collar Tag)',
-    subtitle: 'Chỉ sắc nét ',
-    status: 'ok',
-    statusLabel: 'Chỉ sắc nét ',
-    description:
-      'Front chữ Serif và khoảng cách ký tự (kerning) đối chiều hoàn hảo với cơ sở dữ liệu lưu từ 1998–2005.',
-    meta: [
-      { label: 'Độ phân giải', value: '2400×1200 px' },
-      { label: 'Độ sắc nét', value: '99.1%' },
-      { label: 'Căn bằng', value: '0.1° lịch' },
-    ],
-    image: labelImage,
-  },
-  {
-    id: '03',
-    badgeLabel: '03 • SEAM STITCHING',
-    title: 'Mũi may khóa viền ve áo (Lapel Stitching)',
-    subtitle: 'Đã hiệu chuẩn mật độ ',
-    status: 'ok',
-    statusLabel: 'Đã hiệu chuẩn mật độ ',
-    description:
-      'Tần số mũi may đồng nhất xuyên suốt 420mm đường viền. Không phát hiện mũi đứt hoặc biến dạng chỉ.',
-    meta: [
-      { label: 'Mật độ', value: '8.8 SPI (Stitches Per Inch)' },
-      { label: 'Độ sai', value: '0.42mm' },
-      { label: 'Sai lịch', value: '±0.03' },
-    ],
-    image: stitchImage,
-  },
-  {
-    id: '04',
-    badgeLabel: '04 • HARDWARE (FLAGGED)',
-    title: 'Phụ kiện kim loại & Cúc sắc (Hardware & Horn Buttons)',
-    subtitle: 'Lóa sáng 24%',
-    status: 'flagged',
-    statusLabel: 'Lóa sáng 24%',
-    description:
-      'Quang học phát hiện hiện tượng lóa điểm ảnh (hotspot) tại góc chữ D và bề mặt chạm khắc.',
-    meta: [
-      { label: 'Độ phân giải', value: '48,200 px' },
-      { label: 'Khẩu độ mô phỏng', value: 'f/2.2' },
-      { label: 'Tương phản', value: 'Mất chi tiết khắc' },
-    ],
-    warning:
-      'Lóa đèn flash trực tiếp trên móc chữ D thắt lưng có thể làm mờ độ sâu khắc vi mô. Khuyến nghị chụp lại dưới ánh sáng tự nhiên khuếch tán để đạt độ tin cậy >90%.',
-    image: buttonImage,
-  },
-  {
-    id: '05',
-    badgeLabel: '05 • TEXTILE WEAVE',
-    title: 'Vải dệt chéo Gabardine & Lót kề (Textile & Lining)',
-    subtitle: 'Đã xác thực góc đặt ',
-    status: 'ok',
-    statusLabel: 'Đã xác thực góc đặt ',
-    description:
-      'Cấu trúc dệt chéo đanh chắc với góc nghiêng đặc trưng của sợi cotton chéo 2 lớp (double-twist yarn).',
-    meta: [
-      { label: 'Độ phân giải', value: '3000×2000 px' },
-      { label: 'Góc dệt đo lường', value: '63°' },
-      { label: 'Tỷ lệ sợi', value: '100% Cotton Gabardine' },
-    ],
-    image: fabricImage,
-  },
-];
+/* ─── Helpers ───────────────────────────────────────── */
 
-/* ─── ISO Criteria Data ──────────────────────────────── */
-const ISO_CRITERIA = [
-  {
-    name: 'Phổ nhiệt độ màu',
-    range: 'Quy định: 5000K – 5600K',
-    value: 'Đạt (5410K)',
-    pass: true,
-  },
-  {
-    name: 'Che khuất biên đường may',
-    range: 'Ngưỡng dung sai: 0 điểm che',
-    value: '0 điểm che',
-    pass: true,
-  },
-  {
-    name: 'Phân giải vi mô sợi vải',
-    range: 'Chuẩn yêu cầu: > 12 px/mm',
-    value: 'Đạt (16.4 px/mm)',
-    pass: true,
-  },
-  {
-    name: 'Ngưỡng lóa sáng kim loại',
-    range: 'Mức trần cho phép: < 15%',
-    value: 'Cảnh báo Góc 04 (24%)',
-    pass: false,
-  },
-];
+/**
+ * Đọc kích thước thật của ảnh từ data URL (ảnh đã được nén ở Bước 02).
+ *
+ * CHỈ ĐỂ HIỂN THỊ — Bước 03 quyết định đạt/trượt dựa trên độ nét và độ sáng
+ * đo từ server, không dùng kích thước ảnh.
+ */
+const readImageSize = (dataUrl: string): Promise<{ width: number; height: number }> =>
+  new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve({ width: image.naturalWidth, height: image.naturalHeight });
+    image.onerror = () => reject(new Error('Ảnh không đọc được'));
+    image.src = dataUrl;
+  });
+
+const readFormat = (dataUrl: string): string => {
+  if (dataUrl.startsWith('data:image/png')) return 'PNG';
+  if (dataUrl.startsWith('data:image/webp')) return 'WEBP';
+  return 'JPEG';
+};
+
+const ERROR_LABEL: Record<string, string> = {
+  BLUR: 'Ảnh bị mờ',
+  WRONG_ANGLE: 'Sai góc chụp',
+  GLARE: 'Lóa sáng',
+};
 
 /* ─── Component ─────────────────────────────────────── */
 interface ListingPhotoReviewStepProps {
-  /** Errors returned by the photo-review API, keyed by the evidence angle. */
+  /** Lỗi rà soát trả về từ API, gắn theo `angleType` của backend. */
   serverErrors?: PhotoReviewServerError[];
-  /**
-   * Ảnh thật đã chụp ở Bước 02 (id góc → data URL).
-   * Có ảnh thì hiển thị ảnh người dùng chụp, không có thì dùng ảnh mẫu.
-   */
+  /** Chỉ số đo thật từ server cho từng góc (độ nét, độ sáng). */
+  metrics?: PhotoMetrics[];
+  /** Đang gọi API kiểm tra — hiện trạng thái chờ trên header. */
+  isChecking?: boolean;
+  /** Lỗi khi gọi API (mạng, backend sập). Hiện cảnh báo riêng. */
+  checkError?: string | null;
+  /** Hướng dẫn tổng hợp do server sinh, gắn nhãn [GÓC_ẢNH] cho từng lỗi. */
+  recommendation?: string;
+  /** Ảnh thật đã chụp ở Bước 02: `angleType` → data URL. */
   photos?: Record<string, string>;
+  /** Quay lại Bước 02 để chụp lại một góc cụ thể. */
+  onRetake?: (angleType: string) => void;
 }
-
-const applyServerErrors = (serverErrors: PhotoReviewServerError[] = []) =>
-  EVIDENCE_ITEMS.map((item) => {
-    const serverError = serverErrors.find((error) => error.angleId === item.id);
-    if (!serverError) return item;
-
-    const label =
-      serverError.code === 'BLUR'
-        ? 'Ảnh bị mờ'
-        : serverError.code === 'WRONG_ANGLE'
-          ? 'Sai góc chụp'
-          : serverError.code === 'GLARE'
-            ? 'Lóa sáng'
-            : 'Cần xử lý';
-
-    return {
-      ...item,
-      status: 'flagged' as const,
-      statusLabel: label,
-      serverError,
-      warning: serverError.message || item.warning,
-    };
-  });
 
 export const ListingPhotoReviewStep: React.FC<ListingPhotoReviewStepProps> = ({
   serverErrors,
+  metrics = [],
+  isChecking = false,
+  checkError = null,
+  recommendation,
   photos = {},
+  onRetake,
 }) => {
-  const [items, setItems] = useState<EvidenceItem[]>(() => applyServerErrors(serverErrors));
+  /**
+   * Kích thước ảnh đo được sau khi nạp. Giữ riêng khỏi `EvidenceItem` vì nó
+   * không ảnh hưởng trạng thái, chỉ dùng để hiện ở hàng thông số.
+   */
+  const [imageSizes, setImageSizes] = useState<Record<string, { width: number; height: number }>>({});
 
-  useEffect(() => {
-    setItems(applyServerErrors(serverErrors));
-  }, [serverErrors]);
+  const items = useMemo<EvidenceItem[]>(
+    () =>
+      LISTING_ANGLES.map((angle) => {
+        const image = photos[angle.angleType] ?? null;
+        const serverError = serverErrors?.find((error) => error.angleType === angle.angleType);
 
-  // Ảnh người dùng chụp thay cho ảnh mẫu; góc chưa chụp vẫn giữ ảnh mẫu.
+        if (!image) {
+          return {
+            angle,
+            image: null,
+            status: 'missing',
+            statusLabel: 'Chưa chụp góc này',
+            warning: `Chưa có ảnh cho Góc ${angle.number}. Vui lòng quay lại Bước 02 để chụp.`,
+          };
+        }
+
+        if (serverError) {
+          return {
+            angle,
+            image,
+            status: 'warn',
+            statusLabel: ERROR_LABEL[serverError.code ?? ''] ?? 'Cần xử lý',
+            warning: serverError.message,
+            serverError,
+          };
+        }
+
+        return { angle, image, status: 'ok', statusLabel: 'Đã nhận ảnh' };
+      }),
+    [photos, serverErrors],
+  );
+
+  // Đo kích thước từng ảnh để hiện thông số thật thay cho số liệu bịa ra.
   useEffect(() => {
-    setItems((prev) =>
-      prev.map((item) =>
-        photos[item.id] && photos[item.id] !== item.image
-          ? { ...item, image: photos[item.id] }
-          : item,
-      ),
-    );
+    let cancelled = false;
+
+    void Promise.all(
+      LISTING_ANGLES.map(async (angle) => {
+        const dataUrl = photos[angle.angleType];
+        if (!dataUrl) return null;
+
+        try {
+          const size = await readImageSize(dataUrl);
+          return [angle.angleType, size] as const;
+        } catch {
+          return null;
+        }
+      }),
+    ).then((entries) => {
+      if (cancelled) return;
+      setImageSizes(Object.fromEntries(entries.filter((entry) => entry !== null)));
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [photos]);
 
-  const handleRetake = (id: string) => {
-    // In production: open retake camera for that angle
-    console.log('Retake angle:', id);
+  const buildMeta = (item: EvidenceItem): MetaTag[] => {
+    if (!item.image) {
+      return [
+        { label: 'Nguồn', value: 'Chưa có ảnh' },
+        { label: 'Kích thước', value: '—' },
+        { label: 'Dung lượng', value: '—' },
+      ];
+    }
+
+    const size = imageSizes[item.angle.angleType];
+    const metric = metrics.find((m) => m.angleType === item.angle.angleType);
+
+    // Chỉ số đo thật từ server (độ nét/độ sáng) là thứ quyết định đạt hay
+    // trượt ở Bước 03. Kích thước chỉ để tham khảo, nên đánh dấu rõ là
+    // "tham khảo" để không bị hiểu nhầm là tiêu chí đạt/trượt.
+    return [
+      {
+        label: 'Độ nét',
+        value: metric ? `${Math.round(metric.sharpnessScore)} điểm` : 'Đang đo...',
+      },
+      {
+        label: 'Độ sáng',
+        value: metric ? `${Math.round(metric.brightness)}/255` : 'Đang đo...',
+      },
+      {
+        label: 'Kích thước',
+        value: size ? `${size.width}×${size.height} px (tham khảo)` : 'Đang đọc...',
+      },
+    ];
   };
 
-  const handleContinue = (id: string) => {
-    // Mark flagged as continue-anyway
-    setItems((prev) =>
-      prev.map((item) =>
-        item.id === id ? { ...item, status: 'ok', statusLabel: 'Vẫn tiếp tục xử lý ✓' } : item
-      )
-    );
-  };
-
-  const passCount = items.filter((i) => i.status === 'ok').length;
-  const flagCount = items.filter((i) => i.status === 'flagged').length;
-  const integrityPct = 88.2;
-
+  const okCount = items.filter((item) => item.status === 'ok').length;
+  /** Số ảnh server đo ra không đạt — dùng cho dòng tiêu chí "Độ rõ nét". */
+  const sharpnessFailCount = metrics.filter((m) => !m.isAcceptable).length;
+  const warnCount = items.filter((item) => item.status === 'warn').length;
+  const missingCount = items.filter((item) => item.status === 'missing').length;
+  const total = items.length;
+  const integrityPct = total > 0 ? Math.round((okCount / total) * 100) : 0;
+  const formats = [...new Set(Object.values(photos).map(readFormat))];
   return (
     <section className="rw-lc-review">
       {/* ── System Banner ── */}
@@ -241,18 +230,48 @@ export const ListingPhotoReviewStep: React.FC<ListingPhotoReviewStepProps> = ({
           <ShieldCheck width={24} height={24} />
         </div>
         <div className="rw-lc-review-banner-text">
-          <div className="rw-lc-review-banner-eyebrow">
-            HỆ THỐNG THẨM ĐỊNH QUANG HỌC ĐA PHỔ
-          </div>
-          <h2 className="rw-lc-review-banner-title">
+          <div className="rw-lc-review-banner-eyebrow">RÀ SOÁT ẢNH BẰNG CHỨNG</div>
+          <div className="rw-lc-review-banner-title">
             Kiểm tra bằng chứng ảnh (Photo Review)
-          </h2>
+          </div>
           <p className="rw-lc-review-banner-desc">
-            Rà soát 5 góc ảnh quang học trước khi gửi vào mô hình phân tích nơ-ron AI.
-            Phát hiện sớm các lỗi lóa sáng hoặc mất nét để tránh phải thẩm định thủ công.
+            Kiểm tra {total} góc ảnh bạn đã chụp ở Bước 02 trước khi chuyển sang
+            bước xác thực AI. Mọi thông số dưới đây đều đo trực tiếp từ ảnh của bạn.
           </p>
         </div>
       </div>
+
+      {/* ── Server feedback: lỗi kết nối & hướng dẫn chụp lại ── */}
+      {checkError && (
+        <div
+          className="rw-lc-review-alert"
+          style={{
+            borderColor: '#FECACA',
+            background: '#FEF2F2',
+            color: '#991B1B',
+          }}
+        >
+          <AlertTriangle width={16} height={16} style={{ flexShrink: 0 }} />
+          <span>
+            Không kiểm tra được ảnh: {checkError}. Bạn vẫn có thể xem bước kế
+            tiếp, nhưng nên thử lại để hệ thống đo được độ rõ nét.
+          </span>
+        </div>
+      )}
+
+      {recommendation && !isChecking && (
+        <div
+          className="rw-lc-review-alert"
+          style={{
+            borderColor: '#FDE68A',
+            background: '#FFFBEB',
+            color: '#92400E',
+          }}
+        >
+          <AlertTriangle width={16} height={16} style={{ flexShrink: 0 }} />
+          <span>{recommendation}</span>
+        </div>
+      )}
 
       {/* ── Status Bar ── */}
       <div className="rw-lc-review-status-bar">
@@ -260,40 +279,39 @@ export const ListingPhotoReviewStep: React.FC<ListingPhotoReviewStepProps> = ({
           <div className="rw-lc-review-status-badge-row">
             <span className="rw-lc-review-status-badge ok">
               <CheckCircle2 width={15} height={15} />
-              Sẵn sàng quét: {passCount} Đạt • {flagCount} Cần xử lý
+              Sẵn sàng quét: {okCount} Đạt • {warnCount + missingCount} Cần xử lý
             </span>
-            {flagCount > 0 && (
+            {missingCount > 0 && (
               <span className="rw-lc-review-status-badge warn">
-                <Circle
-                  className="rw-lc-review-status-badge-dot"
-                  width={7}
-                  height={7}
-                  fill="currentColor"
-                  strokeWidth={0}
-                  aria-hidden="true"
-                />
-                Lóa sáng 24% ở Góc 04
+                Thiếu {missingCount} góc ảnh
               </span>
             )}
           </div>
           <span className="rw-lc-review-status-note">
-            {passCount} trường ảnh đã đạt tiêu chuẩn phân giải vi sắc.
-            {flagCount > 0 && ' Góc 04 có tỷ lệ lóa sáng vượt mức ngưỡng chuẩn.'}
+            {missingCount > 0
+              ? `Còn ${missingCount} góc chưa chụp, cần bổ sung trước khi kiểm định AI.`
+              : warnCount > 0
+                ? `${warnCount} góc ảnh cần xử lý trước khi kiểm định AI.`
+                : 'Đủ 4 góc ảnh và không phát hiện vấn đề kỹ thuật nào.'}
           </span>
         </div>
 
         <div className="rw-lc-review-status-stats">
           <div className="rw-lc-review-stat">
-            <span className="rw-lc-review-stat-label">Độ toàn vẹn</span>
-            <span className="rw-lc-review-stat-value">5/5 Góc ảnh</span>
+            <span className="rw-lc-review-stat-label">Ảnh đã chụp</span>
+            <span className="rw-lc-review-stat-value">
+              {okCount + warnCount}/{total} Góc ảnh
+            </span>
           </div>
           <div className="rw-lc-review-stat">
-            <span className="rw-lc-review-stat-label">Thời gian phân tích</span>
-            <span className="rw-lc-review-stat-value">~4.2s (AI Core)</span>
+            <span className="rw-lc-review-stat-label">Định dạng</span>
+            <span className="rw-lc-review-stat-value">
+              {formats.length > 0 ? formats.join(' & ') : '—'}
+            </span>
           </div>
           <div className="rw-lc-review-stat">
-            <span className="rw-lc-review-stat-label">Tự động thông qua</span>
-            <span className="rw-lc-review-stat-value">94%+ nếu rõ nét</span>
+            <span className="rw-lc-review-stat-label">Tỷ lệ đạt</span>
+            <span className="rw-lc-review-stat-value">{integrityPct}%</span>
           </div>
         </div>
       </div>
@@ -305,36 +323,51 @@ export const ListingPhotoReviewStep: React.FC<ListingPhotoReviewStepProps> = ({
           <div className="rw-lc-review-col-header">
             <span className="rw-lc-review-col-title">
               <ScanLine width={18} height={18} color="#2563EB" />
-              Danh mục 5 bằng chứng quang học
+              Danh mục {total} bằng chứng quang học
             </span>
-            <span className="rw-lc-review-col-subtitle">Định dạng chuẩn EXIF 2.32</span>
+            <span className="rw-lc-review-col-subtitle">Ảnh chụp ở Bước 02</span>
           </div>
 
           {items.map((item) => (
             <div
-              key={item.id}
-              className={`rw-lc-review-item${item.status === 'flagged' ? ' flagged' : ''}`}
+              key={item.angle.angleType}
+              className={`rw-lc-review-item${item.status === 'ok' ? '' : ' flagged'}`}
             >
               <div className="rw-lc-review-item-inner">
-                {/* Thumbnail */}
-                <div className={`rw-lc-review-thumb${item.status === 'flagged' ? ' server-error' : ''}`}>
-                  <img src={item.image} alt={item.title} />
+                {/* Thumbnail — ảnh thật từ Bước 02, không dùng ảnh mẫu */}
+                <div
+                  className={`rw-lc-review-thumb${item.status === 'ok' ? '' : ' server-error'}`}
+                >
+                  {item.image ? (
+                    <img src={item.image} alt={item.angle.title} />
+                  ) : (
+                    <span className="rw-lc-review-thumb-empty">
+                      <ImageOff width={22} height={22} aria-hidden="true" />
+                      Chưa có ảnh
+                    </span>
+                  )}
                   <div
-                    className={`rw-lc-review-thumb-badge${item.status === 'flagged' ? ' flagged-badge' : ''}`}
+                    className={`rw-lc-review-thumb-badge${
+                      item.status === 'ok' ? '' : ' flagged-badge'
+                    }`}
                   >
-                    {item.badgeLabel}
+                    {item.angle.number} • {item.angle.subtitle}
                   </div>
                 </div>
 
                 {/* Content */}
                 <div className="rw-lc-review-item-content">
-                  {/* Head row */}
                   <div className="rw-lc-review-item-head">
                     <div>
-                      <div className="rw-lc-review-item-title">{item.title}</div>
+                      <div className="rw-lc-review-item-title">{item.angle.title}</div>
+                      <div className="rw-lc-review-item-subtitle">
+                        Mã góc: {item.angle.angleType}
+                      </div>
                     </div>
                     <span
-                      className={`rw-lc-review-item-status ${item.status === 'ok' ? 'ok' : 'warn'}`}
+                      className={`rw-lc-review-item-status ${
+                        item.status === 'ok' ? 'ok' : 'warn'
+                      }`}
                     >
                       {item.status === 'ok' ? (
                         <CheckCircle2 width={14} height={14} />
@@ -345,45 +378,39 @@ export const ListingPhotoReviewStep: React.FC<ListingPhotoReviewStepProps> = ({
                     </span>
                   </div>
 
-                  {/* Description */}
-                  <p className="rw-lc-review-item-desc">{item.description}</p>
+                  {/* Hướng dẫn chụp — cùng nguồn với Bước 02 */}
+                  <p className="rw-lc-review-item-desc">{item.angle.guidance}</p>
 
-                  {/* Meta Tags */}
+                  {/* Thông số đo thật từ ảnh */}
                   <div className="rw-lc-review-item-meta">
-                    {item.meta.map((m) => (
-                      <span key={m.label} className="rw-lc-review-item-meta-tag">
-                        <strong>{m.label}:</strong> {m.value}
+                    {buildMeta(item).map((meta) => (
+                      <span key={meta.label} className="rw-lc-review-item-meta-tag">
+                        <strong>{meta.label}:</strong> {meta.value}
                       </span>
                     ))}
                   </div>
 
-                  {/* Warning Box (only for flagged) */}
                   {item.warning && (
                     <div className="rw-lc-review-item-warning">
                       <AlertTriangle width={16} height={16} />
+                      {/* Lý do do server sinh (độ nét, độ sáng) — không suy
+                          đoán từ kích thước, vì Bước 03 không kiểm tra kích thước. */}
                       <p className="rw-lc-review-item-warning-text">{item.warning}</p>
                     </div>
                   )}
 
-                  {/* Actions */}
                   <div className="rw-lc-review-item-actions">
-                    {item.status === 'flagged' && (
-                      <button
-                        type="button"
-                        className="rw-lc-review-btn-ghost"
-                        onClick={() => handleContinue(item.id)}
-                      >
-                        <CheckCheck width={15} height={15} />
-                        Vẫn tiếp tục xử lý
-                      </button>
-                    )}
                     <button
                       type="button"
-                      className={item.status === 'flagged' ? 'rw-lc-review-btn-primary' : 'rw-lc-review-btn-ghost'}
-                      onClick={() => handleRetake(item.id)}
+                      className={
+                        item.status === 'ok'
+                          ? 'rw-lc-review-btn-ghost'
+                          : 'rw-lc-review-btn-primary'
+                      }
+                      onClick={() => onRetake?.(item.angle.angleType)}
                     >
                       <RotateCcw width={14} height={14} />
-                      {item.status === 'flagged' ? 'Chụp lại góc này' : 'Chụp lại'}
+                      {item.image ? 'Chụp lại' : 'Đi chụp góc này'}
                     </button>
                   </div>
                 </div>
@@ -391,35 +418,68 @@ export const ListingPhotoReviewStep: React.FC<ListingPhotoReviewStepProps> = ({
             </div>
           ))}
         </div>
-
-        {/* ══ RIGHT: ISO Criteria + Neural Network + Escrow ══ */}
+        {/* ══ RIGHT: Summary cards ══ */}
         <div className="rw-lc-review-col-right">
-          {/* ── ISO/IEC 17020 Criteria Card ── */}
           <div className="rw-lc-review-card">
             <h3 className="rw-lc-review-card-title">
               <ShieldCheck width={18} height={18} color="#2563EB" />
               <span>
-                Tiêu chí kiểm định sơ bộ ISO/IEC 17020
-                <span className="card-subtitle">Quy chuẩn kỹ thuật trước khi nạp dữ liệu vào mạng nơ-ron tích chập (CNN) phân loại di sản thời trang.</span>
+                TIÊU CHÍ KIỂM TRA ẢNH
+                <span className="card-subtitle">Ngưỡng của ứng dụng ReWear AI</span>
               </span>
             </h3>
 
-            {ISO_CRITERIA.map((c) => (
-              <div key={c.name} className="rw-lc-review-criteria-row">
-                <div className="rw-lc-review-criteria-left">
-                  <div className="rw-lc-review-criteria-name">{c.name}</div>
-                  <div className="rw-lc-review-criteria-range">{c.range}</div>
+            <div className="rw-lc-review-criteria-row">
+              <div className="rw-lc-review-criteria-left">
+                <div className="rw-lc-review-criteria-name">Đủ góc ảnh bắt buộc</div>
+                <div className="rw-lc-review-criteria-range">
+                  Yêu cầu: OVERALL, BRAND_TAG, WASH_TAG, STITCHING_ZIPPER
                 </div>
-                <span className={`rw-lc-review-criteria-value ${c.pass ? 'pass' : 'fail'}`}>
-                  {c.value}
-                </span>
               </div>
-            ))}
+              <span
+                className={`rw-lc-review-criteria-value ${missingCount === 0 ? 'pass' : 'fail'}`}
+              >
+                {missingCount === 0 ? `Đủ (${total}/${total})` : `Thiếu ${missingCount} góc`}
+              </span>
+            </div>
 
-            {/* Integrity Progress Bar */}
+            <div className="rw-lc-review-criteria-row">
+              <div className="rw-lc-review-criteria-left">
+                <div className="rw-lc-review-criteria-name">Độ rõ nét ảnh</div>
+                <div className="rw-lc-review-criteria-range">
+                  Đo trên pixel bởi server · tối thiểu 100 điểm
+                </div>
+              </div>
+              <span
+                className={`rw-lc-review-criteria-value ${
+                  sharpnessFailCount === 0 && metrics.length > 0 ? 'pass' : 'fail'
+                }`}
+              >
+                {metrics.length === 0
+                  ? isChecking
+                    ? 'Đang đo...'
+                    : 'Chưa đo'
+                  : sharpnessFailCount === 0
+                    ? `Đạt toàn bộ (${metrics.length})`
+                    : `${sharpnessFailCount} ảnh mờ`}
+              </span>
+            </div>
+
+            <div className="rw-lc-review-criteria-row">
+              <div className="rw-lc-review-criteria-left">
+                <div className="rw-lc-review-criteria-name">Định dạng ảnh hợp lệ</div>
+                <div className="rw-lc-review-criteria-range">Chấp nhận: JPEG, PNG, WEBP</div>
+              </div>
+              <span
+                className={`rw-lc-review-criteria-value ${formats.length > 0 ? 'pass' : 'fail'}`}
+              >
+                {formats.length > 0 ? formats.join(', ') : 'Chưa có ảnh'}
+              </span>
+            </div>
+
             <div className="rw-lc-review-integrity">
               <div className="rw-lc-review-integrity-label">
-                <span>Chỉ số toàn vẹn tập dữ liệu</span>
+                <span>Tỷ lệ ảnh đạt yêu cầu</span>
                 <span>{integrityPct}%</span>
               </div>
               <div className="rw-lc-review-integrity-bar">
@@ -431,52 +491,29 @@ export const ListingPhotoReviewStep: React.FC<ListingPhotoReviewStepProps> = ({
             </div>
           </div>
 
-          {/* ── Neural Network Reference Card ── */}
+          {/* ── Next Step Card ── */}
           <div className="rw-lc-review-card">
             <h3 className="rw-lc-review-card-title">
-              <Cpu width={18} height={18} color="#2563EB" />
+              <ScanLine width={18} height={18} color="#2563EB" />
               <span>
-                MẠNG NÔ-RON ĐỐI CHIẾU
-                <span className="card-subtitle">Burberry Archive Vision v4.28</span>
+                BƯỚC TIẾP THEO
+                <span className="card-subtitle">Bước 04 — Xác thực AI</span>
               </span>
-            </h3>
-
-            <div className="rw-lc-review-nn-row">
-              <span className="rw-lc-review-nn-label">Cơ sở mẫu vật:</span>
-              <span className="rw-lc-review-nn-value">142,500+ mẫu lưu trữ</span>
-            </div>
-            <div className="rw-lc-review-nn-row">
-              <span className="rw-lc-review-nn-label">Trạng số mô nhất:</span>
-              <span className="rw-lc-review-nn-value">Cập nhật 3 ngày trước</span>
-            </div>
-            <div className="rw-lc-review-nn-row">
-              <span className="rw-lc-review-nn-label">Độ chính xác lịch sử:</span>
-              <span className="rw-lc-review-nn-value">99.4% (Tweed/Gabardine)</span>
-            </div>
-
-            <div className="rw-lc-review-nn-note">
-              <ZoomIn width={16} height={16} style={{ flexShrink: 0, marginTop: '1px' }} />
-              <span>
-                Mô hình đã được huấn luyện với các bộ sưu tập thời 1970–2024.
-              </span>
-            </div>
-          </div>
-
-          {/* ── Escrow Protection Card ── */}
-          <div className="rw-lc-review-card">
-            <h3 className="rw-lc-review-card-title">
-              <ShieldCheck width={18} height={18} color="#2563EB" />
-              Cơ chế bảo vệ ký quỹ
             </h3>
             <p className="rw-lc-review-escrow-desc">
-              Các hình ảnh sau khi xác thực sẽ được bảo mã hóa SHA-256 gắn liền với hợp đồng ký quỹ cho đến khi người mua nhận kiện hàng.
+              {missingCount > 0 || warnCount > 0
+                ? 'Bạn vẫn có thể xem bước kế tiếp, nhưng nên bổ sung ảnh còn thiếu hoặc chụp lại góc ảnh có vấn đề để kết quả kiểm định chính xác hơn.'
+                : 'Toàn bộ ảnh đã sẵn sàng. Ở Bước 04, hệ thống AI sẽ phân tích ảnh của bạn và chấm điểm xác thực.'}
             </p>
             <div className="rw-lc-review-escrow-hash">
               <span>
-                <ImageOff width={13} height={13} style={{ display: 'inline', marginRight: '6px', verticalAlign: '-2px' }} />
-                SHA-256: 9f4a8b2c...e12d
+                <ImageOff
+                  width={13}
+                  height={13}
+                  style={{ display: 'inline', marginRight: '6px', verticalAlign: '-2px' }}
+                />
+                Ảnh được giữ nguyên khi gửi sang kiểm định AI
               </span>
-              <span className="rw-lc-review-escrow-signed">ĐÃ KÝ SỐ</span>
             </div>
           </div>
         </div>

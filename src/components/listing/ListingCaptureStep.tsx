@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Camera, Upload, Info, ScanLine, Sun, Sparkles, X, CameraOff, Image as ImageIcon } from 'lucide-react';
 import EvidenceChecklist from '../../features/listing-ai/components/EvidenceChecklist';
 import { EvidenceChecklistItem } from '../../features/listing-ai/types/evidence-checklist.type';
+import { captureVideoFrame, compressImageFile } from '../../features/listing/services/listingPayload';
+import { LISTING_ANGLES } from '../../features/listing/constants/listingAngles';
 import '../../styles/listing/ListingCaptureStep.css';
 
 export interface ListingCaptureStepProps {
@@ -10,6 +12,11 @@ export interface ListingCaptureStepProps {
    * Bước 03–06 dùng ảnh thật này cho kiểm định và hiển thị.
    */
   onPhotosChange?: (photos: Record<string, string>) => void;
+  /**
+   * Góc cần chụp lại, do Bước 03 yêu cầu (giá trị là `angleType`).
+   * Bước 02 mở camera ngay ở góc này.
+   */
+  initialAngleType?: string;
 }
 
 interface AngleMetadata {
@@ -33,41 +40,14 @@ interface AngleMetadata {
 /**
  * 4 góc ảnh bắt buộc — backend trả về `missingAngles` nếu thiếu, ví dụ:
  * `["OVERALL", "BRAND_TAG", "WASH_TAG", "STITCHING_ZIPPER"]`.
+ *
+ * Khai báo ở `features/listing/constants/listingAngles` để Bước 02 và
+ * Bước 03 dùng chung một danh sách — trước đây Bước 03 tự định nghĩa id
+ * `'01'…'05'` riêng nên ảnh thật không bao giờ khớp với ảnh hiển thị.
  */
-const ANGLES_DATA: Record<string, AngleMetadata> = {
-  OVERALL: {
-    angleType: 'OVERALL',
-    id: '01',
-    number: '01',
-    title: 'Toàn bộ sản phẩm',
-    subtitle: 'Front Silhouette',
-    guidance: 'Cần đặt áo phẳng trên bề mặt trung tính, cúc cài ngay ngắn và mở phẳng tà áo theo tỷ lệ khung viền chuẩn xác.',
-  },
-  BRAND_TAG: {
-    angleType: 'BRAND_TAG',
-    id: '02',
-    number: '02',
-    title: 'Nhãn / Tag thương hiệu',
-    subtitle: 'Brand Label & Kerning',
-    guidance: 'Cần ánh đèn ở Burberrys và đúng khung ngắm minh chính nhất. Đảm bảo độ sắc nét vi cấu trúc thớ dệt, mã sản phẩm phải tỷ lệ khung không bị lớp quang học bởi nếp gấp.',
-  },
-  WASH_TAG: {
-    angleType: 'WASH_TAG',
-    id: '03',
-    number: '03',
-    title: 'Nhãn giặt / Chăm sóc',
-    subtitle: 'Care Label & Wash Symbols',
-    guidance: 'Chụp rõ nhãn giặt và ký hiệu giặt ủi để đối chiếu đúng cách vệ sinh sản phẩm. Không để nhàu nát hoặc che ký hiệu.',
-  },
-  STITCHING_ZIPPER: {
-    angleType: 'STITCHING_ZIPPER',
-    id: '04',
-    number: '04',
-    title: 'Đường may & Khóa kéo',
-    subtitle: 'Stitching Density & Zipper',
-    guidance: 'Soi thẳng vào đường chỉ chần viền và khóa kéo. Đảm bảo mật độ mũi may đều đặn, không sờn chỉ, khóa kéo trơn tru và răng khớp.',
-  },
-};
+const ANGLES_DATA: Record<string, AngleMetadata> = Object.fromEntries(
+  LISTING_ANGLES.map((angle) => [angle.angleType, angle]),
+);
 
 export const ListingCaptureHeader: React.FC<{ completedCount?: number; totalCount?: number }> = ({
   completedCount = 0,
@@ -103,6 +83,7 @@ interface CapturedPhoto {
 
 export const ListingCaptureStep: React.FC<ListingCaptureStepProps> = ({
   onPhotosChange,
+  initialAngleType,
 }) => {
   /**
    * Thứ tự chụp 4 góc. Dùng mảng này cho mọi phép "trước/sau" để thứ tự
@@ -110,8 +91,15 @@ export const ListingCaptureStep: React.FC<ListingCaptureStepProps> = ({
    */
   const ANGLE_IDS = Object.keys(ANGLES_DATA);
 
-  /** Góc đang chọn; dùng chính `angleType` của backend làm khoá. Bắt đầu từ góc 01. */
-  const [activeAngleId, setActiveAngleId] = useState<string>(ANGLE_IDS[0]);
+  /**
+   * Góc đang chọn; dùng chính `angleType` của backend làm khoá. Mặc định là
+   * góc 01, nhưng nếu Bước 03 yêu cầu chụp lại một góc cụ thể thì mở đúng
+   * góc đó. `initialAngleType` chỉ áp dụng lúc mount, không ghi đè góc người
+   * dùng đang chọn giữa chừng.
+   */
+  const [activeAngleId, setActiveAngleId] = useState<string>(
+    initialAngleType && ANGLES_DATA[initialAngleType] ? initialAngleType : ANGLE_IDS[0],
+  );
   /** id góc → ảnh thật đã chụp. Rỗng nghĩa là góc đó chưa chụp. */
   const [photos, setPhotos] = useState<Record<string, CapturedPhoto>>({});
   const [isFlashActive, setIsFlashActive] = useState<boolean>(false);
@@ -240,6 +228,10 @@ export const ListingCaptureStep: React.FC<ListingCaptureStepProps> = ({
   /**
    * Chụp ảnh từ khung hình camera ra canvas.
    * Ưu tiên kích thước thật của video; nếu chưa có metadata thì dùng 1280×720.
+   *
+   * `captureVideoFrame` thu nhỏ về 1280px + nén JPEG trước khi sinh data URL:
+   * khung 1920px gốc tạo ra chuỗi base64 rất dài, vượt xa cột
+   * `ImageUrl` (varchar 2048) mà backend dùng để lưu ảnh.
    */
   const handleCapture = () => {
     const video = videoRef.current;
@@ -249,38 +241,37 @@ export const ListingCaptureStep: React.FC<ListingCaptureStepProps> = ({
       return;
     }
 
-    const canvas = document.createElement('canvas');
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    const context = canvas.getContext('2d');
-
-    if (!context) {
-      setCameraError('Không xử lý được ảnh trên thiết bị này.');
-      return;
+    try {
+      savePhoto(captureVideoFrame(video), 'camera');
+    } catch {
+      setCameraError('Không xử lý được ảnh trên thiết bị này. Hãy thử tải ảnh từ máy.');
     }
-
-    context.drawImage(video, 0, 0, canvas.width, canvas.height);
-    savePhoto(canvas.toDataURL('image/jpeg', 0.9), 'camera');
   };
 
-  /** Đọc file người dùng chọn rồi đưa vào data URL. */
+  /**
+   * Đọc file người dùng chọn, thu nhỏ/nén rồi đưa vào data URL.
+   * Việc nén là bất đồng bộ (phải nạp ảnh vào canvas) nên cần bắt lỗi riêng
+   * để file hỏng không làm sập luồng chụp ảnh.
+   */
   const handleUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
       setCameraError('Vui lòng chọn đúng định dạng ảnh (JPG, PNG, HEIC).');
+      event.target.value = '';
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === 'string') savePhoto(reader.result, 'upload');
-    };
-    reader.readAsDataURL(file);
-
-    // Cho phép chọn lại cùng một file ngay sau đó.
-    event.target.value = '';
+    void compressImageFile(file)
+      .then((dataUrl) => savePhoto(dataUrl, 'upload'))
+      .catch(() => {
+        setCameraError('Không đọc được ảnh vừa chọn. Vui lòng thử lại với ảnh khác.');
+      })
+      .finally(() => {
+        // Cho phép chọn lại cùng một file ngay sau đó.
+        event.target.value = '';
+      });
   };
 
   // Phím Space chụp ảnh khi camera đang mở.

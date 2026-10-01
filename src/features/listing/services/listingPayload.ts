@@ -8,6 +8,98 @@ import { LoginResponseData } from '../../../features/auth/types/auth.type';
 import { normalizeGuid } from '../../../utils/uuid';
 
 /**
+ * Cạnh dài tối đa (px) của ảnh gửi lên backend.
+ *
+ * Camera mặc định trả khung 1920px. Giữ 1600px thay vì 1280px vì Bước 03 chấm
+ * điểm kích thước theo CẠNH NGẮN: ảnh ngang 16:9 ở 1280px chỉ còn cao 720px,
+ * sát ngưỡng tối thiểu 640px và dễ bị backend từ chối oan. Ở 1600px, cạnh ngắn
+ * còn ~900px — thoải mái vượt ngưỡng mà request vẫn nhẹ.
+ */
+const MAX_CAPTURE_EDGE = 1600;
+
+/** Chất lượng JPEG sau khi nén — 0.82 nhìn gần như không khác ảnh gốc. */
+const CAPTURE_QUALITY = 0.82;
+
+/**
+ * Vẽ một nguồn ảnh (video/canvas/Image) vào canvas đã thu nhỏ rồi trả về
+ * data URL. Giữ nguyên tỷ lệ, không phóng to ảnh vốn đã nhỏ hơn giới hạn.
+ */
+const renderScaledDataUrl = (
+  source: CanvasImageSource,
+  width: number,
+  height: number,
+): string => {
+  const scale = Math.min(1, MAX_CAPTURE_EDGE / Math.max(width, height));
+  const targetWidth = Math.max(1, Math.round(width * scale));
+  const targetHeight = Math.max(1, Math.round(height * scale));
+
+  const canvas = document.createElement('canvas');
+  canvas.width = targetWidth;
+  canvas.height = targetHeight;
+  const context = canvas.getContext('2d');
+
+  if (!context) {
+    throw new Error('Thiết bị này không hỗ trợ xử lý ảnh.');
+  }
+
+  context.drawImage(source, 0, 0, targetWidth, targetHeight);
+  return canvas.toDataURL('image/jpeg', CAPTURE_QUALITY);
+};
+
+/** Đọc file thành data URL gốc, không nén (dùng làm đầu vào cho bước resize). */
+const readFileAsDataUrl = (file: File): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        resolve(reader.result);
+      } else {
+        reject(new Error('Không đọc được ảnh vừa chọn.'));
+      }
+    };
+    reader.onerror = () => reject(new Error('Không đọc được ảnh vừa chọn.'));
+    reader.readAsDataURL(file);
+  });
+
+/** Nạp một data URL vào đối tượng Image để đo kích thước. */
+const loadImage = (src: string): Promise<HTMLImageElement> =>
+  new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error('Ảnh không hợp lệ.'));
+    image.src = src;
+  });
+
+/**
+ * Thu nhỏ + nén một data URL về kích thước gửi lên backend.
+ *
+ * Bắt buộc về mặt kỹ thuật: backend lưu ảnh ra file và chỉ giữ URL ngắn
+ * trong `ListingMedia.ImageUrl` (varchar 2048), nên ảnh gốc càng nhỏ thì
+ * request càng nhẹ và việc kiểm định AI càng nhanh.
+ */
+export const compressImageDataUrl = async (dataUrl: string): Promise<string> => {
+  const image = await loadImage(dataUrl);
+
+  // Ảnh đã nhỏ hơn giới hạn thì giữ nguyên, tránh nén lại lần nữa.
+  if (Math.max(image.naturalWidth, image.naturalHeight) <= MAX_CAPTURE_EDGE) {
+    return dataUrl;
+  }
+
+  return renderScaledDataUrl(image, image.naturalWidth, image.naturalHeight);
+};
+
+/** Đọc file người dùng chọn, thu nhỏ và nén trước khi lưu vào góc ảnh. */
+export const compressImageFile = async (file: File): Promise<string> =>
+  compressImageDataUrl(await readFileAsDataUrl(file));
+
+/**
+ * Chụp khung hình hiện tại của video thành data URL đã thu nhỏ.
+ * Dùng cho luồng camera của Bước 02.
+ */
+export const captureVideoFrame = (video: HTMLVideoElement): string =>
+  renderScaledDataUrl(video, video.videoWidth, video.videoHeight);
+
+/**
  * Body của `POST /api/ListingsExample/create` yêu cầu `photos` là mảng
  * `{ angleType, imageUrl }`. Bước 02 đã dùng chính `angleType` của backend làm
  * khoá lưu ảnh nên khi gửi lên không cần bảng tra — gửi thẳng khoá ảnh.

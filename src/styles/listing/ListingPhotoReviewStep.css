@@ -228,6 +228,21 @@
   box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.15);
 }
 
+/* Góc chưa chụp: ô trống thay cho ảnh mẫu, để thấy rõ còn thiếu góc nào. */
+.rw-lc-review-thumb-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  height: 100%;
+  min-height: 100px;
+  color: #94A3B8;
+  font-size: 11px;
+  text-align: center;
+}
+
 .rw-lc-review-thumb img {
   width: 100%;
   height: 100%;
@@ -622,4 +637,39 @@
   .rw-lc-review-thumb {
     width: 90px;
   }
+}
+
+/* -- Banner phan hoi tu server (Bucoc 03) -- */
+.rw-lc-review-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border: 1px solid #FDE68A;
+  border-radius: 12px;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.rw-lc-review-alert span {
+  flex: 1;
+}
+
+
+/* ── Banner phản hồi từ server (Bước 03) ── */
+.rw-lc-review-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border: 1px solid #FDE68A;
+  border-radius: 12px;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.rw-lc-review-alert span {
+  flex: 1;
 }

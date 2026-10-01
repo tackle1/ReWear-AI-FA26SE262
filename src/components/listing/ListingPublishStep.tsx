@@ -27,7 +27,30 @@ export interface ListingPublishStepProps {
   price?: string;
   sku?: string;
   confidence?: number;
+  /**
+   * Phân khúc thương hiệu do BACKEND quyết định (LUXURY / POPULAR /
+   * LOCAL_NO_BRAND).
+   *
+   * KHÔNG phải giá trị người bán chọn ở Bước 01 — backend tự suy ra từ tên
+   * thương hiệu. Hiện lại giá trị này để người bán biết hệ thống đang áp quy tắc
+   * nào, tránh bất ngờ khi bị yêu cầu hóa đơn hoặc bị trừ điểm.
+   */
+  brandSegment?: string;
+  /** true nếu hồ sơ bị trừ điểm vì thiếu ảnh hóa đơn. */
+  billPenaltyApplied?: boolean;
 }
+
+/**
+ * Nhãn tiếng Việt cho phân khúc backend trả về.
+ *
+ * Khoá trùng `BrandSegments` của backend (`LUXURY` / `POPULAR` /
+ * `LOCAL_NO_BRAND`) — sửa ở một nơi thì cả hai cùng đổi.
+ */
+const SEGMENT_LABEL: Record<string, { label: string; requiresBill: boolean }> = {
+  LUXURY: { label: 'Luxury / Major Brand', requiresBill: true },
+  POPULAR: { label: 'Popular / Mass-market', requiresBill: false },
+  LOCAL_NO_BRAND: { label: 'Local / No-brand', requiresBill: false },
+};
 
 const normalizePrice = (raw?: string): string | undefined => {
   if (!raw) return undefined;
@@ -48,7 +71,10 @@ export const ListingPublishStep: React.FC<ListingPublishStepProps> = ({
   price,
   sku,
   confidence = 94,
+  brandSegment,
+  billPenaltyApplied = false,
 }) => {
+  const segment = brandSegment ? SEGMENT_LABEL[brandSegment] : undefined;
   const safeConfidence = Math.max(0, Math.min(100, Math.round(confidence)));
   const displayImage = image || trenchCoatImage;
   const displayName = name?.trim() || 'Áo măng tô Burberry Vintage hai hàng cực';
@@ -117,6 +143,28 @@ export const ListingPublishStep: React.FC<ListingPublishStepProps> = ({
             </span>
             <span className="rw-publish-tier"><Sparkles width={13} height={13} aria-hidden="true" /> CẤP DUYỆT TỨC THÌ</span>
           </div>
+
+          {/*
+           * Phân khúc do BACKEND suy ra từ tên thương hiệu — hiện lại để người
+           * bán biết vì sao hệ thống áp (hoặc không áp) quy tắc hóa đơn với họ.
+           */}
+          {segment && (
+            <div
+              className={`rw-publish-segment ${segment.requiresBill ? 'luxury' : 'standard'}`}
+            >
+              <span className="rw-publish-segment-label">
+                PHÂN KHÚC THƯƠNG HIỆU (HỆ THỐNG XÁC ĐỊNH)
+              </span>
+              <span className="rw-publish-segment-value">{segment.label}</span>
+              <span className="rw-publish-segment-note">
+                {billPenaltyApplied
+                  ? 'Hồ sơ đã bị trừ điểm vì thiếu ảnh hóa đơn.'
+                  : segment.requiresBill
+                    ? 'Phân khúc này bắt buộc phải có ảnh hóa đơn khi bán hàng đồ dùng.'
+                    : 'Hóa đơn là tuỳ chọn với phân khúc này.'}
+              </span>
+            </div>
+          )}
 
           <article className="rw-publish-card">
             <header className="rw-publish-card-head">

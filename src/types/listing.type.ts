@@ -84,6 +84,16 @@ export interface CreateListingResult {
   tagLegitScore?: number;
   /** Điểm đường may / cấu trúc. */
   stitchingScore?: number;
+  /**
+   * Phân khúc thương hiệu do BACKEND quyết định: `LUXURY` / `POPULAR` /
+   * `LOCAL_NO_BRAND`.
+   *
+   * Không phải giá trị người bán chọn ở Bước 01 — backend tự suy ra từ tên
+   * thương hiệu để chống khai sai né hóa đơn. Phân khúc này quyết định có bắt
+   * buộc hóa đơn hay không, nên UI cần hiện lại để người bán biết mình đang ở
+   * phân khúc nào.
+   */
+  brandSegment?: string;
   /** Số token AI còn lại — backend dùng để giới hạn 20 lần kiểm định. */
   remainingTokens?: number;
   [key: string]: unknown;

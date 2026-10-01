@@ -446,6 +446,15 @@
 }
 
 /* ── Cột phải: trạng thái 5 góc bằng chứng ── */
+/* Chi tiết chỉ số đo (px, độ nét, độ sáng) hiện dưới tên góc ảnh. */
+.rw-lc-ai-angle-detail {
+  display: block;
+  font-style: normal;
+  font-size: 11px;
+  color: #64748b;
+  margin-top: 2px;
+}
+
 .rw-lc-ai-angles { display: flex; flex-direction: column; gap: 7px; }
 .rw-lc-ai-angle {
   display: flex;
@@ -744,3 +753,68 @@
   .rw-lc-ai-actionbar-space { height: 140px; }
   .rw-lc-ai-btn { flex: 1 1 0; justify-content: center; }
 }
+
+/* ── Bước 04: quyết định & bảng tín hiệu (verify-and-decide, check-signals) ── */
+.rw-lc-ai-decision-reason {
+  margin: 0 0 8px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #0F172A;
+}
+
+.rw-lc-ai-decision-recommend {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #64748B;
+}
+
+.rw-lc-ai-signals {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rw-lc-ai-signal {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas: 'name chip' 'note chip';
+  gap: 2px 12px;
+  padding: 10px 12px;
+  border: 1px solid #E2E8F0;
+  border-left-width: 3px;
+  border-radius: 10px;
+}
+
+.rw-lc-ai-signal.pass { border-left-color: #10B981; background: #F0FDF4; }
+.rw-lc-ai-signal.fail { border-left-color: #EF4444; background: #FEF2F2; }
+
+.rw-lc-ai-signal-name {
+  grid-area: name;
+  font-size: 13px;
+  font-weight: 600;
+  color: #0F172A;
+}
+
+.rw-lc-ai-signal-note {
+  grid-area: note;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #64748B;
+}
+
+.rw-lc-ai-signal-chip {
+  grid-area: chip;
+  align-self: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.rw-lc-ai-signal.pass .rw-lc-ai-signal-chip { background: #D1FAE5; color: #047857; }
+.rw-lc-ai-signal.fail .rw-lc-ai-signal-chip { background: #FEE2E2; color: #B91C1C; }

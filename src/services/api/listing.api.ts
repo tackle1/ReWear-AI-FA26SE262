@@ -1,7 +1,11 @@
 import axiosClient from '../axiosClient';
 import { ApiResponse } from '../../types/apiResponse.type';
 import { CreateListingPayload, CreateListingResult, ListingItem } from '../../types/listing.type';
-import { VerificationThresholds } from '../../types/verification.type';
+import {
+  VerificationThresholds,
+  PhotoQualityCheckPayload,
+  PhotoQualityCheckResult,
+} from '../../types/verification.type';
 import { normalizeGuid } from '../../utils/uuid';
 
 export const listingApi = {
@@ -20,6 +24,10 @@ export const listingApi = {
    *
    * Dùng `baseURL: ''` để đi qua proxy của Vite dev server giống các endpoint
    * `/api/ListingsExample/*` khác (backend .NET chạy HTTPS self-signed).
+   *
+   * PHẢI trả thẳng giá trị của `axiosClient`, KHÔNG `.data`: interceptor đã
+   * `response => response.data`, nên giá trị await được chính là body, và
+   * backend trả thẳng DTO chứ không bọc `{ success, data }`.
    */
   createListing: async (userId: string, data: CreateListingPayload) => {
     const guid = normalizeGuid(userId);
@@ -30,7 +38,7 @@ export const listingApi = {
       );
     }
 
-    return axiosClient.post<never, ApiResponse<CreateListingResult>>(
+    return axiosClient.post<never, CreateListingResult>(
       '/api/ListingsExample/create',
       data,
       { baseURL: '', params: { userId: guid } },
@@ -41,14 +49,69 @@ export const listingApi = {
       headers: { 'Content-Type': 'multipart/form-data' },
     }),
   /**
+   * Bước 03 — Kiểm tra ảnh: `POST /api/ListingsExample/photo-quality`.
+   *
+   * Backend đo thật độ nét (Laplacian variance) và độ sáng trên pixel ảnh,
+   * kiểm tra đủ 4 góc bắt buộc. KHÔNG kiểm tra kích thước ảnh.
+   * Endpoint chạy độc lập, KHÔNG trừ token, nên gọi nhiều lần để chụp lại
+   * ảnh cho đến khi đạt rồi mới bấm đăng tin ở Bước 06.
+   *
+   * PHẢI trả thẳng giá trị của `axiosClient`, KHÔNG `.data`:
+   * interceptor ở axiosClient đã `response => response.data`, nghĩa là giá trị
+   * await được CHÍNH LÀ body rồi. Backend cũng trả thẳng DTO, không bọc trong
+   * `{ success, data }`. Trước đây code lấy `response?.data` → luôn `undefined`
+   * → hook `if (data) setResult(data)` không bao giờ chạy → Bước 03 hiện
+   * "Chưa đo" dù server đã trả kết quả đầy đủ.
+   */
+  checkPhotoQuality: (data: PhotoQualityCheckPayload) =>
+    axiosClient.post<never, PhotoQualityCheckResult>(
+      '/api/ListingsExample/photo-quality',
+      data,
+      { baseURL: '' },
+    ),
+  /**
    * Lấy danh sách thương hiệu bảo chứng (Luxury / Major Brand) từ backend.
    * Endpoint trả về mảng string thuần, ví dụ: ["Nike","Adidas","Gucci",...].
    *
    * Gọi bằng đường dẫn tương đối và `baseURL: ''` để bỏ qua baseURL mặc định
    * (http://localhost:8000/api/v1) và đi qua proxy của Vite dev server.
    */
+  /**
+   * Nhóm "Luxury / Major Brand" của hàng Secondhand:
+   * `GET /api/ListingsExample/premium-brands`.
+   *
+   * Backend đọc thẳng hàng cấu hình trong NeonDB, nên admin sửa JSON ở đó
+   * (rồi Save) là danh sách này đổi theo — không có danh sách phía client để
+   * phải đồng bộ thủ công.
+   */
   getPremiumBrands: () =>
     axiosClient.get<never, string[]>('/api/ListingsExample/premium-brands', {
+      baseURL: '',
+    }),
+
+  /**
+   * Danh sách thương hiệu PHỔ THÔNG (nhóm Popular / Mass-market):
+   * `GET /api/ListingsExample/popular-brands`.
+   *
+   * Endpoint trả về mảng string thuần, ví dụ: ["Uniqlo","Zara",...]. Đọc từ
+   * SystemConfig `POPULAR_BRANDS_LIST` nên admin sửa trên NeonDB là API đổi
+   * theo, không cần deploy lại.
+   */
+  getPopularBrands: () =>
+    axiosClient.get<never, string[]>('/api/ListingsExample/popular-brands', {
+      baseURL: '',
+    }),
+
+  /**
+   * Danh sách thương hiệu NỘI ĐỊA / không nhãn hiệu (nhóm Local / No-brand):
+   * `GET /api/ListingsExample/local-brands`.
+   *
+   * Đọc từ SystemConfig `LOCAL_BRANDS_LIST`. Danh sách này chỉ phục vụ GỢI Ý
+   * cho UI — mọi thương hiệu không khớp luxury và popular đều tự động thuộc
+   * nhóm local, nên bỏ sót tên ở đây không làm sai kết luận phân khúc.
+   */
+  getLocalBrands: () =>
+    axiosClient.get<never, string[]>('/api/ListingsExample/local-brands', {
       baseURL: '',
     }),
   /**

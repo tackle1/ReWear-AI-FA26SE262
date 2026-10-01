@@ -386,12 +386,12 @@ export const PRODUCT_CATEGORIES: FilterOption[] = CATEGORY_FILTER_DEFS.map((def)
  * nên hãng chưa có sản phẩm sẽ hiện 0.
  */
 const BRAND_CATALOG: { key: string; group: string }[] = [
-  { key: 'Nike', group: 'luxury' },
   { key: 'Burberry', group: 'luxury' },
   { key: 'Gucci', group: 'luxury' },
   { key: 'Louis Vuitton', group: 'luxury' },
   { key: 'Chanel', group: 'luxury' },
   { key: 'Hermès', group: 'luxury' },
+  { key: 'Nike', group: 'popular' },
   { key: 'Uniqlo', group: 'popular' },
   { key: 'H&M', group: 'popular' },
   { key: 'Zara', group: 'popular' },

@@ -1,5 +1,5 @@
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import '../../styles/listing/ListingInfoSection.css';
 
 import {
@@ -16,7 +16,7 @@ import {
   List,
   X,
 } from 'lucide-react';
-import { usePremiumBrands } from '../../features/listing/hooks/usePremiumBrands';
+import { usePremiumBrands, usePopularBrands, useLocalBrands } from '../../features/listing/hooks/usePremiumBrands';
 
 /** Kiểu dữ liệu form mà component này phát ra ra ngoài qua `onFormChange`. */
 export type ListingInfoForm = typeof DEFAULT_FORM;
@@ -205,6 +205,24 @@ const LISTING_CATEGORIES = [
 const findCategoryById = (id: string) =>
   LISTING_CATEGORIES.find((category) => category.id === id);
 
+/**
+ * Danh sách gợi ý dự phòng khi API lỗi, để nhóm phân khúc không trống hoàn
+ * toàn khiến người bán không chọn được gì. Admin vẫn có thể thêm brand qua
+ * NeonDB — danh sách này chỉ là lưới an toàn phía client.
+ */
+const FALLBACK_POPULAR_BRANDS = [
+  { name: 'UNIQLO', sub: 'Japan', value: 'Uniqlo' },
+  { name: 'ZARA', sub: 'Spain', value: 'Zara' },
+  { name: 'H&M', sub: 'Sweden', value: 'H&M' },
+  { name: 'CONVERSE', sub: 'USA', value: 'Converse' },
+];
+
+const FALLBACK_LOCAL_BRANDS = [
+  { name: 'COOLMATE', sub: 'Vietnam', value: 'Coolmate' },
+  { name: 'ROUTINE', sub: 'Vietnam', value: 'Routine' },
+  { name: 'YODY', sub: 'Vietnam', value: 'Yody' },
+];
+
 const SECONDHAND_BRAND_GROUPS: Record<
   BrandSegment,
   {
@@ -213,108 +231,19 @@ const SECONDHAND_BRAND_GROUPS: Record<
     value: string;
   }[]
 > = {
-  /**
-   * Nhóm "luxury" không khai báo ở đây: danh sách thương hiệu bảo chứng được
-   * lấy động từ API `GET /api/ListingsExample/premium-brands`.
-   * Xem `usePremiumBrands` và phần render nhánh secondhand.
+  /*
+   * Cả ba nhóm đều dựng từ API lúc runtime (xem `brandGroups`), không khai báo
+   * danh sách thương hiệu ở đây:
+   *   - luxury  <- premium-brands
+   *   - popular <- popular-brands
+   *   - local   <- local-brands
+   *
+   * Khai báo rỗng chỉ để giữ kiểu của một option trong mỗi nhóm; giá trị thật
+   * do `toOptions()` tạo từ danh sách SystemConfig mà backend trả về.
    */
   luxury: [],
-
-  popular: [
-    {
-      name: 'NIKE',
-      sub: 'Sportswear',
-      value: 'Nike',
-    },
-    {
-      name: 'ADIDAS',
-      sub: 'Sportswear',
-      value: 'Adidas',
-    },
-    {
-      name: 'UNIQLO',
-      sub: 'Japan',
-      value: 'Uniqlo',
-    },
-    {
-      name: 'ZARA',
-      sub: 'Spain',
-      value: 'Zara',
-    },
-    {
-      name: 'H&M',
-      sub: 'Sweden',
-      value: 'H&M',
-    },
-    {
-      name: 'COOLMATE',
-      sub: 'Vietnam',
-      value: 'Coolmate',
-    },
-    {
-      name: 'CONVERSE',
-      sub: 'USA',
-      value: 'Converse',
-    },
-    {
-      name: 'LEVI’S',
-      sub: 'Denim',
-      value: 'Levi’s',
-    },
-    {
-      name: 'Khác...',
-      sub: 'Nhập tay',
-      value: '',
-    },
-  ],
-
-  local: [
-    {
-      name: 'ROUTINE',
-      sub: 'Vietnam',
-      value: 'Routine',
-    },
-    {
-      name: 'DEGREY',
-      sub: 'Vietnam',
-      value: 'Degrey',
-    },
-    {
-      name: 'DIRTYCOINS',
-      sub: 'Vietnam',
-      value: 'DirtyCoins',
-    },
-    {
-      name: '5THEWAY',
-      sub: 'Vietnam',
-      value: '5TheWay',
-    },
-    {
-      name: 'YODY',
-      sub: 'Vietnam',
-      value: 'Yody',
-    },
-    {
-      name: 'HADES',
-      sub: 'Vietnam',
-      value: 'Hades',
-    },
-    {
-      name: 'LOCAL BRAND',
-      sub: 'Khác',
-      value: 'Local Brand',
-    },
-    {
-      name: 'Không brand',
-      sub: 'No-brand',
-      value: 'No-brand',
-    },
-    {
-      name: 'Khác...',
-      sub: 'Nhập tay',
-      value: '',
-    },
-  ],
+  popular: [],
+  local: [],
 };
 
 const SECONDHAND_SEGMENTS = [
@@ -367,12 +296,15 @@ export const ListingInfoSection: React.FC<ListingInfoSectionProps> = ({
    */
   const [isCustomBrandOpen, setIsCustomBrandOpen] = useState(false);
 
-  /** Danh sách thương hiệu bảo chứng lấy từ API, dùng cho nhóm "luxury". */
+  /**
+   * Danh sách thương hiệu bảo chứng lấy từ `premium-brands` (backend đọc hàng
+   * cấu hình trong NeonDB). Nhóm popular dùng bộ gợi ý khai báo cứng ở trên.
+   */
   const {
     brands: premiumBrands,
-    status: premiumBrandsStatus,
-    error: premiumBrandsError,
-    reload: reloadPremiumBrands,
+    status: brandSegmentsStatus,
+    error: brandSegmentsError,
+    reload: reloadBrandSegments,
   } = usePremiumBrands();
 
   /** Lựa chọn "thương hiệu khác" luôn có sẵn ở cuối mỗi nhóm. */
@@ -382,21 +314,74 @@ export const ListingInfoSection: React.FC<ListingInfoSectionProps> = ({
     value: '',
   };
 
-  /**
-   * Nhóm "luxury" lấy động từ API; "popular" và "local" vẫn dùng danh sách khai báo.
-   * Danh sách API đã ở dạng tên hiển thị nên `name` và `value` dùng chung giá trị.
-   */
-  const premiumBrandOptions = premiumBrands.map((brand) => ({
-    name: brand,
-    sub: 'Thương hiệu bảo chứng',
-    value: brand,
-  }));
+  const toOptions = (brands: string[], sub: string) =>
+    brands.map((brand) => ({ name: brand, sub, value: brand }));
 
-  const brandGroups: Record<BrandSegment, typeof SECONDHAND_BRAND_GROUPS[BrandSegment]> =
-    {
-      ...SECONDHAND_BRAND_GROUPS,
-      luxury: [...premiumBrandOptions, OTHER_BRAND_OPTION],
+  /**
+   * Một thương hiệu chỉ được hiện ở MỘT nhóm. Nhóm bảo chứng lấy từ API nên
+   * thắng: nếu NeonDB có "Nike" trong `HIGH_END_BRANDS_LIST` thì Nike chỉ hiện
+   * ở Luxury và bị lo khỏi Popular, tránh tình trạng người bán thấy cùng một
+   * thương hiệu ở cả hai nhóm mà không biết chọn nhóm nào mới đúng.
+   */
+  /**
+ * Ba nhóm thương hiệu đều lấy từ API, mỗi nhóm một endpoint riêng:
+ *   • luxury  ← premium-brands  (SystemConfig HIGH_END_BRANDS_LIST)
+ *   • popular ← popular-brands  (SystemConfig POPULAR_BRANDS_LIST)
+ *   • local   ← local-brands    (SystemConfig LOCAL_BRANDS_LIST)
+ *
+ * Admin sửa JSON trên NeonDB là cả ba danh sách đổi theo, không cần deploy
+ * và không có bản sao phía client phải đồng bộ tay.
+ */
+const popularBrandsState = usePopularBrands();
+const localBrandsState = useLocalBrands();
+
+  /**
+ * Một thương hiệu chỉ được hiện ở MỘT nhóm.
+ *
+ * Thứ tự ưu tiên giống hệt backend (BrandSegmentService.ResolveAsync):
+ * luxury → popular → local. Danh sách nào khớp trước thì thắng, nên admin
+ * nhập trùng một tên ở hai danh sách sẽ không tạo ra trạng thái mơ hồ —
+ * người bán chỉ thấy tên đó ở đúng một nhóm.
+ *
+ * So khớp bỏ qua hoa/thường và khoảng trắng cho khớp với cách backend
+ * chuẩn hoá ("Gucci " và "gucci" là một).
+ */
+const buildBrandKeys = (brands: string[]): Set<string> =>
+  new Set(brands.map((brand) => brand.trim().toLowerCase()));
+
+const brandGroups: Record<BrandSegment, typeof SECONDHAND_BRAND_GROUPS[BrandSegment]> =
+  useMemo(() => {
+    const luxuryKeys = buildBrandKeys(premiumBrands);
+    const popularKeys = buildBrandKeys(popularBrandsState.brands);
+
+    const popularSource =
+      popularBrandsState.status === 'success' && popularBrandsState.brands.length > 0
+        ? toOptions(popularBrandsState.brands, 'Phổ thông')
+        : FALLBACK_POPULAR_BRANDS;
+
+    const localSource =
+      localBrandsState.status === 'success' && localBrandsState.brands.length > 0
+        ? toOptions(localBrandsState.brands, 'Nội địa')
+        : FALLBACK_LOCAL_BRANDS;
+
+    // Bỏ tên đã xuất hiện ở nhóm ưu tiên CAO HƠN:
+    //   • popular bị lo nếu tên đó nằm trong luxury (luxury thắng).
+    //   • local bị lo nếu tên đó nằm trong luxury HOẶC popular.
+    // Popular KHÔNG bị local loại — ngược lại sẽ tự xoá sạch danh sách
+    // popular lấy từ chính API của nó.
+    const popular = popularSource.filter((item) => !luxuryKeys.has(item.value.trim().toLowerCase()));
+    const local = localSource.filter(
+      (item) =>
+        !popularKeys.has(item.value.trim().toLowerCase()) &&
+        !luxuryKeys.has(item.value.trim().toLowerCase()),
+    );
+
+    return {
+      luxury: [...toOptions(premiumBrands, 'Thương hiệu bảo chứng'), OTHER_BRAND_OPTION],
+      popular: [...popular, OTHER_BRAND_OPTION],
+      local: [...local, OTHER_BRAND_OPTION],
     };
+  }, [premiumBrands, popularBrandsState.brands, popularBrandsState.status, localBrandsState.brands, localBrandsState.status]);
 
   const price = Number(form.price.replace(/\D/g, ''));
 
@@ -635,30 +620,30 @@ export const ListingInfoSection: React.FC<ListingInfoSectionProps> = ({
               <span className="rw-lc-sh-status-dot">
                 •
               </span>
-              {selectedSegment === 'luxury'
-                ? premiumBrandsStatus === 'loading'
-                  ? 'Đang tải danh sách...'
-                  : `${premiumBrands.length} thương hiệu`
-                : 'Chọn hoặc nhập tay thương hiệu'}
+              {brandSegmentsStatus === 'loading'
+                ? 'Đang tải danh sách...'
+                : selectedSegment === 'local'
+                  ? 'Chọn hoặc nhập tay thương hiệu'
+                  : `${brands.length - 1} thương hiệu`}
             </span>
           </div>
 
-          {/* Trạng thái tải / lỗi chỉ áp dụng cho nhóm lấy từ API */}
-          {selectedSegment === 'luxury' &&
-            (premiumBrandsStatus === 'loading' ||
-              premiumBrandsStatus === 'error') && (
+          {/* Trạng thái tải / lỗi — áp dụng cho nhóm lấy từ API (luxury, popular) */}
+          {selectedSegment !== 'local' &&
+            (brandSegmentsStatus === 'loading' ||
+              brandSegmentsStatus === 'error') && (
               <p
                 className="rw-lc-sh-brand-feedback"
-                role={premiumBrandsStatus === 'error' ? 'alert' : 'status'}
+                role={brandSegmentsStatus === 'error' ? 'alert' : 'status'}
               >
-                {premiumBrandsStatus === 'loading'
-                  ? 'Đang tải danh sách thương hiệu bảo chứng...'
-                  : premiumBrandsError}
+                {brandSegmentsStatus === 'loading'
+                  ? 'Đang tải danh sách thương hiệu...'
+                  : brandSegmentsError}
 
-                {premiumBrandsStatus === 'error' && (
+                {brandSegmentsStatus === 'error' && (
                   <button
                     type="button"
-                    onClick={reloadPremiumBrands}
+                    onClick={reloadBrandSegments}
                   >
                     Thử lại
                   </button>
@@ -677,8 +662,8 @@ export const ListingInfoSection: React.FC<ListingInfoSectionProps> = ({
                   type="button"
                   className={isActive ? 'active' : ''}
                   disabled={
-                    selectedSegment === 'luxury' &&
-                    premiumBrandsStatus === 'loading'
+                    selectedSegment !== 'local' &&
+                    brandSegmentsStatus === 'loading'
                   }
                   onClick={() => {
                     if (isOther) {

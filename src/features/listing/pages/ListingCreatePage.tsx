@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import ROUTES from '../../../routes/routes.config';
 import ListingTopbar from '../../../components/listing/ListingTopbar';
@@ -15,8 +15,12 @@ import ListingSidePanel from '../../../components/listing/ListingSidePanel';
 import ListingCreateActionBar from '../../../components/listing/ListingCreateActionBar';
 import useCurrentUser from '../../../hooks/useCurrentUser';
 import { buildListingPayload, findMissingAngles } from '../services/listingPayload';
+import { readApiErrorMessage } from '../utils/errorMessage';
+import usePhotoQualityCheck from '../hooks/usePhotoQualityCheck';
+import useAiVerification from '../hooks/useAiVerification';
 import { saveSellerListing } from '../../seller/services/sellerListingsStore';
 import listingApi from '../../../services/api/listing.api';
+import { CreateListingResult } from '../../../types/listing.type';
 import ListingCaptureStep, { ListingCaptureHeader } from '../../../components/listing/ListingCaptureStep';
 import ListingPhotoReviewStep from '../../../components/listing/ListingPhotoReviewStep';
 import ListingAiVerificationStep from '../../../components/listing/ListingAiVerificationStep';
@@ -24,6 +28,15 @@ import ListingAiResultStep from '../../../components/listing/ListingAiResultStep
 import ListingPublishStep from '../../../components/listing/ListingPublishStep';
 import '../../../styles/dashboard/DashboardTheme.css';
 import '../../../styles/listing/ListingCreate.css';
+
+/**
+ * Lấy thông báo lỗi thật từ backend.
+ *
+ * `axiosClient` reject bằng `AxiosError`, nên `err.message` chỉ là câu chung
+ * chung kiểu "Request failed with status code 500" — vô dụng với người bán.
+ * Backend trả `{ success: false, error: { code, message } }` (xem
+ * `GlobalExceptionHandlerMiddleware`), nên ưu tiên đọc message ở đó.
+ */
 
 type WarningToast = { id: number; message: string };
 type ProductInfo = {
@@ -44,15 +57,6 @@ type ProductInfo = {
   material: string;
   price: string;
   sku: string;
-};
-
-/** Chuẩn hoá giá người bán nhập thành dạng hiển thị "8.500.000 đ" cho hồ sơ thẩm định. */
-const formatFormPrice = (rawPrice: string): string | undefined => {
-  const digits = rawPrice.replace(/[^\d]/g, '');
-  if (!digits) return undefined;
-  const amount = Number(digits);
-  if (!Number.isFinite(amount) || amount <= 0) return undefined;
-  return `${amount.toLocaleString('vi-VN')} đ`;
 };
 
 export const ListingCreatePage: React.FC = () => {
@@ -145,6 +149,9 @@ export const ListingCreatePage: React.FC = () => {
   }, []);
 
   const handleBack = () => {
+    // Đổi bước thì bỏ cảnh báo cũ, tránh thông báo của bước trước bám lại.
+    setSubmitError(null);
+
     if (stepIndex > 0) {
       setStepIndex((prev) => prev - 1);
       return;
@@ -153,12 +160,20 @@ export const ListingCreatePage: React.FC = () => {
   };
 
   /**
-   * Tạo tin đăng ở Bước 02 (dữ liệu Bước 01 + ảnh vừa chụp đã đủ).
-   * Trạng thái hiển thị: đang gửi / thành công / lỗi.
+   * Trạng thái đăng tin ở Bước 06: đang gửi / thành công / lỗi.
    */
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [createdListingId, setCreatedListingId] = useState<string | null>(null);
+  /**
+   * Kết quả đầy đủ backend trả về sau khi đăng tin (Bước 06).
+   *
+   * Giữ lại vì đây là nguồn dữ liệu thật duy nhất về những gì hệ thống đã quyết
+   * định — nổi bật là `brandSegment`: phân khúc thương hiệu do BACKEND suy ra,
+   * quyết định có bắt buộc hóa đơn hay không. Người bán cần thấy giá trị này
+   * để biết vì sao hồ sơ của họ bị áp quy tắc hóa đơn.
+   */
+  const [createdResult, setCreatedResult] = useState<CreateListingResult | null>(null);
   const { userId } = useCurrentUser();
 
   /** Gom dữ liệu Bước 01 + ảnh Bước 02 thành body đúng schema backend. */
@@ -179,8 +194,31 @@ export const ListingCreatePage: React.FC = () => {
       condition,
     });
 
+  /**
+   * Bước 02 chỉ thu thập ảnh, CHƯA đăng tin. Kiểm tra đủ 4 góc ở đây để chặn
+   * sớm — nếu đợi tới Bước 06 mới báo, người bán đã đi qua 3 bước kiểm định
+   * rồi mới biết là thiếu ảnh.
+   *
+   * Trả về thông báo lỗi, hoặc `null` khi đã đủ góc ảnh bắt buộc.
+   */
+  const buildMissingAnglesMessage = (): string | null => {
+    const missing = findMissingAngles(capturedPhotos);
+
+    if (missing.length === 0) return null;
+
+    return (
+      `Còn ${missing.length} góc ảnh chưa chụp: ${missing.join(', ')}. ` +
+      'Vui lòng chụp đủ trước khi tiếp tục.'
+    );
+  };
+
+  /**
+   * Đăng tin ở Bước 06, sau khi đã qua kiểm tra ảnh (03), xác thực AI (04) và
+   * kết quả thẩm định (05). Bước 01 + 02 chỉ thu thập dữ liệu, không gọi API.
+   * Trạng thái hiển thị: đang gửi / thành công / lỗi.
+   */
   const handleCreateListing = async () => {
-    if (isSubmitting) return;
+    if (isSubmitting || createdListingId) return;
 
     /*
      * `userId` lấy từ phiên đăng nhập và phải là GUID hợp lệ (backend nhận
@@ -191,18 +229,23 @@ export const ListingCreatePage: React.FC = () => {
     if (!userId) {
       setSubmitError(
         'Không xác định được mã người dùng (userId) hợp lệ. ' +
-          'Vui lòng đăng xuất rồi đăng nhập lại trước khi tạo tin đăng.',
+          'Vui lòng đăng xuất rồi đăng nhập lại trước khi đăng tin.',
       );
       return;
     }
 
-    // Backend yêu cầu đủ 4 góc, thiếu sẽ trả lỗi `missingAngles`. Chặn trước
-    // ở giao diện để không mất dữ liệu đã nhập vì một request thất bại.
-    const missing = findMissingAngles(capturedPhotos);
-    if (missing.length > 0) {
+    // Chốt chặn cuối: backend trả 400 kèm `missingAngles` nếu thiếu góc nào.
+    const missingAnglesMessage = buildMissingAnglesMessage();
+    if (missingAnglesMessage) {
+      setSubmitError(missingAnglesMessage);
+      return;
+    }
+
+    // Hồ sơ bị Bước 05 từ chối thì không được đăng, dù UI đã khoá nút.
+    if (!canPublishResult) {
       setSubmitError(
-        `Còn ${missing.length} góc ảnh chưa chụp: ${missing.join(', ')}. ` +
-          'Vui lòng chụp đủ trước khi tiếp tục.',
+        'Hồ sơ không đạt điều kiện thẩm định nên chưa thể đăng tin. ' +
+          'Vui lòng xem lại kết quả ở Bước 05.',
       );
       return;
     }
@@ -212,9 +255,17 @@ export const ListingCreatePage: React.FC = () => {
 
     try {
       const response = await listingApi.createListing(userId, buildCurrentPayload());
-      const data = response?.data;
+      /*
+       * KHÔNG lấy `.data`: interceptor của axiosClient đã `response => response.data`
+       * nên giá trị await được CHÍNH LÀ body rồi, và backend trả thẳng DTO
+       * (không bọc `{success, data}`). Trước đây dùng `response?.data` khiến
+       * `listingId` luôn undefined — sau khi đăng xong không hiện mã tin và nút
+       * vẫn bấm được lần nữa (đăng trùng).
+       */
+      const data = response ?? null;
       const listingId = data?.listingId ?? null;
 
+      setCreatedResult(data);
       setCreatedListingId(listingId);
 
       /*
@@ -239,14 +290,69 @@ export const ListingCreatePage: React.FC = () => {
         });
       }
     } catch (err) {
-      setSubmitError(
-        err instanceof Error
-          ? err.message
-          : 'Không tạo được tin đăng. Vui lòng thử lại.',
-      );
+      setSubmitError(readApiErrorMessage(err, 'Không đăng được tin. Vui lòng thử lại.'));
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  /**
+   * Góc Bước 03 yêu cầu chụp lại. Bước 02 đọc giá trị này để mở đúng góc cần
+   * bổ sung, thay vì bắt người bán tự tìm góc còn thiếu.
+   */
+  const [retakeAngle, setRetakeAngle] = useState<string | undefined>(undefined);
+
+  /**
+   * Kết quả đo chất lượng ảnh thật từ Bước 03. Dùng lại ở Bước 04 để hiện
+   * chỉ số đo được thay vì số liệu bịa đặt.
+   */
+  const photoCheck = usePhotoQualityCheck(capturedPhotos);
+
+  /**
+   * Bước 04 — Xác thực AI & đối soát chính hãng. Gọi song song 3 endpoint
+   * của AiVerificationExample (analyze-photos, verify-and-decide, check-signals).
+   */
+  const aiVerify = useAiVerification(capturedPhotos, productInfo.brand);
+
+  /** Gom chỉ số đo theo `angleType` để truyền xuống Bước 04. */
+  const measuredPhotos = useMemo(() => {
+    const map: Record<
+      string,
+      {
+        isAcceptable: boolean;
+        issues: string[];
+        width: number;
+        height: number;
+        sharpnessScore: number;
+        brightness: number;
+      }
+    > = {};
+
+    photoCheck.result?.results.forEach((item) => {
+      map[item.angleType] = {
+        isAcceptable: item.isAcceptable,
+        issues: item.issues,
+        width: item.width,
+        height: item.height,
+        sharpnessScore: item.sharpnessScore,
+        brightness: item.brightness,
+      };
+    });
+
+    return map;
+  }, [photoCheck.result]);
+
+  /** Bước 04 chỉ mở được khi mọi góc ảnh đều đạt chất lượng. */
+  const photosAllPassed = useMemo(() => {
+    if (!photoCheck.result) return false;
+    return photoCheck.result.isAcceptable && photoCheck.result.missingAngles.length === 0;
+  }, [photoCheck.result]);
+
+  /** Quay lại Bước 02 để chụp lại một góc cụ thể từ Bước 03. */
+  const handleRetakePhoto = (angleType: string) => {
+    setRetakeAngle(angleType);
+    setSubmitError(null);
+    setStepIndex(1);
   };
 
   const handleNext = () => {
@@ -255,9 +361,41 @@ export const ListingCreatePage: React.FC = () => {
       return;
     }
 
-    // Bước 02 đủ dữ liệu để tạo hồ sơ trên backend trước khi sang Bước 03.
+    /*
+     * Bước 02 chỉ thu thập ảnh — chưa đăng tin. Chỉ chặn nếu thiếu góc bắt buộc
+     * rồi mới sang Bước 03, không gọi API ở đây.
+     */
     if (stepIndex === 1) {
+      const missingAnglesMessage = buildMissingAnglesMessage();
+      if (missingAnglesMessage) {
+        setSubmitError(missingAnglesMessage);
+        return;
+      }
+    }
+
+    // Bước 04 chỉ mở khi mọi góc ảnh đã đo và đều đạt chất lượng — đây là
+    // điều kiện tiên quyết để sang bước xác thực AI.
+    if (stepIndex === 3 && !photosAllPassed) {
+      setSubmitError(
+        'Ảnh chưa đạt chất lượng kiểm định. ' +
+          'Vui lòng quay lại Bước 02 chụp lại góc ảnh được báo lỗi.',
+      );
+      return;
+    }
+
+    // Bước 06 là bước DUY NHẤT được phép gọi API đăng tin.
+    if (stepIndex === LISTING_STEPS.length - 1) {
       void handleCreateListing();
+      return;
+    }
+
+    // Bước 05 cần hồ sơ đạt điều kiện thẩm định mới sang được Bước 06.
+    if (stepIndex === 4 && !canPublishResult) {
+      setSubmitError(
+        'Hồ sơ bị từ chối tự động nên chưa thể đăng tin. ' +
+          'Vui lòng xem lại kết quả thẩm định ở Bước 05.',
+      );
+      return;
     }
 
     setStepIndex((prev) => Math.min(prev + 1, LISTING_STEPS.length - 1));
@@ -308,21 +446,53 @@ export const ListingCreatePage: React.FC = () => {
         )}
 
         {stepIndex === 1 ? (
-          <ListingCaptureStep onPhotosChange={setCapturedPhotos} />
+          <ListingCaptureStep
+            onPhotosChange={setCapturedPhotos}
+            initialAngleType={retakeAngle}
+          />
         ) : stepIndex === 2 ? (
-          <ListingPhotoReviewStep photos={capturedPhotos} />
+          <ListingPhotoReviewStep
+            photos={capturedPhotos}
+            /* Chỉ truyền những góc server đánh dấu KHÔNG ĐẠT — component dùng
+               danh sách này để tô viền đỏ đúng khung ảnh lỗi. */
+            serverErrors={photoCheck.result?.results
+              .filter((item) => !item.isAcceptable)
+              .map((item) => ({
+                angleType: item.angleType,
+                message: item.issues.join(' · '),
+              }))}
+            /* Chỉ số đo thật (độ nét, độ sáng) để hiển thị cho từng góc. */
+            metrics={photoCheck.result?.results}
+            isChecking={photoCheck.isLoading}
+            checkError={photoCheck.error}
+            recommendation={photoCheck.result?.recommendation}
+            onRetake={handleRetakePhoto}
+          />
         ) : stepIndex === 3 ? (
           <ListingAiVerificationStep
             stepNumber={stepNumber}
             stepTitle={step.title}
             product={{
               image: referencePhoto,
-              name: productInfo.name || undefined,
-              meta: productInfo.pattern ? `${productInfo.pattern} • Made in England` : undefined,
-              price: formatFormPrice(productInfo.price),
-              sku: productInfo.sku ? `SKU: ${productInfo.sku}` : undefined,
+              name: productInfo.name,
+              brand: productInfo.brand,
+              size: productInfo.size,
+              color: productInfo.pattern,
+              price: productInfo.price,
+              sku: productInfo.sku,
             }}
+            photos={capturedPhotos}
+            measuredPhotos={measuredPhotos}
+            analysis={aiVerify.analysis}
+            decision={aiVerify.decision}
+            signals={aiVerify.signals}
+            isVerifying={aiVerify.isLoading}
+            verifyError={aiVerify.error}
+            isChecking={photoCheck.isLoading}
+            checkError={photoCheck.error}
+            recommendation={photoCheck.result?.recommendation}
             onCancel={handleBack}
+            onWaitResult={handleNext}
           />
         ) : stepIndex === 4 ? (
           <ListingAiResultStep
@@ -348,6 +518,8 @@ export const ListingCreatePage: React.FC = () => {
             price={productInfo.price || undefined}
             sku={productInfo.sku || undefined}
             confidence={verifiedScore ?? 94}
+            brandSegment={createdResult?.brandSegment}
+            billPenaltyApplied={createdResult?.missingBillPenaltyApplied ?? false}
           />
         ) : <div className="rw-lc-columns">
           <div className="rw-lc-col-left">
@@ -423,7 +595,7 @@ export const ListingCreatePage: React.FC = () => {
         </div>
       )}
 
-      {/* Trạng thái tạo tin đăng ở Bước 02 */}
+      {/* Trạng thái đăng tin ở Bước 06 */}
       {(isSubmitting || submitError || createdListingId) && (
         <div
           className={`rw-lc-submit-toast${submitError ? ' is-error' : ''}`}
@@ -435,10 +607,10 @@ export const ListingCreatePage: React.FC = () => {
               <button type="button" onClick={() => setSubmitError(null)} aria-label="Đóng cảnh báo">×</button>
             </>
           ) : isSubmitting ? (
-            <span>Đang tạo tin đăng trên hệ thống...</span>
+            <span>Đang đăng tin lên hệ thống...</span>
           ) : (
             <span>
-              Đã tạo tin đăng
+              Đã đăng tin thành công
               {createdListingId ? ` (mã: ${createdListingId})` : ''}.
             </span>
           )}
@@ -458,20 +630,53 @@ export const ListingCreatePage: React.FC = () => {
           }
           nextLabel={
             stepIndex === 4
-              ? 'Phê duyệt và Đăng tin'
+              ? 'Phê duyệt và sang Bước 06'
               : stepIndex === 5
-                ? 'Đăng tin'
-                : undefined
+                ? isSubmitting
+                  ? 'Đang đăng tin...'
+                  : createdListingId
+                    ? 'Đã đăng tin'
+                    : 'Đăng tin ngay'
+                : stepIndex === 2
+                  ? 'Xác thực AI'
+                  : stepIndex === 3
+                    ? 'Xem kết quả thẩm định'
+                    : undefined
           }
-          nextDisabled={stepIndex === 4 && !canPublishResult}
+          nextDisabled={
+            // Bước 03: chưa đo xong hoặc ảnh chưa đạt thì chưa sang Bước 04.
+            (stepIndex === 2 && (!photoCheck.result || !photosAllPassed)) ||
+            // Bước 04: ảnh chưa đạt thì không sang Bước 05.
+            (stepIndex === 3 && !photosAllPassed) ||
+            // Bước 05: bị từ chối thì không sang Bước 06.
+            (stepIndex === 4 && !canPublishResult) ||
+            // Bước 06: khoá khi đang gửi / bị chặn / đã đăng xong.
+            (stepIndex === 5 && (isSubmitting || !canPublishResult || !!createdListingId))
+          }
           note={
-            stepIndex === 4
+            stepIndex === 2
+              ? photoCheck.isLoading
+                ? 'Đang đo chất lượng ảnh...'
+                : photosAllPassed
+                  ? 'Ảnh đã đạt — sẵn sàng chuyển sang xác thực AI'
+                  : 'Cần đủ ảnh đạt chất lượng để sang Bước 04'
+              : stepIndex === 3
+                ? photosAllPassed
+                  ? 'Bằng chứng ảnh hợp lệ — sẵn sàng xem kết quả thẩm định'
+                  : 'Bằng chứng ảnh chưa đạt — quay lại Bước 02 để chụp lại'
+                : stepIndex === 4
               ? canPublishResult
                 ? 'Kết quả kiểm định đã sẵn sàng để phê duyệt'
                 : 'Hồ sơ bị từ chối tự động — không thể đăng tin'
               : stepIndex === 5
-                ? 'Kiểm tra lần cuối trước khi phát hành tin đăng'
-                : undefined
+                ? createdListingId
+                  ? 'Tin đăng đã được đưa lên chợ ReWear AI'
+                  : canPublishResult
+                    ? 'Đủ điều kiện thẩm định — xác nhận để đăng tin lên chợ'
+                    : 'Hồ sơ chưa đạt điều kiện — không thể đăng tin'
+                : stepIndex === 1
+                  ? 'Bước này chỉ thu thập ảnh — tin đăng được tạo ở Bước 06'
+                  : undefined
           }
           secondaryLabel={
             stepIndex === 4

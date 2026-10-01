@@ -1,280 +1,242 @@
-import React, { useState } from 'react';
+import React, { useMemo } from 'react';
+import { AlertTriangle, CheckCircle2, ImageOff, Loader, X } from 'lucide-react';
+import { LISTING_ANGLES } from '../../features/listing/constants/listingAngles';
 import {
-  AudioWaveform,
-  Bell,
-  Brain,
-  Layers,
-  Loader,
-  Lock,
-  MapPin,
-  ShieldCheck,
-  X,
-  Zap,
-} from 'lucide-react';
-import trenchCoatImage from '../../assets/images/Burberry-Trench-Coat-Folded.png';
+  AiScanResult,
+  SignalCheckResult,
+  VerificationDecision,
+  VerificationThresholds,
+} from '../../types/verification.type';
 import '../../styles/listing/ListingAiVerificationStep.css';
 
 /* ─── Types ─────────────────────────────────────────── */
-export type AiVerificationStageState = 'done' | 'match' | 'processing' | 'pending';
 
-export interface AiVerificationStage {
-  /** Số thứ tự hiển thị trong ô vuông, ví dụ "01" */
-  id: string;
-  title: string;
-  detail: string;
-  state: AiVerificationStageState;
-  /** Nhãn trạng thái bên phải, ví dụ "Đã đạt (0.4s)" */
-  result: string;
-}
+/** Trạng thái một góc ảnh, tính từ kết quả đo thật của Bước 03. */
+export type AngleQualityState = 'ok' | 'warn' | 'missing' | 'checking';
 
-export type EvidenceAngleState = 'pass' | 'match' | 'scanning' | 'pending';
-
-export interface AiVerificationEvidenceAngle {
-  id: string;
+export interface AngleQuality {
+  angleType: string;
+  number: string;
   label: string;
-  state: EvidenceAngleState;
+  image?: string;
+  state: AngleQualityState;
+  /** Nhãn ngắn bên phải, ví dụ "Đạt" / "Cần chụp lại". */
   result: string;
+  /** Chi tiết đo được, hiện dưới nhãn. */
+  detail?: string;
 }
 
-export interface AiVerificationMetric {
+export interface VerificationMetric {
   label: string;
   value: string;
-  /** Bôi xanh giá trị (dùng cho chỉ số độ trễ) */
-  accent?: boolean;
 }
 
 export interface AiVerificationProduct {
   image?: string;
-  tier?: string;
   name?: string;
-  meta?: string;
+  brand?: string;
+  size?: string;
+  color?: string;
   price?: string;
   sku?: string;
 }
 
-interface MicroTextureBar {
+/** Chỉ số đo được trên ảnh, lấy từ `ImageQualityResultDto` của backend. */
+interface MeasuredImage {
+  isAcceptable: boolean;
+  issues: string[];
+  width: number;
   height: number;
-  tone: 'dark' | 'light' | 'empty';
+  sharpnessScore: number;
+  brightness: number;
 }
 
-/* ─── Dữ liệu mặc định ───────────────────────────────── */
-export const AI_VERIFICATION_STAGES: AiVerificationStage[] = [
-  {
-    id: '01',
-    title: 'Giai đoạn 01: Chuẩn hoá & Cân bằng độ mầu ảnh (5410K)',
-    detail: 'Hiệu chỉnh độ bão hoà, chuẩn hoá màu trên không gian màu đối chiếu chuẩn.',
-    state: 'done',
-    result: 'Đã đạt (0.4s)',
-  },
-  {
-    id: '02',
-    title: 'Giai đoạn 02: Đối soát tem hãng định Burberry và mẫu chuẩn 1990–1998',
-    detail: 'Phù hợp phôi chi tiết khoá các ký tự sườn và chỉ đỏ cổ điển.',
-    state: 'match',
-    result: 'Khớp 99.2% (0.9s)',
-  },
-  {
-    id: '03',
-    title: 'Giai đoạn 03: Đánh giá độ căng chỉ ve áo (8.8 SPI) & Độ mòn tự nhiên',
-    detail: 'Phát hiện 8.6 mũi khâu/inch (Chuẩn trung bình UK: 8.5 – 9.0 SPI). Đang đối soát vi cấu trúc vải.',
-    state: 'processing',
-    result: 'Đang xử lý (76%)',
-  },
-  {
-    id: '04',
-    title: 'Giai đoạn 04: Tổng hợp điểm tin cậy & Phân loại cấp tình trạng',
-    detail: 'Xác định phân loại Excellent/Great và tạo hồ sơ sản phẩm.',
-    state: 'pending',
-    result: 'Chờ xử lý',
-  },
-  {
-    id: '05',
-    title: 'Giai đoạn 05: Đóng gói hồ sơ bằng chứng số & Cấp mã token bằng chứng',
-    detail: 'Mã hoá cryptographic hash chứng nhận lưu ký Smart-Escrow.',
-    state: 'pending',
-    result: 'Chờ xử lý',
-  },
-];
+/* ─── Helpers ───────────────────────────────────────── */
 
-export const AI_VERIFICATION_ANGLES: AiVerificationEvidenceAngle[] = [
-  { id: '01', label: 'Phom dáng toàn thân', state: 'pass', result: 'Đạt' },
-  { id: '02', label: 'Nhãn mác cổ áo (Tag)', state: 'match', result: 'Khớp 99.2%' },
-  { id: '03', label: 'Ve áo & Mũi may chỉ', state: 'scanning', result: 'Đang quét' },
-  { id: '04', label: 'Cúc áo & Khóa kim loại', state: 'pending', result: 'Chờ quét' },
-  { id: '05', label: 'Sợi chỉ chéo Gabardine', state: 'pending', result: 'Chờ quét' },
-];
-
-export const AI_VERIFICATION_METRICS: AiVerificationMetric[] = [
-  { label: 'MẠNG NÔ-RON', value: 'ResNet-152 + SwinV2' },
-  { label: 'ĐỘ TRỄ PHẢN HỒI', value: '~148ms (Region APAC)', accent: true },
-];
-
-/** Tín hiệu vi cấu trúc: các cột đậm là đỉnh đồng pha, cột nhạt là nền nhiễu. */
-const MICRO_TEXTURE_BARS: MicroTextureBar[] = [
-  { height: 54, tone: 'dark' },
-  { height: 88, tone: 'dark' },
-  { height: 20, tone: 'light' },
-  { height: 34, tone: 'light' },
-  { height: 66, tone: 'dark' },
-  { height: 100, tone: 'dark' },
-  { height: 26, tone: 'light' },
-  { height: 0, tone: 'empty' },
-  { height: 72, tone: 'dark' },
-  { height: 96, tone: 'dark' },
-  { height: 38, tone: 'light' },
-  { height: 62, tone: 'dark' },
-  { height: 30, tone: 'light' },
-  { height: 0, tone: 'empty' },
-  { height: 78, tone: 'dark' },
-  { height: 100, tone: 'dark' },
-  { height: 28, tone: 'light' },
-  { height: 44, tone: 'light' },
-  { height: 68, tone: 'dark' },
-  { height: 92, tone: 'dark' },
-  { height: 24, tone: 'light' },
-  { height: 0, tone: 'empty' },
-];
-
-const MICRO_TEXTURE_AXIS = [
-  '0 mm (Mắt lưới)',
-  '120 µm (Vết chéo chỉ)',
-  '250 µm (Khớp mật độ mẫu lưu kho)',
-];
-
-const PRODUCT_DEFAULT: Required<AiVerificationProduct> = {
-  image: trenchCoatImage,
-  tier: 'Vintage Tier A',
-  name: 'Burberrys Trench Coat',
-  meta: 'Màu lông Beige • Made in England',
-  price: '8.500.000 đ',
-  sku: 'SKU: RW-VN-942B',
+/** Nhãn tiếng Việt cho quyết định của `verify-and-decide`. */
+const DECISION_LABEL: Record<string, { text: string; cls: string }> = {
+  APPROVED: { text: 'Đạt — được đăng tin', cls: 'pass' },
+  REVIEW_NEEDED: { text: 'Cần Admin xem xét', cls: 'match' },
+  REJECTED: { text: 'Không đạt — bị từ chối', cls: 'fail' },
 };
+
+/** Chuyển `GRADE_A_EXCELLENT` thành `A / Xuất sắc` cho dễ đọc. */
+const CONDITION_LABEL: Record<string, string> = {
+  GRADE_S_LIKE_NEW: 'S — Như mới',
+  GRADE_A_EXCELLENT: 'A — Xuất sắc',
+  GRADE_B_GOOD: 'B — Tốt',
+  GRADE_C_FAIR: 'C — Chấp nhận được',
+};
+
+const angleChipClass = (state: AngleQualityState) =>
+  state === 'ok' ? 'pass' : state === 'warn' ? 'match' : '';
 
 /**
- * Gộp dữ liệu sản phẩm thật vào giá trị mặc định.
- * Bỏ qua các trường rỗng/undefined để ảnh và thông tin mặc định không bị ghi đè (tránh ảnh vỡ).
+ * Quy đổi điểm độ nét của backend sang nhãn dễ hiểu.
+ *
+ * Đây là ngưỡng HIỂN THỊ, không phải kết luận AI: điểm Laplacian variance phụ
+ * thuộc cả nội dung ảnh nên cùng một sản phẩm có thể cho điểm khác nhau. Vì vậy
+ * phần quyết định đạt/không đạt vẫn lấy từ `isAcceptable` mà backend tính sẵn.
  */
-const withProductDefaults = (product?: AiVerificationProduct): Required<AiVerificationProduct> => {
-  const merged: Required<AiVerificationProduct> = { ...PRODUCT_DEFAULT };
-  if (!product) return merged;
-  if (product.image) merged.image = product.image;
-  if (product.tier) merged.tier = product.tier;
-  if (product.name) merged.name = product.name;
-  if (product.meta) merged.meta = product.meta;
-  if (product.price) merged.price = product.price;
-  if (product.sku) merged.sku = product.sku;
-  return merged;
+const describeSharpness = (score: number): string => {
+  if (!Number.isFinite(score) || score <= 0) return 'Chưa đo được độ nét';
+  if (score < 30) return 'Độ nét thấp';
+  if (score < 80) return 'Độ nét khá';
+  return 'Độ nét tốt';
 };
 
-/* ─── Props ─────────────────────────────────────────── */
+const describeBrightness = (value: number): string => {
+  if (!Number.isFinite(value)) return '';
+  if (value < 40) return 'Ảnh tối';
+  if (value > 215) return 'Ảnh quá sáng';
+  return 'Ánh sáng phù hợp';
+};
+
+/* ─── Component ─────────────────────────────────────── */
 export interface ListingAiVerificationStepProps {
   /** Số bước đã pad, ví dụ "04" */
   stepNumber?: string;
   stepTitle?: string;
   description?: string;
-  /** Nhãn phiên bản lõi thị giác ở dải trạng thái */
-  coreLabel?: string;
-  pipelineLabel?: string;
-  metrics?: AiVerificationMetric[];
-  /** Phần trăm tiến độ suy luận, 0 – 100 */
-  progress?: number;
-  etaLabel?: string;
-  tokensUsed?: number;
-  tokensTotal?: number;
-  activeStageEyebrow?: string;
-  activeStageStep?: string;
-  activeStageTitle?: string;
-  activeStageSuffix?: string;
-  stages?: AiVerificationStage[];
-  tipTitle?: string;
-  tipDescription?: string;
-  signalCoherence?: string;
+  /** Sản phẩm người bán nhập ở Bước 01. */
   product?: AiVerificationProduct;
-  angles?: AiVerificationEvidenceAngle[];
-  anglesSummary?: string;
-  escrowTitle?: string;
-  escrowDescription?: string;
-  escrowNote?: string;
-  sessionHash?: string;
+  /** Ảnh đã chụp ở Bước 02: `angleType` → data URL. */
+  photos?: Record<string, string>;
+  /** Kết quả đo thật từ Bước 03, gom theo `angleType`. */
+  measuredPhotos?: Record<string, MeasuredImage>;
+  /** Đang gọi endpoint kiểm tra ảnh. */
+  isChecking?: boolean;
+  /** Thông điệp lỗi khi gọi endpoint thất bại. */
+  checkError?: string | null;
+  /** `recommendation` của backend, dùng nguyên văn. */
+  recommendation?: string;
+  thresholds?: VerificationThresholds;
+  /** Kết quả `analyze-photos`: điểm chính hãng + điểm thành phần. */
+  analysis?: AiScanResult | null;
+  /** Kết quả `verify-and-decide`: APPROVED / REVIEW_NEEDED / REJECTED. */
+  decision?: VerificationDecision | null;
+  /** Kết quả `check-signals`: bảng đối chiếu tín hiệu. */
+  signals?: SignalCheckResult | null;
+  /** Đang gọi 3 endpoint của Bước 04. */
+  isVerifying?: boolean;
+  /** Lỗi khi gọi endpoint Bước 04. */
+  verifyError?: string | null;
   onCancel?: () => void;
-  onRunInBackground?: () => void;
   onWaitResult?: () => void;
-  quotaExhausted?: boolean;
 }
 
-const stageChipClass = (state: AiVerificationStageState) =>
-  state === 'done' ? 'done' : state === 'match' ? 'match' : state === 'processing' ? 'processing' : '';
-
-const angleChipClass = (state: EvidenceAngleState) =>
-  state === 'pass' ? 'pass' : state === 'match' ? 'match' : state === 'scanning' ? 'scanning' : '';
-
-/* ─── Component ─────────────────────────────────────── */
 export const ListingAiVerificationStep: React.FC<ListingAiVerificationStepProps> = ({
   stepNumber = '04',
   stepTitle = 'Xác thực AI & Đối soát chính hãng',
-  description = 'Mô hình kiểm định ReWear Vision đối soát 5 góc ảnh đã chụp với hơn 42.000 mẫu trang phục xa xỉ trong kho dữ liệu lưu trữ.',
-  coreLabel = 'VISION CORE V4.8',
-  pipelineLabel = 'Pipeline #VR-9428-HK',
-  metrics = AI_VERIFICATION_METRICS,
-  progress = 76,
-  etaLabel = '~2.1 giây',
-  tokensUsed = 1840,
-  tokensTotal = 2420,
-  activeStageEyebrow = 'Đang thẩm định',
-  activeStageStep = 'Giai đoạn 3/5:',
-  activeStageTitle = 'Phân tích mật độ mũi may ve áo & vị sợi Gabardine',
-  activeStageSuffix = '(Đang quét ...)',
-  stages = AI_VERIFICATION_STAGES,
-  tipTitle = 'Gợi ý dành cho người bán',
-  tipDescription = 'Quá trình phân tích trên hoàn toàn tự động. Bạn có thể chuyển tab hoặc làm việc khác, hệ thống sẽ gửi thông báo đẩy và email ngay khi hồ sơ kiểm định hoàn tất.',
-  signalCoherence = 'Tín hiệu đồng pha: 98.4%',
+  description = 'Hệ thống chuẩn bị hồ sơ bằng chứng để đối chiếu. Mọi chỉ số dưới đây đều đo trực tiếp từ ảnh bạn đã chụp.',
   product,
-  angles = AI_VERIFICATION_ANGLES,
-  anglesSummary = '2/5 Đạt',
-  escrowTitle = 'Cơ chế Smart-Escrow bảo vệ giao dịch',
-  escrowDescription = 'Nếu chỉ số thẩm định AI đạt dưới 80%, tin đăng sẽ tạm dừng và chuyển tiếp tới Hội đồng Giám định Chuyên gia uy tín ReWear Lab. Người bán được bù đắp thêm và nhận thanh toán hoàn toàn khi tình trạng vi phạm.',
-  escrowNote = 'Bảo vệ quyền lợi nhà sáng tạo & người bán uy tín',
-  sessionHash = 'SESSION SHA256: 81927a3...c9f9 • REWEAR PROTOCOL',
+  photos = {},
+  measuredPhotos = {},
+  isChecking = false,
+  checkError = null,
+  recommendation,
+  thresholds,
+  analysis = null,
+  decision = null,
+  signals = null,
+  isVerifying = false,
+  verifyError = null,
   onCancel,
-  onRunInBackground,
   onWaitResult,
-  quotaExhausted = tokensUsed >= tokensTotal,
 }) => {
-  const [backgroundRun, setBackgroundRun] = useState(false);
-  const [showQuotaModal, setShowQuotaModal] = useState(quotaExhausted);
-  const productData: Required<AiVerificationProduct> = withProductDefaults(product);
-  const safeProgress = Math.min(100, Math.max(0, progress));
+  const angles = useMemo<AngleQuality[]>(
+    () =>
+      LISTING_ANGLES.map((angle) => {
+        const image = photos[angle.angleType];
+        const measured = measuredPhotos[angle.angleType];
 
-  const handleRunInBackground = () => {
-    if (quotaExhausted) {
-      setShowQuotaModal(true);
-      return;
-    }
-    setBackgroundRun(true);
-    onRunInBackground?.();
-  };
+        if (!image) {
+          return {
+            angleType: angle.angleType,
+            number: angle.number,
+            label: angle.title,
+            state: 'missing' as const,
+            result: 'Chưa chụp',
+            detail: 'Cần ảnh cho góc này để đối chiếu.',
+          };
+        }
 
-  const handleWaitResult = () => {
-    if (quotaExhausted) {
-      setShowQuotaModal(true);
-      return;
+        if (isChecking || !measured) {
+          return {
+            angleType: angle.angleType,
+            number: angle.number,
+            label: angle.title,
+            image,
+            state: 'checking' as const,
+            result: isChecking ? 'Đang đo' : 'Chưa có kết quả',
+            detail: isChecking ? undefined : 'Chưa nhận được chỉ số đo cho ảnh này.',
+          };
+        }
+
+        const facts = [
+          `${measured.width}×${measured.height} px`,
+          describeSharpness(measured.sharpnessScore),
+          describeBrightness(measured.brightness),
+        ].filter(Boolean);
+
+        return {
+          angleType: angle.angleType,
+          number: angle.number,
+          label: angle.title,
+          image,
+          state: (measured.isAcceptable ? 'ok' : 'warn') as AngleQualityState,
+          result: measured.isAcceptable ? 'Đạt' : 'Cần chụp lại',
+          detail: measured.issues.length > 0 ? measured.issues.join(' · ') : facts.join(' · '),
+        };
+      }),
+    [photos, measuredPhotos, isChecking],
+  );
+
+  const okCount = angles.filter((angle) => angle.state === 'ok').length;
+  const warnCount = angles.filter((angle) => angle.state === 'warn').length;
+  const missingCount = angles.filter((angle) => angle.state === 'missing').length;
+  const total = angles.length;
+  const percent = total > 0 ? Math.round((okCount / total) * 100) : 0;
+  const isReady = okCount === total && total > 0;
+
+  /** Chỉ số tóm tắt — tất cả suy ra từ dữ liệu đo, không có số bịa đặt. */
+  const metrics = useMemo<VerificationMetric[]>(() => {
+    const items: VerificationMetric[] = [
+      { label: 'GÓC ẢNH ĐẠT', value: `${okCount}/${total}` },
+    ];
+
+    if (isChecking) items.push({ label: 'TRẠNG THÁI', value: 'Đang đo ảnh' });
+
+    // Điểm do AI chấm ở Bước 04 (analyze-photos) — số thật từ server.
+    if (isVerifying && !analysis) {
+      items.push({ label: 'AI', value: 'Đang xác thực…' });
+    } else if (analysis) {
+      items.push({ label: 'ĐIỂM CHÍNH HÃNG', value: `${analysis.rawScore.toFixed(1)}/100` });
+      items.push({ label: 'MÁC / NHÃN', value: `${Math.round(analysis.tagLegitScore)}/100` });
+      items.push({ label: 'ĐƯỜNG MAY', value: `${Math.round(analysis.stitchingScore)}/100` });
+      items.push({
+        label: 'TÌNH TRẠNG',
+        value: CONDITION_LABEL[analysis.conditionGrade] ?? analysis.conditionGrade,
+      });
     }
-    onWaitResult?.();
-  };
+
+    if (signals) {
+      items.push({
+        label: 'TÍN HIỆU',
+        value: `${signals.passedSignals}/${signals.totalSignals} đạt`,
+      });
+    }
+
+    if (thresholds) {
+      items.push({ label: 'NGƯỠNG ĐĂNG TIN', value: `${thresholds.autoPublishThreshold}%` });
+    }
+
+    return items;
+  }, [okCount, total, isChecking, thresholds, analysis, signals, isVerifying]);
 
   return (
     <>
-      <section className="rw-lc-ai" aria-label="Xác thực AI & Đối soát chính hãng">
-        {/* ── Dải trạng thái hệ thống ── */}
-        <div className="rw-lc-ai-strip">
-          <span className="rw-lc-ai-core">
-            <Zap width={12} height={12} aria-hidden="true" />
-            {coreLabel}
-          </span>
-          <span className="rw-lc-ai-pipeline">{pipelineLabel}</span>
-        </div>
-
-        {/* ── Hero: tiêu đề bước + chỉ số mô hình ── */}
+      <section className="rw-lc-ai" aria-label="Bước 04 xác thực AI và đối soát chính hãng">
         <header className="rw-lc-ai-hero">
           <div className="rw-lc-ai-hero-text">
             <h2 className="rw-lc-ai-hero-title">
@@ -282,181 +244,173 @@ export const ListingAiVerificationStep: React.FC<ListingAiVerificationStepProps>
             </h2>
             <p className="rw-lc-ai-hero-desc">{description}</p>
           </div>
-          <div className="rw-lc-ai-hero-metrics">
-            {metrics.map((metric) => (
-              <div
-                key={metric.label}
-                className={`rw-lc-ai-metric${metric.accent ? ' accent' : ''}`}
-              >
-                <span className="rw-lc-ai-metric-label">{metric.label}</span>
-                <span className="rw-lc-ai-metric-value">{metric.value}</span>
-              </div>
-            ))}
-          </div>
+          {metrics.length > 0 && (
+            <div className="rw-lc-ai-hero-metrics">
+              {metrics.map((metric) => (
+                <div key={metric.label} className="rw-lc-ai-metric">
+                  <span className="rw-lc-ai-metric-label">{metric.label}</span>
+                  <span className="rw-lc-ai-metric-value">{metric.value}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </header>
+
+        {checkError && (
+          <div className="rw-lc-ai-notice" role="alert">
+            <AlertTriangle width={15} height={15} aria-hidden="true" />
+            Không đọc được kết quả kiểm tra ảnh: {checkError}
+          </div>
+        )}
+
+        {verifyError && (
+          <div className="rw-lc-ai-notice" role="alert">
+            <AlertTriangle width={15} height={15} aria-hidden="true" />
+            Không hoàn tất được bước xác thực AI: {verifyError}
+          </div>
+        )}
 
         <div className="rw-lc-ai-columns">
           {/* ══ CỘT TRÁI ══ */}
           <div className="rw-lc-ai-col-main">
-            {/* Thẻ 1: Tiến độ suy luận nơ-ron */}
+            {(decision || isVerifying) && (
+              <article className="rw-lc-ai-card">
+                <div className="rw-lc-ai-card-head">
+                  <h3 className="rw-lc-ai-card-title">
+                    {isVerifying ? (
+                      <Loader width={17} height={17} aria-hidden="true" />
+                    ) : (
+                      <CheckCircle2 width={17} height={17} aria-hidden="true" />
+                    )}
+                    Quyết định đối soát chính hãng
+                  </h3>
+                  {decision && (
+                    <span
+                      className={`rw-lc-ai-stage-chip ${DECISION_LABEL[decision.status]?.cls ?? ''}`}
+                    >
+                      {DECISION_LABEL[decision.status]?.text ?? decision.status}
+                    </span>
+                  )}
+                </div>
+
+                {decision ? (
+                  <>
+                    <p className="rw-lc-ai-decision-reason">{decision.reason}</p>
+                    <p className="rw-lc-ai-decision-recommend">{decision.recommendation}</p>
+                  </>
+                ) : (
+                  <p className="rw-lc-ai-decision-reason">
+                    {isVerifying ? 'Đang gọi máy chủ xác thực…' : 'Chưa nhận được quyết định.'}
+                  </p>
+                )}
+              </article>
+            )}
+
+            {/* Bảng đối chiếu từng tín hiệu — check-signals */}
+            {signals && signals.signals.length > 0 && (
+              <article className="rw-lc-ai-card">
+                <div className="rw-lc-ai-card-head">
+                  <h3 className="rw-lc-ai-card-title">
+                    <CheckCircle2 width={17} height={17} aria-hidden="true" />
+                    Đối chiếu tín hiệu thị giác
+                  </h3>
+                  <span className="rw-lc-ai-card-side">
+                    {signals.passedSignals}/{signals.totalSignals} đạt
+                  </span>
+                </div>
+                <ul className="rw-lc-ai-signals">
+                  {signals.signals.map((signal, index) => (
+                    <li
+                      key={`${signal.signalName}-${index}`}
+                      className={`rw-lc-ai-signal ${signal.isPassed ? 'pass' : 'fail'}`}
+                    >
+                      <span className="rw-lc-ai-signal-name">{signal.signalName}</span>
+                      <span className="rw-lc-ai-signal-note">{signal.note}</span>
+                      <span className="rw-lc-ai-signal-chip">
+                        {signal.isPassed ? 'Đạt' : 'Trượt'}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </article>
+            )}
+
+            {/* Thẻ 1: Kết quả kiểm tra ảnh */}
             <article className="rw-lc-ai-card">
               <div className="rw-lc-ai-card-head">
                 <h3 className="rw-lc-ai-card-title">
-                  <Brain width={17} height={17} aria-hidden="true" />
-                  Tiến độ suy luận nơ-ron đa tầng
+                  {isChecking ? (
+                    <Loader width={17} height={17} aria-hidden="true" />
+                  ) : (
+                    <CheckCircle2 width={17} height={17} aria-hidden="true" />
+                  )}
+                  Kết quả kiểm tra bằng chứng ảnh
                 </h3>
                 <span className="rw-lc-ai-card-side">
-                  Ước tính còn lại <b>{etaLabel}</b>
+                  {isChecking ? 'Đang đo…' : `${okCount}/${total} góc đạt`}
                 </span>
               </div>
 
               <div className="rw-lc-ai-progress-top">
-                <strong className="rw-lc-ai-pct">{safeProgress}%</strong>
+                <strong className="rw-lc-ai-pct">{percent}%</strong>
                 <span className="rw-lc-ai-tokens">
-                  {tokensUsed.toLocaleString('en-US')} / {tokensTotal.toLocaleString('en-US')} TOKENS
+                  {isChecking
+                    ? 'Đang kiểm tra ảnh'
+                    : warnCount === 0 && missingCount === 0
+                      ? 'Tất cả ảnh đạt yêu cầu'
+                      : [
+                          warnCount > 0 ? `${warnCount} góc cần chụp lại` : '',
+                          missingCount > 0 ? `${missingCount} góc chưa chụp` : '',
+                        ]
+                          .filter(Boolean)
+                          .join(' • ')}
                 </span>
               </div>
-              <div className="rw-lc-ai-bar-track" role="progressbar" aria-valuenow={safeProgress} aria-valuemin={0} aria-valuemax={100}>
-                <span className="rw-lc-ai-bar-fill" style={{ width: `${safeProgress}%` }} />
+              <div
+                className="rw-lc-ai-bar-track"
+                role="progressbar"
+                aria-valuenow={percent}
+                aria-valuemin={0}
+                aria-valuemax={100}
+              >
+                <span className="rw-lc-ai-bar-fill" style={{ width: `${percent}%` }} />
               </div>
 
-              <div className="rw-lc-ai-stage-panel">
-                <span className="rw-lc-ai-stage-spin" aria-hidden="true">
-                  <Loader width={17} height={17} />
-                </span>
-                <div className="rw-lc-ai-stage-panel-text">
-                  <span className="rw-lc-ai-stage-eyebrow">{activeStageEyebrow}</span>
-                  <p className="rw-lc-ai-stage-panel-desc">
-                    {activeStageStep} <b>{activeStageTitle}</b> {activeStageSuffix}
-                  </p>
-                </div>
-                <span className="rw-lc-ai-live">
-                  <span className="rw-lc-ai-live-dot" aria-hidden="true" />
-                  Live Sensor Active
-                </span>
-              </div>
-            </article>
-
-            {/* Thẻ 2: Quy trình kiểm định 5 giai đoạn */}
-            <article className="rw-lc-ai-card">
-              <div className="rw-lc-ai-card-head">
-                <h3 className="rw-lc-ai-card-title">
-                  <Layers width={17} height={17} aria-hidden="true" />
-                  Quy trình kiểm định 5 giai đoạn liên hoàn
-                </h3>
-                <span className="rw-lc-ai-card-side">Giao thức ReWear Standard v2.1</span>
-              </div>
-
-              <div className="rw-lc-ai-stages" role="list">
-                {stages.map((stage) => (
-                  <div
-                    key={stage.id}
-                    role="listitem"
-                    className={`rw-lc-ai-stage${stage.state === 'processing' ? ' is-active' : ''}`}
-                  >
-                    <span className={`rw-lc-ai-stage-idx${stage.state === 'processing' ? ' rw-lc-ai-stage-spin' : ''}`}>
-                      {stage.state === 'processing' ? <Loader width={15} height={15} /> : stage.id}
-                    </span>
-                    <div className="rw-lc-ai-stage-text">
-                      <div className="rw-lc-ai-stage-title">{stage.title}</div>
-                      <div className="rw-lc-ai-stage-detail">{stage.detail}</div>
-                    </div>
-                    <span className={`rw-lc-ai-stage-chip ${stageChipClass(stage.state)}`.trim()}>
-                      {stage.result}
-                    </span>
+              {recommendation && !isChecking && (
+                <div className="rw-lc-ai-stage-panel">
+                  <div className="rw-lc-ai-stage-panel-text">
+                    <span className="rw-lc-ai-stage-eyebrow">HƯỚNG DẪN</span>
+                    <p className="rw-lc-ai-stage-panel-desc">{recommendation}</p>
                   </div>
-                ))}
-              </div>
+                </div>
+              )}
             </article>
-
-            {/* Thẻ 3: Gợi ý dành cho người bán */}
-            <article className="rw-lc-ai-tip">
-              <span className="rw-lc-ai-tip-icon" aria-hidden="true">
-                <MapPin width={16} height={16} />
-              </span>
-              <div className="rw-lc-ai-tip-body">
-                <h3 className="rw-lc-ai-tip-title">{tipTitle}</h3>
-                <p className="rw-lc-ai-tip-desc">{tipDescription}</p>
-              </div>
-            </article>
-
-            {/* Thẻ 4: Biểu đồ đối sánh vi cấu trúc */}
+            {/* Thẻ 2: Chỉ số từng góc ảnh */}
             <article className="rw-lc-ai-card">
               <div className="rw-lc-ai-card-head">
-                <h3 className="rw-lc-ai-card-title">
-                  <AudioWaveform width={17} height={17} aria-hidden="true" />
-                  Biểu đồ đối sánh vi cấu trúc (Micro-Texture Signal)
-                </h3>
-                <span className="rw-lc-ai-card-side">{signalCoherence}</span>
+                <h3 className="rw-lc-ai-card-title">Chỉ số từng góc ảnh</h3>
+                <span className="rw-lc-ai-card-side">Đo trực tiếp trên ảnh của bạn</span>
               </div>
 
-              <div className="rw-lc-ai-chart" aria-hidden="true">
-                {MICRO_TEXTURE_BARS.map((bar, index) => (
-                  <span
-                    key={`${bar.tone}-${index}`}
-                    className={`rw-lc-ai-chart-bar ${bar.tone}`}
-                    style={{ height: `${bar.height}%` }}
-                  />
-                ))}
-              </div>
-              <div className="rw-lc-ai-chart-axis">
-                {MICRO_TEXTURE_AXIS.map((label) => (
-                  <span key={label}>{label}</span>
-                ))}
-              </div>
-            </article>
-          </div>
-
-          {/* ══ CỘT PHẢI ══ */}
-          <aside className="rw-lc-ai-col-side">
-            {/* Sản phẩm đang thẩm định */}
-            <article className="rw-lc-ai-card">
-              <div className="rw-lc-ai-product-head">
-                <span className="rw-lc-ai-product-label">Sản phẩm đang thẩm định</span>
-                <span className="rw-lc-ai-tier">{productData.tier}</span>
-              </div>
-              <div className="rw-lc-ai-product">
-                <div className="rw-lc-ai-product-media">
-                  <img
-                    src={productData.image}
-                    alt={productData.name}
-                    loading="lazy"
-                    onError={(event) => {
-                      const target = event.currentTarget;
-                      if (target.dataset.fallbackApplied === 'true') return;
-                      target.dataset.fallbackApplied = 'true';
-                      target.src = trenchCoatImage;
-                    }}
-                  />
-                </div>
-                <div>
-                  <div className="rw-lc-ai-product-name">{productData.name}</div>
-                  <div className="rw-lc-ai-product-meta">{productData.meta}</div>
-                  <div className="rw-lc-ai-product-price">{productData.price}</div>
-                  <div className="rw-lc-ai-product-sku">{productData.sku}</div>
-                </div>
-              </div>
-            </article>
-
-            {/* Trạng thái 5 góc bằng chứng nộp */}
-            <article className="rw-lc-ai-card">
-              <div className="rw-lc-ai-card-head">
-                <h3 className="rw-lc-ai-card-title">Trạng thái 5 góc bằng chứng nộp</h3>
-                <span className="rw-lc-ai-stage-chip done">{anglesSummary}</span>
-              </div>
               <div className="rw-lc-ai-angles" role="list">
                 {angles.map((angle) => (
                   <div
-                    key={angle.id}
+                    key={angle.angleType}
                     role="listitem"
-                    className={`rw-lc-ai-angle${angle.state === 'scanning' ? ' is-scanning' : ''}`}
+                    className={`rw-lc-ai-angle${angle.state === 'checking' ? ' is-scanning' : ''}`}
                   >
                     <span className="rw-lc-ai-angle-label">
-                      <i>{angle.id}.</i>
+                      <i>{angle.number}.</i>
                       {angle.label}
+                      {angle.detail && <em className="rw-lc-ai-angle-detail">{angle.detail}</em>}
                     </span>
                     <span className={`rw-lc-ai-angle-chip ${angleChipClass(angle.state)}`.trim()}>
-                      {angle.state === 'scanning' && <Loader width={12} height={12} aria-hidden="true" />}
+                      {angle.state === 'checking' && (
+                        <Loader width={12} height={12} aria-hidden="true" />
+                      )}
+                      {angle.state === 'missing' && (
+                        <ImageOff width={12} height={12} aria-hidden="true" />
+                      )}
                       {angle.result}
                     </span>
                   </div>
@@ -464,83 +418,116 @@ export const ListingAiVerificationStep: React.FC<ListingAiVerificationStepProps>
               </div>
             </article>
 
-            {/* Cơ chế Smart-Escrow */}
-            <article className="rw-lc-ai-card">
-              <span className="rw-lc-ai-escrow-chip">
-                <ShieldCheck width={12} height={12} aria-hidden="true" />
-                Smart-Escrow
-              </span>
-              <h3 className="rw-lc-ai-escrow-title">{escrowTitle}</h3>
-              <p className="rw-lc-ai-escrow-desc">{escrowDescription}</p>
-              <p className="rw-lc-ai-escrow-note">
-                <Lock width={14} height={14} aria-hidden="true" />
-                {escrowNote}
+            {/* Thẻ 3: Điều kiện qua bước */}
+            <article className="rw-lc-ai-tip">
+              <div className="rw-lc-ai-tip-head">
+                <span className="rw-lc-ai-tip-icon" aria-hidden="true">
+                  <CheckCircle2 width={16} height={16} />
+                </span>
+                <span className="rw-lc-ai-tip-title">Điều kiện qua bước này</span>
+              </div>
+              <p className="rw-lc-ai-tip-desc">
+                {isChecking
+                  ? 'Đang đo chất lượng ảnh, vui lòng chờ…'
+                  : isReady
+                    ? 'Đủ 4 góc ảnh và mọi ảnh đều đạt chất lượng. Bạn có thể sang Bước 05 để xem kết luận thẩm định.'
+                    : missingCount > 0
+                      ? `Còn ${missingCount} góc ảnh chưa chụp. Vui lòng quay lại Bước 02 để bổ sung trước khi kiểm định.`
+                      : `Có ${warnCount} góc ảnh chưa đạt chất lượng. Nên chụp lại để kết quả kiểm định chính xác hơn.`}
               </p>
-              <p className="rw-lc-ai-escrow-session">{sessionHash}</p>
+            </article>
+          </div>
+          {/* ══ CỘT PHẢI ══ */}
+          <aside className="rw-lc-ai-col-side">
+            {/* Sản phẩm đang thẩm định — dữ liệu người bán nhập ở Bước 01 */}
+            <article className="rw-lc-ai-card">
+              <div className="rw-lc-ai-product-head">
+                <span className="rw-lc-ai-product-label">Sản phẩm đang thẩm định</span>
+              </div>
+              <div className="rw-lc-ai-product">
+                <div className="rw-lc-ai-product-media">
+                  {product?.image ? (
+                    <img src={product.image} alt={product.name ?? 'Ảnh sản phẩm'} loading="lazy" />
+                  ) : (
+                    <span className="rw-lc-review-thumb-empty">
+                      <ImageOff width={22} height={22} aria-hidden="true" />
+                      Chưa có ảnh
+                    </span>
+                  )}
+                </div>
+                <div>
+                  <div className="rw-lc-ai-product-name">
+                    {product?.name?.trim() || 'Chưa nhập tên sản phẩm'}
+                  </div>
+                  <div className="rw-lc-ai-product-meta">
+                    {[product?.brand, product?.size, product?.color]
+                      .filter(Boolean)
+                      .join(' • ') || 'Chưa nhập thông tin'}
+                  </div>
+                  <div className="rw-lc-ai-product-price">
+                    {product?.price?.trim() || 'Chưa nhập giá'}
+                  </div>
+                  <div className="rw-lc-ai-product-sku">
+                    {product?.sku?.trim() || 'Chưa nhập mã sản phẩm'}
+                  </div>
+                </div>
+              </div>
+            </article>
+
+            {/* Trạng thái các góc bằng chứng đã nộp */}
+            <article className="rw-lc-ai-card">
+              <div className="rw-lc-ai-card-head">
+                <h3 className="rw-lc-ai-card-title">
+                  Góc bằng chứng đã nộp ({okCount + warnCount}/{total})
+                </h3>
+                <span className="rw-lc-ai-stage-chip done">
+                  {missingCount === 0 ? 'Đủ góc' : `Thiếu ${missingCount}`}
+                </span>
+              </div>
+              <div className="rw-lc-ai-angles" role="list">
+                {angles.map((angle) => (
+                  <div
+                    key={`sub-${angle.angleType}`}
+                    role="listitem"
+                    className="rw-lc-ai-angle"
+                  >
+                    <span className="rw-lc-ai-angle-label">
+                      <i>{angle.number}.</i>
+                      {angle.label}
+                    </span>
+                    <span className={`rw-lc-ai-angle-chip ${angleChipClass(angle.state)}`.trim()}>
+                      {angle.result}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </article>
           </aside>
         </div>
       </section>
 
-      {backgroundRun && (
-        <div className="rw-lc-ai-notice" role="status">
-          <Bell width={15} height={15} aria-hidden="true" />
-          Đã bật chế độ chạy ngầm — ReWear AI sẽ gửi thông báo đẩy và email ngay khi hồ sơ kiểm định hoàn tất.
-        </div>
-      )}
-
       <div className="rw-lc-ai-actionbar">
         <div className="rw-lc-ai-actionbar-inner">
           <button type="button" className="rw-lc-ai-btn rw-lc-ai-btn-cancel" onClick={onCancel}>
             <X width={15} height={15} aria-hidden="true" />
-            Hủy phân tích
+            Quay lại Bước 03
           </button>
 
           <div className="rw-lc-ai-actionbar-btns">
-            <button type="button" className="rw-lc-ai-btn" onClick={handleRunInBackground} disabled={quotaExhausted}>
-              <Bell width={15} height={15} aria-hidden="true" />
-              Chạy ngầm &amp; Thông báo sau
-            </button>
-            <button type="button" className="rw-lc-ai-btn rw-lc-ai-btn-primary" onClick={handleWaitResult} disabled={quotaExhausted}>
+            <button
+              type="button"
+              className="rw-lc-ai-btn rw-lc-ai-btn-primary"
+              onClick={onWaitResult}
+              disabled={!isReady}
+            >
               <span className="rw-lc-ai-btn-spin" aria-hidden="true">
                 <Loader width={15} height={15} />
               </span>
-              Chờ kết quả trực tiếp...
+              {isReady ? 'Xem kết quả thẩm định' : 'Cần đủ ảnh đạt để tiếp tục'}
             </button>
           </div>
         </div>
       </div>
-
-      {showQuotaModal && (
-        <div className="rw-lc-ai-quota-overlay" role="presentation">
-          <div className="rw-lc-ai-quota-modal" role="dialog" aria-modal="true" aria-labelledby="rw-lc-ai-quota-title">
-            <button
-              type="button"
-              className="rw-lc-ai-quota-close"
-              aria-label="Đóng thông báo quota"
-              onClick={() => setShowQuotaModal(false)}
-            >
-              <X width={16} height={16} aria-hidden="true" />
-            </button>
-            <div className="rw-lc-ai-quota-icon" aria-hidden="true">
-              <Zap width={22} height={22} />
-            </div>
-            <p className="rw-lc-ai-quota-eyebrow">QUOTA TOKEN ĐÃ HẾT</p>
-            <h3 id="rw-lc-ai-quota-title">Không thể tiếp tục xác thực AI</h3>
-            <p>
-              Bạn đã sử dụng hết quota token cho phiên kiểm định này. Vui lòng nạp thêm token hoặc thử lại
-              sau để tiếp tục đối soát chính hãng.
-            </p>
-            <div className="rw-lc-ai-quota-usage">
-              <span>Đã sử dụng</span>
-              <b>{tokensUsed.toLocaleString('en-US')} / {tokensTotal.toLocaleString('en-US')} tokens</b>
-            </div>
-            <button type="button" className="rw-lc-ai-btn rw-lc-ai-btn-primary" onClick={() => setShowQuotaModal(false)}>
-              Đã hiểu
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Khoảng đệm cuối trang để thanh cố định không che nội dung */}
       <div className="rw-lc-ai-actionbar-space" aria-hidden="true" />
