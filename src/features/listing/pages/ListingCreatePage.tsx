@@ -1,19 +1,21 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import ROUTES from '../../../routes/routes.config';
-import sellerAvatar from '../../../assets/images/seller-avatar.png';
 import ListingTopbar from '../../../components/listing/ListingTopbar';
 import ListingBreadcrumb from '../../../components/listing/ListingBreadcrumb';
 import ListingHeroHeader from '../../../components/listing/ListingHeroHeader';
 import ListingStepProgress, { LISTING_STEPS } from '../../../components/listing/ListingStepProgress';
 import ListingConditionSection from '../../../components/listing/ListingConditionSection';
-import ListingInfoSection from '../../../components/listing/ListingInfoSection';
+import ListingInfoSection, {
+  type ListingInfoForm,
+} from '../../../components/listing/ListingInfoSection';
 import ListingUsageSection from '../../../components/listing/ListingUsageSection';
 import ListingEvidenceSection from '../../../components/listing/ListingEvidenceSection';
 import ListingSidePanel from '../../../components/listing/ListingSidePanel';
 import ListingCreateActionBar from '../../../components/listing/ListingCreateActionBar';
 import useCurrentUser from '../../../hooks/useCurrentUser';
 import { buildListingPayload, findMissingAngles } from '../services/listingPayload';
+import { saveSellerListing } from '../../seller/services/sellerListingsStore';
 import listingApi from '../../../services/api/listing.api';
 import ListingCaptureStep, { ListingCaptureHeader } from '../../../components/listing/ListingCaptureStep';
 import ListingPhotoReviewStep from '../../../components/listing/ListingPhotoReviewStep';
@@ -103,6 +105,45 @@ export const ListingCreatePage: React.FC = () => {
   const step = LISTING_STEPS[Math.min(stepIndex, LISTING_STEPS.length - 1)];
   const stepNumber = String(stepIndex + 1).padStart(2, '0');
 
+  /**
+   * Nhận form từ `ListingInfoSection` và đẩy lên state của trang.
+   *
+   * Dùng `useCallback` (deps rỗng) để callback có DANH TÍNH ỔN ĐỊNH giữa các
+   * lần render — trước đây đây là arrow function inline nên mỗi lần render đều
+   * tạo function mới, khiến `useEffect` trong `ListingInfoSection` chạy lại
+   * không dừng và React báo "Maximum update depth exceeded".
+   *
+   * Bên trong dùng updater dạng hàm và trả về `prev` khi không có gì thay đổi,
+   * nên setState không tạo object mới vô ích (tránh render thừa).
+   */
+  const handleInfoFormChange = useCallback((form: ListingInfoForm) => {
+    setProductInfo((prev) => {
+      const next: ProductInfo = {
+        category: form.category,
+        categoryId: form.categoryId,
+        gender: form.gender,
+        brand: form.brand,
+        name: form.name,
+        /*
+         * Nhóm túi/phụ kiện không có size chuẩn hoá nên `form.size` vẫn là giá
+         * trị mặc định không liên quan; khi đó lấy số đo thật do người bán
+         * nhập để trường `size` gửi lên API có ý nghĩa.
+         */
+        size: form.sizeMeasurement.trim() || form.size,
+        pattern: form.pattern,
+        material: form.material,
+        price: form.price,
+        sku: form.sku,
+      };
+
+      const unchanged = (Object.keys(next) as (keyof ProductInfo)[]).every(
+        (key) => prev[key] === next[key],
+      );
+
+      return unchanged ? prev : next;
+    });
+  }, []);
+
   const handleBack = () => {
     if (stepIndex > 0) {
       setStepIndex((prev) => prev - 1);
@@ -141,8 +182,17 @@ export const ListingCreatePage: React.FC = () => {
   const handleCreateListing = async () => {
     if (isSubmitting) return;
 
+    /*
+     * `userId` lấy từ phiên đăng nhập và phải là GUID hợp lệ (backend nhận
+     * `string($guid)`). `useCurrentUser` đã trả `null` khi thiếu hoặc sai
+     * định dạng, nên chặn ở đây trước khi gửi request để không mất dữ liệu
+     * đã nhập vì một lỗi 400 không rõ nguyên nhân từ backend.
+     */
     if (!userId) {
-      setSubmitError('Bạn chưa đăng nhập nên không thể tạo tin đăng.');
+      setSubmitError(
+        'Không xác định được mã người dùng (userId) hợp lệ. ' +
+          'Vui lòng đăng xuất rồi đăng nhập lại trước khi tạo tin đăng.',
+      );
       return;
     }
 
@@ -163,8 +213,31 @@ export const ListingCreatePage: React.FC = () => {
     try {
       const response = await listingApi.createListing(userId, buildCurrentPayload());
       const data = response?.data;
+      const listingId = data?.listingId ?? null;
 
-      setCreatedListingId(data?.id ?? data?.listingId ?? null);
+      setCreatedListingId(listingId);
+
+      /*
+       * Lưu lại kết quả backend trả về vào kho của đúng seller này. Đây là
+       * nguồn dữ liệu thật cho trang tổng quan người bán (xem
+       * `useSellerDashboard`), vì backend chưa có endpoint đọc danh sách tin.
+       */
+      if (listingId) {
+        const payload = buildCurrentPayload();
+
+        saveSellerListing(userId, {
+          listingId,
+          title: payload.title,
+          categoryId: payload.categoryId,
+          brand: payload.brand,
+          size: payload.size,
+          price: payload.price,
+          itemType: payload.itemType,
+          thumbnail: capturedPhotos.OVERALL,
+          createdAt: new Date().toISOString(),
+          result: data ?? {},
+        });
+      }
     } catch (err) {
       setSubmitError(
         err instanceof Error
@@ -207,7 +280,12 @@ export const ListingCreatePage: React.FC = () => {
 
   return (
     <div className="rw-lc-page rw-dashboard-theme">
-      <ListingTopbar avatarSrc={sellerAvatar} onBack={() => navigate(ROUTES.SELLER.DASHBOARD)} />
+      {/*
+        Không truyền `avatarSrc`: trước đây dùng ảnh `seller-avatar.png` fix cứng
+        nên mọi seller đều thấy cùng một khuôn mặt. Bỏ truyền thì `ListingTopbar`
+        tự hiển thị chữ cái đầu của tên tài khoản đang đăng nhập.
+      */}
+      <ListingTopbar onBack={() => navigate(ROUTES.SELLER.DASHBOARD)} />
 
       <ListingBreadcrumb />
 
@@ -285,23 +363,7 @@ export const ListingCreatePage: React.FC = () => {
               showValidation={showInfoValidation}
               onValidityChange={setInfoValid}
               onLuxuryBrandChange={setIsLuxuryBrand}
-              onFormChange={(form) => setProductInfo({
-                category: form.category,
-                categoryId: form.categoryId,
-                gender: form.gender,
-                brand: form.brand,
-                name: form.name,
-                /*
-                 * Nhóm túi/phụ kiện không có size chuẩn hoá nên `form.size` vẫn
-                 * là giá trị mặc định không liên quan; khi đó lấy số đo thật do
-                 * người bán nhập để trường `size` gửi lên API có ý nghĩa.
-                 */
-                size: form.sizeMeasurement.trim() || form.size,
-                pattern: form.pattern,
-                material: form.material,
-                price: form.price,
-                sku: form.sku,
-              })}
+              onFormChange={handleInfoFormChange}
             />
             
             {/*

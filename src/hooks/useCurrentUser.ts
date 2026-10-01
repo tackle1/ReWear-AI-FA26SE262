@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import storage from '../utils/storage';
 import { LoginResponseData } from '../features/auth/types/auth.type';
+import { normalizeGuid } from '../utils/uuid';
 
 /** Key lưu thông tin user đăng nhập (xem `useLogin`). */
 const CURRENT_USER_KEY = 'rewear_current_user';
@@ -42,8 +43,19 @@ export const useCurrentUser = (): UseCurrentUserReturn => {
     return () => window.removeEventListener('storage', refresh);
   }, [refresh]);
 
+  /*
+   * `userId` chỉ trả về khi là GUID hợp lệ vì đây chính là giá trị gửi lên
+   * `POST /api/ListingsExample/create?userId=` (backend khai báo `string($guid)`).
+   * Phiên cũ lưu `mock-user-<timestamp>` sẽ ra `null` để chặn ngay ở giao diện
+   * kèm thông báo rõ ràng, thay vì gửi giá trị sai lên rồi nhận lỗi 400 khó hiểu.
+   *
+   * Nhận cả `userId` và `id` phòng khi backend đặt mã ở trường khác.
+   */
+  const raw = user as (LoginResponseData & { id?: string }) | null;
+  const userId = normalizeGuid(raw?.userId) ?? normalizeGuid(raw?.id);
+
   return {
-    userId: user?.userId ?? null,
+    userId,
     role: user?.role ?? null,
     name: user?.name ?? null,
     email: user?.email ?? null,

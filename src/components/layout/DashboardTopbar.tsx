@@ -6,7 +6,11 @@ export interface DashboardTopbarProps {
   avatarSrc?: string;
   userName?: string;
   verifiedLabel?: string;
-  userSubtitle?: string;
+  /**
+   * Dòng phụ dưới tên. Mặc định suy ra từ vai trò thật của tài khoản đang đăng
+   * nhập; truyền `null` để ẩn hẳn khi không có thông tin nào để hiển thị.
+   */
+  userSubtitle?: string | null;
   regionLabel?: string;
   searchPlaceholder?: string;
   searchValue?: string;
@@ -23,7 +27,7 @@ export const DashboardTopbar: React.FC<DashboardTopbarProps> = ({
   avatarSrc,
   userName,
   verifiedLabel = 'Người bán đã xác thực',
-  userSubtitle = 'Đối tác ký quỹ • Quận 1',
+  userSubtitle,
   regionLabel = 'VND / HCM City',
   searchPlaceholder = 'Tìm kiếm tin đăng đã xác thực, SKU, mã đơn...',
   searchValue,
@@ -44,11 +48,24 @@ export const DashboardTopbar: React.FC<DashboardTopbarProps> = ({
 
   /*
    * Tên hiển thị lấy từ tài khoản đang đăng nhập; prop `userName` vẫn ưu tiên
-   * để trang khác tự truyền tên khi cần. Chỉ rơi về tên mẫu khi chưa đăng
-   * nhập (ví dụ khi xem giao diện ở môi trường demo).
+   * để trang khác tự truyền tên khi cần.
+   *
+   * Không rơi về một tên mẫu cố định — trước đây mọi tài khoản chưa đăng nhập
+   * đều hiện "Mai Linh Vintage", tức là dữ liệu bịa. Khi không có tên, hiển thị
+   * nhãn trung tính theo vai trò.
    */
-  const { name: currentUserName } = useCurrentUser();
-  const displayName = userName || currentUserName || 'Mai Linh Vintage';
+  const { name: currentUserName, role } = useCurrentUser();
+  const displayName = userName || currentUserName || 'Người bán';
+
+  /*
+   * Dòng phụ mặc định lấy từ VAI TRÒ thật trong phiên đăng nhập, thay vì chuỗi
+   * bịa "Đối tác ký quỹ • Quận 1" áp cho mọi seller.
+   */
+  const subtitleText =
+    userSubtitle === null
+      ? null
+      : userSubtitle ??
+        (role === 'SELLER' ? 'Tài khoản người bán' : 'Tài khoản thành viên');
 
   React.useEffect(() => {
     if (!isAccountMenuOpen) return;
@@ -152,7 +169,7 @@ export const DashboardTopbar: React.FC<DashboardTopbarProps> = ({
                   <b>{displayName}</b>
                   <span className="rw-verified-badge">{verifiedLabel}</span>
                 </span>
-                <span className="rw-user-line2">{userSubtitle}</span>
+                <span className="rw-user-line2">{subtitleText}</span>
               </span>
               <svg className="rw-account-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="m6 9 6 6 6-6" />

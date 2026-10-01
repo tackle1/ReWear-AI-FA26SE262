@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import '../../styles/listing/ListingInfoSection.css';
 
 import {
@@ -17,6 +17,9 @@ import {
   X,
 } from 'lucide-react';
 import { usePremiumBrands } from '../../features/listing/hooks/usePremiumBrands';
+
+/** Kiểu dữ liệu form mà component này phát ra ra ngoài qua `onFormChange`. */
+export type ListingInfoForm = typeof DEFAULT_FORM;
 
 export interface ListingInfoSectionProps {
   variant?: 'clearance' | 'secondhand';
@@ -475,17 +478,42 @@ export const ListingInfoSection: React.FC<ListingInfoSectionProps> = ({
 
   const isValid = !Object.values(errors).some(Boolean);
 
-  useEffect(() => {
-    onValidityChange?.(isValid);
-  }, [isValid, onValidityChange]);
+  /*
+   * =========================================================
+   * CALLBACK REFS — chặn vòng lặp render vô hạn
+   * =========================================================
+   * Trang cha truyền callback dạng arrow function inline
+   * (`onFormChange={(form) => setProductInfo(...)}`) nên MỖI LẦN RENDER đều
+   * tạo ra một function mới. Nếu đưa callback trực tiếp vào mảng dependency
+   * của useEffect thì effect chạy lại mọi lần render → gọi setState ở trang
+   * cha → render lại → callback mới → lặp lại → React báo
+   * "Maximum update depth exceeded".
+   *
+   * Giữ callback trong ref và chỉ gọi qua ref.current giúp effect chỉ phụ thuộc
+   * vào giá trị thật (form/isValid/selectedSegment), nên vẫn gọi đúng callback
+   * mới nhất mà không gây lặp.
+   */
+  const onValidityChangeRef = useRef(onValidityChange);
+  const onLuxuryBrandChangeRef = useRef(onLuxuryBrandChange);
+  const onFormChangeRef = useRef(onFormChange);
 
   useEffect(() => {
-    onLuxuryBrandChange?.(selectedSegment === 'luxury');
-  }, [onLuxuryBrandChange, selectedSegment]);
+    onValidityChangeRef.current = onValidityChange;
+    onLuxuryBrandChangeRef.current = onLuxuryBrandChange;
+    onFormChangeRef.current = onFormChange;
+  });
 
   useEffect(() => {
-    onFormChange?.(form);
-  }, [form, onFormChange]);
+    onValidityChangeRef.current?.(isValid);
+  }, [isValid]);
+
+  useEffect(() => {
+    onLuxuryBrandChangeRef.current?.(selectedSegment === 'luxury');
+  }, [selectedSegment]);
+
+  useEffect(() => {
+    onFormChangeRef.current?.(form);
+  }, [form]);
 
   const update =
     (key: keyof typeof DEFAULT_FORM) =>

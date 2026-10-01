@@ -1,5 +1,6 @@
 import { ApiResponse } from '../../../types/apiResponse.type';
 import { LoginPayload, LoginResponseData, RegisterPayload, RegisterResponseData } from '../types/auth.type';
+import { createUuid, isGuid, normalizeGuid } from '../../../utils/uuid';
 
 interface MockAccount extends RegisterResponseData {
   password: string;
@@ -45,8 +46,13 @@ export const mockAuthApi = {
       throw new Error('Email này đã được đăng ký. Vui lòng đăng nhập hoặc dùng email khác.');
     }
 
+    /*
+     * `userId` PHẢI là GUID hợp lệ vì backend nhận tham số `string($guid)`.
+     * Trước đây dùng `mock-user-${Date.now()}` nên mọi lần đăng nhập seller đều
+     * gửi userId sai định dạng và backend từ chối.
+     */
     const account: MockAccount = {
-      userId: `mock-user-${Date.now()}`,
+      userId: createUuid(),
       name: payload.name,
       email: payload.email,
       phone: payload.phone,
@@ -63,18 +69,43 @@ export const mockAuthApi = {
 
   login: async (payload: LoginPayload): Promise<ApiResponse<LoginResponseData>> => {
     await delay();
-    const account = getAccounts().find(
+
+    const accounts = getAccounts();
+    const index = accounts.findIndex(
       (item) => item.email === payload.email && item.password === payload.password,
     );
 
-    if (!account) {
+    if (index === -1) {
       throw new Error('Email hoặc mật khẩu không đúng. Hãy đăng ký tài khoản trước.');
+    }
+
+    let account = accounts[index];
+
+    /*
+     * Tài khoản mock đã đăng ký từ trước bản này có `userId` kiểu
+     * `mock-user-<timestamp>` — không phải GUID nên không dùng làm tham số
+     * `string($guid)` được. Cấp lại GUID hợp lệ và ghi lại kho để lần sau
+     * đăng nhập vẫn giữ đúng userId.
+     */
+    if (!isGuid(account.userId)) {
+      account = { ...account, userId: createUuid() };
+      const nextAccounts = [...accounts];
+      nextAccounts[index] = account;
+      saveAccounts(nextAccounts);
     }
 
     // `phone` được trả về để các màn hình sau đăng nhập hiển thị đúng SĐT,
     // chỉ `password` mới bị loại khỏi response.
     const { password: _password, ...user } = account;
-    return { success: true, message: 'Đăng nhập thành công.', data: { ...user, ...createTokens(account.userId) } };
+
+    // Chuẩn hoá về lowercase, bỏ ngoặc nhọn nếu có, đúng chuẩn GUID backend nhận.
+    const userId = normalizeGuid(user.userId) as string;
+
+    return {
+      success: true,
+      message: 'Đăng nhập thành công.',
+      data: { ...user, userId, ...createTokens(userId) },
+    };
   },
 };
 

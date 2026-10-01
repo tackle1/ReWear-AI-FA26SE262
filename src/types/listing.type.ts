@@ -58,15 +58,33 @@ export interface CreateListingPayload {
 }
 
 /**
- * Kết quả trả về của `POST /api/ListingsExample/create`.
+ * Kết quả trả về của `POST /api/ListingsExample/create`,
+ * khớp `ListingResponseDto` của backend (`text/json`).
  *
- * Backend chưa công bố schema chính thức nên khai báo tối thiểu và cho phép
- * thêm field; không nên đặt mọi thứ là bắt buộc để không vỡ khi backend đổi.
+ * Backend trả về kết quả kiểm định ngay khi tạo tin, nên đây là nguồn dữ liệu
+ * thật duy nhất hiện có cho tổng quan người bán — mọi trường đều có thể vắng
+ * mặt nên khai báo optional thay vì bắt buộc.
  */
 export interface CreateListingResult {
-  /** Mã tin đăng vừa tạo, nếu backend có trả về. */
-  id?: string;
+  /** Mã tin đăng vừa tạo. */
   listingId?: string;
-  message?: string;
+  /** Trạng thái do backend quyết định, ví dụ `Published` / `PendingReview`. */
+  status?: string;
+  /** Lý do kèm theo trạng thái (VD: vì sao cần chuyên viên xem xét). */
+  statusReason?: string | null;
+  /** Điểm AI gốc, chưa trừ điểm thiếu hóa đơn. */
+  rawAiScore?: number;
+  /** Điểm cuối cùng sau khi đã áp dụng quy tắc thiếu hóa đơn. */
+  finalAiScore?: number;
+  /** true nếu hồ sơ bị trừ điểm vì người bán không tải hóa đơn. */
+  missingBillPenaltyApplied?: boolean;
+  /** Phân cấp tình trạng do AI chấm, ví dụ `Like New`. */
+  conditionGrade?: string | null;
+  /** Điểm độ tin cậy nhãn thương hiệu. */
+  tagLegitScore?: number;
+  /** Điểm đường may / cấu trúc. */
+  stitchingScore?: number;
+  /** Số token AI còn lại — backend dùng để giới hạn 20 lần kiểm định. */
+  remainingTokens?: number;
   [key: string]: unknown;
 }

@@ -5,6 +5,7 @@ import {
   REQUIRED_ANGLE_TYPES,
 } from '../../../types/listing.type';
 import { LoginResponseData } from '../../../features/auth/types/auth.type';
+import { normalizeGuid } from '../../../utils/uuid';
 
 /**
  * Body của `POST /api/ListingsExample/create` yêu cầu `photos` là mảng
@@ -87,10 +88,16 @@ export const buildListingPayload = ({
   photos: buildPhotos(photos),
 });
 
-/** Lấy userId của seller đang đăng nhập, hoặc `null` nếu chưa đăng nhập. */
+/**
+ * Lấy userId của seller đang đăng nhập, hoặc `null` nếu chưa đăng nhập / mã
+ * không phải GUID hợp lệ.
+ *
+ * Backend nhận `userId` kiểu `string($guid)` nên chỉ trả về khi chuẩn hoá
+ * thành công; nhận thêm `id` phòng khi phiên lưu mã ở trường khác.
+ */
 export const readSellerUserId = (): string | null => {
-  const user = storage.getItem<LoginResponseData>('rewear_current_user');
-  return user?.userId ?? null;
+  const user = storage.getItem<LoginResponseData & { id?: string }>('rewear_current_user');
+  return normalizeGuid(user?.userId) ?? normalizeGuid(user?.id);
 };
 
 export default buildListingPayload;
