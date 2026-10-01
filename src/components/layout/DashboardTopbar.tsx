@@ -6,11 +6,6 @@ export interface DashboardTopbarProps {
   avatarSrc?: string;
   userName?: string;
   verifiedLabel?: string;
-  /**
-   * Dòng phụ dưới tên. Mặc định suy ra từ vai trò thật của tài khoản đang đăng
-   * nhập; truyền `null` để ẩn hẳn khi không có thông tin nào để hiển thị.
-   */
-  userSubtitle?: string | null;
   regionLabel?: string;
   searchPlaceholder?: string;
   searchValue?: string;
@@ -27,7 +22,6 @@ export const DashboardTopbar: React.FC<DashboardTopbarProps> = ({
   avatarSrc,
   userName,
   verifiedLabel = 'Người bán đã xác thực',
-  userSubtitle,
   // Chỉ hiện đơn vị tiền tệ; khu vực/địa điểm không có dữ liệu thật nên không
   // ghi cứng "HCM City" cho mọi tài khoản.
   regionLabel = 'VND',
@@ -57,18 +51,8 @@ export const DashboardTopbar: React.FC<DashboardTopbarProps> = ({
    * đều hiện "Mai Linh Vintage", tức là dữ liệu bịa. Khi không có tên, hiển thị
    * nhãn trung tính theo vai trò.
    */
-  const { name: currentUserName, role } = useCurrentUser();
+  const { name: currentUserName } = useCurrentUser();
   const displayName = userName || currentUserName || 'Người bán';
-
-  /*
-   * Dòng phụ mặc định lấy từ VAI TRÒ thật trong phiên đăng nhập, thay vì chuỗi
-   * bịa "Đối tác ký quỹ • Quận 1" áp cho mọi seller.
-   */
-  const subtitleText =
-    userSubtitle === null
-      ? null
-      : userSubtitle ??
-        (role === 'SELLER' ? 'Tài khoản người bán' : 'Tài khoản thành viên');
 
   React.useEffect(() => {
     if (!isAccountMenuOpen) return;
@@ -106,7 +90,7 @@ export const DashboardTopbar: React.FC<DashboardTopbarProps> = ({
   return (
     <header className="rw-topbar">
       <div className="rw-topbar-search">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden="true">
+        <svg className="rw-topbar-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden="true">
           <circle cx="11" cy="11" r="6" />
           <path d="m20 20-4.2-4.2" />
         </svg>
@@ -120,8 +104,35 @@ export const DashboardTopbar: React.FC<DashboardTopbarProps> = ({
           }}
           onKeyDown={(e) => {
             if (e.key === 'Enter') onSearchSubmit?.(value);
+            // Escape xoá nội dung đang lọc — thoát nhanh khỏi ô tìm kiếm.
+            if (e.key === 'Escape' && value) {
+              e.stopPropagation();
+              setInner('');
+              onSearchChange?.('');
+            }
           }}
+          aria-label={searchPlaceholder}
         />
+        {/*
+          * Nút "xoá" chỉ hiện khi đang có nội dung; nếu không, nó chiếm chỗ
+          * trống vô nghĩa và làm ô tìm kiếm trông nặng nề.
+          */}
+        {value && (
+          <button
+            type="button"
+            className="rw-topbar-search-clear"
+            aria-label="Xoá từ khoá tìm kiếm"
+            onClick={() => {
+              setInner('');
+              onSearchChange?.('');
+            }}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" aria-hidden="true">
+              <line x1="6" y1="6" x2="18" y2="18" />
+              <line x1="18" y1="6" x2="6" y2="18" />
+            </svg>
+          </button>
+        )}
       </div>
       <div className="rw-topbar-right">
         <button type="button" className="rw-region-pill" onClick={onRegionClick}>
@@ -170,9 +181,33 @@ export const DashboardTopbar: React.FC<DashboardTopbarProps> = ({
               <span className="rw-user-meta">
                 <span className="rw-user-line1">
                   <b>{displayName}</b>
-                  <span className="rw-verified-badge">{verifiedLabel}</span>
                 </span>
-                <span className="rw-user-line2">{subtitleText}</span>
+                {/*
+                 * Badge xác thực nằm ở DÒNG DƯỚI tên, không đứng cạnh tên như
+                 * trước: chuỗi "Người bán đã xác thực" khá dài nên đặt cạnh tên
+                 * làm cụm này tràn rộng, kéo cả thanh navbar rộng ra. Đặt xuống
+                 * dòng hai giữ phần tên gọn và cân với avatar.
+                 */}
+                {verifiedLabel && (
+                  <span className="rw-user-line2">
+                    <span className="rw-verified-badge">
+                      <svg
+                        width="11"
+                        height="11"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="3.2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden="true"
+                      >
+                        <path d="m5 13 4 4L19 7" />
+                      </svg>
+                      {verifiedLabel}
+                    </span>
+                  </span>
+                )}
               </span>
               <svg className="rw-account-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="m6 9 6 6 6-6" />
