@@ -8,7 +8,7 @@ import ROUTES from '../../../routes/routes.config';
 
 export const LoginForm: React.FC = () => {
   const navigate = useNavigate();
-  const { login, isLoading, error } = useLogin();
+  const { login, isLoading, error, resetState } = useLogin();
 
   const [formData, setFormData] = useState<LoginFormData>({
     email: '',
@@ -69,7 +69,14 @@ export const LoginForm: React.FC = () => {
     (touched.email && !!validationErrors.email) ||
     (touched.password && !!validationErrors.password);
 
+  /*
+   * Xoá ngay lỗi của lần đăng nhập vừa thất bại khi người dùng bắt đầu sửa
+   * email/mật khẩu. Nếu giữ lại, thông báo đỏ vẫn nằm trên form dù đã nhập
+   * đúng — gây hiểu nhầm là vẫn đang sai. Việc validate lỗi CỐ Ý không xoá:
+   * lỗi validate tính lại từ `validationErrors` nên tự biến mất khi hợp lệ.
+   */
   const handleChange = (field: keyof LoginFormData, value: string | boolean) => {
+    if (error) resetState();
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -139,9 +146,11 @@ export const LoginForm: React.FC = () => {
         </div>
       )}
 
-      {/* API error */}
+      {/* API error — thông báo "Email hoặc mật khẩu không đúng" từ backend */}
       {error && (
         <div
+          role="alert"
+          aria-live="polite"
           style={{
             padding: '10px 14px',
             borderRadius: '10px',
