@@ -28,10 +28,13 @@ export const DashboardTopbar: React.FC<DashboardTopbarProps> = ({
   userName,
   verifiedLabel = 'Người bán đã xác thực',
   userSubtitle,
-  regionLabel = 'VND / HCM City',
+  // Chỉ hiện đơn vị tiền tệ; khu vực/địa điểm không có dữ liệu thật nên không
+  // ghi cứng "HCM City" cho mọi tài khoản.
+  regionLabel = 'VND',
   searchPlaceholder = 'Tìm kiếm tin đăng đã xác thực, SKU, mã đơn...',
   searchValue,
-  hasUnread = true,
+  // Mặc định false: chưa có API thông báo nên không hiện chấm đỏ "có tin mới" bịa.
+  hasUnread = false,
   onSearchChange,
   onSearchSubmit,
   onRegionClick,

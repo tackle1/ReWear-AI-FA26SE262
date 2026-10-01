@@ -17,27 +17,74 @@ function StepIcon({ children }: { children: React.ReactNode }) {
   );
 }
 
-export const AI_PROCESS_STEPS: AiProcessStep[] = [
+/** Số góc ảnh bắt buộc do backend quy định (REQUIRED_ANGLE_TYPES). */
+const ICON_CAMERA = (
+  <StepIcon>
+    <path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2" />
+    <circle cx="12" cy="12" r="3.2" />
+    <path d="m14.5 9.5 1.5-1.5" />
+  </StepIcon>
+);
+
+const ICON_SCAN = (
+  <StepIcon>
+    <path d="M12 3a7 7 0 0 0-7 7c0 2.4 1.2 4.2 2.6 5.6L8 19l3-.8c.3.1.7.1 1 .1a7 7 0 0 0 7-7V8l-7-5Z" />
+    <circle cx="12" cy="11" r="1.4" />
+    <path d="M12 12.4V15M9.8 9.6 8.5 8.3M14.2 9.6l1.3-1.3" />
+  </StepIcon>
+);
+
+const ICON_ESCROW = (
+  <StepIcon>
+    <rect x="3" y="6" width="18" height="13" rx="2.5" />
+    <path d="M3 10h18" />
+    <rect x="15.5" y="13" width="3" height="2.4" rx="0.6" />
+    <path d="m7 6 1.2-2.5h7.6L17 6" />
+  </StepIcon>
+);
+
+/** Tham số thật để dựng nội dung, thay cho các con số từng bị ghi cứng. */
+export interface AiProcessContext {
+  /** Số góc ảnh bắt buộc, lấy từ REQUIRED_ANGLE_TYPES. */
+  requiredAngleCount: number;
+  /** Ngưỡng đăng tự động (%) từ API thresholds, dùng để mô tả luật duyệt. */
+  autoPublishThreshold: number;
+  /** Ngưỡng từ chối tự động (%) từ API thresholds. */
+  autoRejectThreshold: number;
+}
+
+/**
+ * Dựng 3 giai đoạn của quy trình từ dữ liệu thật.
+ *
+ * Trước đây các mô tả chứa số liệu bịa không có nguồn ("tăng tốc chuyển đổi gấp
+ * 3.4 lần", "phân tích dưới 1 giây"). Những con số đó đã bị gỡ; hiện chỉ còn
+ * mô tả nghiệp vụ, và các ngưỡng lấy thẳng từ API cấu hình.
+ */
+export const buildAiProcessSteps = ({
+  requiredAngleCount,
+  autoPublishThreshold,
+  autoRejectThreshold,
+}: AiProcessContext): AiProcessStep[] => [
   {
     phase: 'GIAI ĐOẠN 01',
-    title: 'Chụp 5 góc theo hướng dẫn',
-    desc: 'Khung ngắm quang học tự động chụp nhãn cổ áo, mật độ đường may vi mô, nhãn giặt và chi tiết khắc khóa kéo kim loại.',
-    check: 'Hỗ trợ tự động căn chỉnh khung hình',
-    icon: (<StepIcon><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2" /><circle cx="12" cy="12" r="3.2" /><path d="m14.5 9.5 1.5-1.5" /></StepIcon>),
+    title: `Chụp ${requiredAngleCount} góc ảnh bắt buộc`,
+    desc: 'Hệ thống yêu cầu đủ các góc ảnh bắt buộc (toàn cảnh, nhãn cổ áo, nhãn giặt, đường may/khóa kéo). Thiếu góc nào backend sẽ trả về danh sách cần chụp lại.',
+    check: 'Ảnh mờ hoặc sai góc sẽ bị từ chối ngay',
+    icon: ICON_CAMERA,
   },
   {
     phase: 'GIAI ĐOẠN 02',
     title: 'Quét nơ-ron đối soát tức thì',
-    desc: 'Đối chiếu kho dữ liệu nơ-ron lưu trữ trang phục xa xỉ. Trích xuất chỉ số xác suất và phân loại tình trạng cấu trúc.',
-    check: 'Phân tích đặc trưng dưới 1 giây',
-    icon: (<StepIcon><path d="M12 3a7 7 0 0 0-7 7c0 2.4 1.2 4.2 2.6 5.6L8 19l3-.8c.3.1.7.1 1 .1a7 7 0 0 0 7-7V8l-7-5Z" /><circle cx="12" cy="11" r="1.4" /><path d="M12 12.4V15M9.8 9.6 8.5 8.3M14.2 9.6l1.3-1.3" /></StepIcon>),
+    desc: 'Hệ thống đối chiếu ảnh với kho mẫu lưu trữ để trích xuất chỉ số xác thực nhãn, điểm đường may và phân loại tình trạng cấu trúc.',
+    check: 'Kết quả trả về kèm điểm từng thành phần',
+    icon: ICON_SCAN,
   },
   {
     phase: 'GIAI ĐOẠN 03',
-    title: 'Giải ngân ký quỹ nhanh chóng',
-    desc: 'Tin đăng gắn huy hiệu AI tăng tốc chuyển đổi gấp 3.4 lần. Tiền được bảo chứng an toàn trong tài khoản ký quỹ và giải ngân ngay sau khi nhận hàng.',
-    check: 'Triệt tiêu khiếu nại tráo hàng giả',
-    icon: (<StepIcon><rect x="3" y="6" width="18" height="13" rx="2.5" /><path d="M3 10h18" /><rect x="15.5" y="13" width="3" height="2.4" rx="0.6" /><path d="m7 6 1.2-2.5h7.6L17 6" /></StepIcon>),
+    title: 'Quyết định đăng tin theo ngưỡng',
+    desc: `Tin đăng từ ${autoPublishThreshold} điểm trở lên được đăng tự động; dưới ${autoRejectThreshold} điểm bị từ chối tự động; khoảng giữa chuyển chuyên viên thẩm định.`,
+    check: 'Tiền được giữ trong tài khoản ký quỹ tới khi người mua xác nhận',
+    icon: ICON_ESCROW,
   },
 ];
 
@@ -45,17 +92,17 @@ export interface AiVerificationProcessProps {
   title?: string;
   subtitle?: string;
   badge?: string;
-  steps?: AiProcessStep[];
+  steps: AiProcessStep[];
   footLeft?: string;
   footRight?: string;
 }
 
 export const AiVerificationProcess: React.FC<AiVerificationProcessProps> = ({
   title = 'Quy trình xác thực AI dành cho người bán',
-  subtitle = '3 chốt kiểm soát cấu trúc tự động giúp gia tăng niềm tin người mua và bảo vệ quyền lợi người bán.',
+  subtitle = 'Kiểm soát chất lượng tự động giúp gia tăng niềm tin người mua và bảo vệ quyền lợi người bán.',
   badge = 'Khiên chống gian lận người bán',
-  steps = AI_PROCESS_STEPS,
-  footLeft = 'Đánh giá xác thực AI dựa trên bằng chứng • Bảo vệ người bán trước mọi nguy cơ tráo phụ kiện hoặc tráo hàng.',
+  steps,
+  footLeft = 'Đánh giá xác thực AI dựa trên bằng chứng ảnh • Bảo vệ người bán trước mọi nguy cơ tráo phụ kiện hoặc tráo hàng.',
   footRight = 'Xem tiêu chuẩn quy trình kiểm định',
 }) => {
   return (

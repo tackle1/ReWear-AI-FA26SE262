@@ -11,9 +11,12 @@ import DashboardStats, {
   type DashboardStatItem,
   SELLER_STAT_ICONS,
 } from '../../../components/layout/DashboardStats';
-import AiVerificationProcess from '../../../components/layout/AiVerificationProcess';
+import AiVerificationProcess, {
+  buildAiProcessSteps,
+} from '../../../components/layout/AiVerificationProcess';
 import RecentListingsTable from '../../../components/layout/RecentListingsTable';
 import DashboardFooterNote from '../../../components/layout/DashboardFooterNote';
+import { REQUIRED_ANGLE_TYPES } from '../../../types/listing.type';
 import useSellerDashboard from '../../seller/hooks/useSellerDashboard';
 import { clearSellerListings } from '../../seller/services/sellerListingsStore';
 import '../../../styles/dashboard/DashboardTheme.css';
@@ -32,8 +35,14 @@ export const SellerDashboardPage: React.FC = () => {
    * (24 tin, 96.2%, 18.450.000₫…) được ghi cứng trong component nên mọi seller
    * đều thấy cùng một dữ liệu giống nhau.
    */
-  const { rows, overview, isLoading, autoPublishThreshold, thresholdLabel } =
-    useSellerDashboard();
+  const {
+    rows,
+    overview,
+    isLoading,
+    autoPublishThreshold,
+    autoRejectThreshold,
+    thresholdLabel,
+  } = useSellerDashboard();
 
   /*
    * Số dư ký quỹ chưa có endpoint đọc từ backend (swagger hiện chỉ có
@@ -108,6 +117,21 @@ export const SellerDashboardPage: React.FC = () => {
     navigate(ROUTES.AUTH.LOGIN, { replace: true });
   }, [dispatch, navigate]);
 
+  /*
+   * Nội dung 3 giai đoạn dựng từ dữ liệu thật: số góc ảnh bắt buộc lấy từ
+   * `REQUIRED_ANGLE_TYPES`, hai ngưỡng lấy từ API cấu hình. Trước đây các mô tả
+   * chứa số liệu không có nguồn ("gấp 3.4 lần", "dưới 1 giây").
+   */
+  const aiSteps = useMemo(
+    () =>
+      buildAiProcessSteps({
+        requiredAngleCount: REQUIRED_ANGLE_TYPES.length,
+        autoPublishThreshold,
+        autoRejectThreshold,
+      }),
+    [autoPublishThreshold, autoRejectThreshold],
+  );
+
   return (
     <div className="seller-app rw-dashboard-theme">
       <DashboardSidebar activeKey={activeMenu} onSelect={(key) => setActiveMenu(key)} />
@@ -116,13 +140,16 @@ export const SellerDashboardPage: React.FC = () => {
         <main className="seller-main">
           <DashboardPageHeader onCreate={() => navigate(ROUTES.LISTING.CREATE)} />
           <DashboardStats items={stats} />
-          <AiVerificationProcess />
+          <AiVerificationProcess steps={aiSteps} />
           <RecentListingsTable
             rows={rows}
             isLoading={isLoading}
             autoPublishThreshold={autoPublishThreshold}
           />
-          <DashboardFooterNote />
+          <DashboardFooterNote
+            autoPublishThreshold={autoPublishThreshold}
+            autoRejectThreshold={autoRejectThreshold}
+          />
         </main>
       </section>
     </div>

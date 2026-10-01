@@ -116,6 +116,8 @@ export interface UseSellerDashboardResult {
   isSignedOut: boolean;
   /** Ngưỡng đăng tự động đang áp dụng (từ API, có dự phòng). */
   autoPublishThreshold: number;
+  /** Ngưỡng từ chối tự động đang áp dụng (từ API, có dự phòng). */
+  autoRejectThreshold: number;
   /** Nhãn ngưỡng để hiển thị, ví dụ `75%`. */
   thresholdLabel: string;
   /** Đọc lại kho dữ liệu (dùng sau khi tạo tin xong). */
@@ -238,6 +240,7 @@ export const useSellerDashboard = (): UseSellerDashboardResult => {
     isLoading,
     isSignedOut: !userId,
     autoPublishThreshold: thresholds.autoPublishThreshold,
+    autoRejectThreshold: thresholds.autoRejectThreshold,
     thresholdLabel: `${thresholds.autoPublishThreshold}%`,
     reload: load,
   };

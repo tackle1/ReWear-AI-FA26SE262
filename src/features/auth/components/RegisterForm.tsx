@@ -1,8 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Alert from '../../../components/feedback/Alert';
-import { AuthRole, RegisterFormData } from '../types/auth.type';
+import { AuthRole, PHONE_PATTERN, PASSWORD_PATTERN, RegisterFormData } from '../types/auth.type';
 import { useRegister } from '../hooks/useRegister';
+import ROUTES from '../../../routes/routes.config';
 
 export interface RegisterFormProps {
   role: AuthRole;
@@ -39,11 +40,12 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ role, onSuccess }) =
       errors.fullName = 'Vui lòng nhập họ và tên';
     }
 
-    const phoneRegex = /(84|0[3|5|7|8|9])+([0-9]{8})\b/;
+    // Đúng luật backend `[RegularExpression(@"^\+?[0-9]{9,15}$")]` — dùng chung
+    // hằng PHONE_PATTERN để UI không nhận được số SĐT mà server sẽ từ chối.
     if (!formData.phone.trim()) {
       errors.phone = 'Vui lòng nhập số điện thoại';
-    } else if (!phoneRegex.test(formData.phone.trim())) {
-      errors.phone = 'Số điện thoại không đúng định dạng';
+    } else if (!PHONE_PATTERN.test(formData.phone.trim())) {
+      errors.phone = 'Số điện thoại phải gồm 9-15 chữ số, có thể bắt đầu bằng +';
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -53,10 +55,10 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ role, onSuccess }) =
       errors.email = 'Email không hợp lệ';
     }
 
-    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d).{8,}$/;
+    // Đúng luật AuthService.ValidatePasswordStrength: >= 8 ký tự, có chữ và số.
     if (!formData.password) {
       errors.password = 'Vui lòng nhập mật khẩu';
-    } else if (!passwordRegex.test(formData.password)) {
+    } else if (!PASSWORD_PATTERN.test(formData.password)) {
       errors.password = 'Mật khẩu cần tối thiểu 8 ký tự, bao gồm cả chữ cái và số.';
     }
 
@@ -103,11 +105,20 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ role, onSuccess }) =
     if (success) {
       if (onSuccess) {
         onSuccess();
-      } else {
-        setTimeout(() => {
-          navigate('/login');
-        }, 1200);
+        return;
       }
+
+      /*
+       * Đăng ký xong -> chuyển sang trang ĐĂNG NHẬP.
+       *
+       * `useRegister` đã xoá sạch token/user trong localStorage nên
+       * `ProtectedRoute` không đẩy người dùng khỏi /login. `replace: true` để
+       * nút "Back" không quay lại form đăng ký đã submit (gửi lại sẽ báo trùng
+       * email). Chờ 1.2s để người dùng kịp đọc thông báo thành công.
+       */
+      setTimeout(() => {
+        navigate(ROUTES.AUTH.LOGIN, { replace: true });
+      }, 1200);
     }
   };
 

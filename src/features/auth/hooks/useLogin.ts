@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { loginApi } from '../api/login.api';
 import { LoginFormData, LoginResponseData } from '../types/auth.type';
 import storage, { tokenStorage } from '../../../utils/storage';
-import { normalizeGuid } from '../../../utils/uuid';
+import { toSessionUser } from '../utils/session';
 
 export interface UseLoginReturn {
   login: (formData: LoginFormData) => Promise<boolean>;
@@ -31,22 +31,17 @@ export const useLogin = (): UseLoginReturn => {
       });
 
       if (response && response.data) {
-        const { accessToken, refreshToken } = response.data;
-
         /*
-         * Chuẩn hoá `userId` ngay lúc đăng nhập để mọi nơi đọc phiên đều nhận
-         * đúng GUID. Backend có thể đặt mã ở `userId` hoặc `id` (kiểu ASP.NET
-         * Identity thường trả `id`), và có thể trả kèm ngoặc nhọn — gom về một
-         * trường `userId` chuẩn để `createListing` dùng làm tham số `string($guid)`.
+         * `toSessionUser` chịu trách nhiệm chuẩn hoá `userId` thành GUID sạch
+         * (bỏ ngoặc nhọn, lowercase, chấp nhận cả trường `id`), nên mọi phiên
+         * đăng nhập đều lưu cùng một dạng. `useCurrentUser` đọc lại giá trị này
+         * để gửi `?userId=` cho POST /api/ListingsExample/create.
          */
-        const raw = response.data as LoginResponseData & { id?: string };
-        const userId = normalizeGuid(raw.userId) ?? normalizeGuid(raw.id);
+        const session = toSessionUser(response.data);
 
-        const user: LoginResponseData = { ...raw, userId: userId ?? '' };
-
-        tokenStorage.setTokens(accessToken, refreshToken);
-        storage.setItem('rewear_current_user', user);
-        setLoggedInUser(user);
+        tokenStorage.setTokens(session.accessToken, session.refreshToken);
+        storage.setItem('rewear_current_user', session);
+        setLoggedInUser({ ...response.data, userId: session.userId });
       }
 
       setIsSuccess(true);

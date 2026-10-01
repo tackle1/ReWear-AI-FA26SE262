@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import storage from '../utils/storage';
-import { LoginResponseData } from '../features/auth/types/auth.type';
+import { SessionUser } from '../features/auth/utils/session';
 import { normalizeGuid } from '../utils/uuid';
 
 /** Key lưu thông tin user đăng nhập (xem `useLogin`). */
@@ -28,12 +28,12 @@ export interface UseCurrentUserReturn {
  * tên hiển thị trên topbar luôn khớp với tài khoản thật.
  */
 export const useCurrentUser = (): UseCurrentUserReturn => {
-  const [user, setUser] = useState<LoginResponseData | null>(() =>
-    storage.getItem<LoginResponseData>(CURRENT_USER_KEY),
+  const [user, setUser] = useState<SessionUser | null>(() =>
+    storage.getItem<SessionUser>(CURRENT_USER_KEY),
   );
 
   const refresh = useCallback(() => {
-    setUser(storage.getItem<LoginResponseData>(CURRENT_USER_KEY));
+    setUser(storage.getItem<SessionUser>(CURRENT_USER_KEY));
   }, []);
 
   useEffect(() => {
@@ -49,9 +49,9 @@ export const useCurrentUser = (): UseCurrentUserReturn => {
    * Phiên cũ lưu `mock-user-<timestamp>` sẽ ra `null` để chặn ngay ở giao diện
    * kèm thông báo rõ ràng, thay vì gửi giá trị sai lên rồi nhận lỗi 400 khó hiểu.
    *
-   * Nhận cả `userId` và `id` phòng khi backend đặt mã ở trường khác.
+   * Nhận cả `userId` và `id` phòng khi phiên cũ lưu mã ở trường khác.
    */
-  const raw = user as (LoginResponseData & { id?: string }) | null;
+  const raw = user as (SessionUser & { id?: string }) | null;
   const userId = normalizeGuid(raw?.userId) ?? normalizeGuid(raw?.id);
 
   return {

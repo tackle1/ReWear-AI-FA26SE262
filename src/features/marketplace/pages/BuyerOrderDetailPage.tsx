@@ -49,8 +49,6 @@ import { ESCROW_SHIPPING_FEE } from '../data/escrow.data';
 import ROUTES from '../../../routes/routes.config';
 import { logout } from '../../../store/slices/authSlice';
 import storage, { tokenStorage } from '../../../utils/storage';
-import envConfig from '../../../config/env.config';
-import { findMockAccountByEmail } from '../../auth/api/mockAuth.api';
 import '../../../styles/marketplace/OrderDetailPage.css';
 
 const formatPrice = (price: number) => price.toLocaleString('vi-VN');
@@ -80,16 +78,11 @@ const BuyerOrderDetailPage: React.FC = () => {
   const user = storage.getItem<CurrentUser>('rewear_current_user');
   const [toast, setToast] = useState<string | null>(null);
 
-  /* Thông tin người nhận lấy từ tài khoản đang đăng nhập. Phiên đăng nhập cũ
-     (tạo trước khi `phone` được thêm vào response) không lưu SĐT, nên tra
-     thêm hồ sơ trong kho tài khoản theo email để lấy đúng SĐT đã đăng ký. */
-  const account = useMemo(
-    () => (envConfig.useMockApi ? findMockAccountByEmail(user?.email) : null),
-    [user?.email],
-  );
-  const buyerName = user?.name?.trim() || account?.name?.trim() || 'Chưa cập nhật';
-  const buyerPhone = user?.phone?.trim() || account?.phone?.trim() || '';
-  const buyerEmail = user?.email?.trim() || account?.email?.trim() || '';
+  /* Thông tin người nhận lấy thẳng từ phiên đăng nhập — backend trả đủ
+     fullName/phone/email nên không cần tra kho tài khoản giả lập nữa. */
+  const buyerName = user?.name?.trim() || 'Chưa cập nhật';
+  const buyerPhone = user?.phone?.trim() || '';
+  const buyerEmail = user?.email?.trim() || '';
 
   useEffect(() => {
     if (!toast) return;
