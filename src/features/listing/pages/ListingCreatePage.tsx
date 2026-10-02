@@ -18,6 +18,7 @@ import { buildListingPayload, findMissingAngles } from '../services/listingPaylo
 import { readApiErrorMessage } from '../utils/errorMessage';
 import usePhotoQualityCheck from '../hooks/usePhotoQualityCheck';
 import useAiVerification from '../hooks/useAiVerification';
+import useVerificationThresholds from '../hooks/useVerificationThresholds';
 import { saveSellerListing } from '../../seller/services/sellerListingsStore';
 import listingApi from '../../../services/api/listing.api';
 import { CreateListingResult } from '../../../types/listing.type';
@@ -311,8 +312,20 @@ export const ListingCreatePage: React.FC = () => {
   /**
    * Bước 04 — Xác thực AI & đối soát chính hãng. Gọi song song 3 endpoint
    * của AiVerificationExample (analyze-photos, verify-and-decide, check-signals).
+   *
+   * Truyền kèm `hasBill` để `verify-and-decide` áp (hoặc không áp) trừ điểm
+   * thiếu hoá đơn. Các endpoint này có `[Authorize]` — token và số dư token được
+   * axiosClient tự gửi kèm và backend tự lấy từ claim, không truyền từ đây.
    */
-  const aiVerify = useAiVerification(capturedPhotos, productInfo.brand);
+  const aiVerify = useAiVerification(capturedPhotos, productInfo.brand, hasBill);
+
+  /**
+   * Ngưỡng đánh giá + phí token mỗi lần phân tích.
+   *
+   * Cần cho Bước 04 để hiện ngưỡng đăng tin và giải thích vì sao số dư token
+   * tụt mỗi lần xác thực lại.
+   */
+  const { thresholds } = useVerificationThresholds();
 
   /** Gom chỉ số đo theo `angleType` để truyền xuống Bước 04. */
   const measuredPhotos = useMemo(() => {
@@ -487,6 +500,13 @@ export const ListingCreatePage: React.FC = () => {
             decision={aiVerify.decision}
             signals={aiVerify.signals}
             isVerifying={aiVerify.isLoading}
+            /**
+             * Số dư token AI và phí mỗi lần — để seller thấy mình còn bao nhiêu
+             * lượt kiểm định và hiểu vì sao số dư tụt mỗi lần bấm xác thực lại.
+             */
+            remainingTokens={aiVerify.remainingTokens}
+            tokenCost={thresholds.aiAnalysisTokenCost}
+            thresholds={thresholds}
             verifyError={aiVerify.error}
             isChecking={photoCheck.isLoading}
             checkError={photoCheck.error}
@@ -499,9 +519,16 @@ export const ListingCreatePage: React.FC = () => {
             product={{
               image: referencePhoto,
               name: productInfo.name || undefined,
+              brand: productInfo.brand || undefined,
               sku: productInfo.sku ? `SKU: ${productInfo.sku}` : undefined,
             }}
             hasBill={hasBill}
+            /**
+             * Điểm Bước 04 đã áp trừ thiếu hoá đơn rồi (finalScore), và biết
+             * phân khúc có bắt buộc hoá đơn hay không. Truyền cả hai xuống để
+             * Bước 05 hiển thị đúng điểm, không trừ lần thứ hai.
+             */
+            decision={aiVerify.decision}
             onCanPublishChange={setCanPublishResult}
             onConfidenceChange={setVerifiedScore}
             onBack={handleBack}

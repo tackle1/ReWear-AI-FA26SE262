@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import aiVerificationApi, { buildAnalyzeRequest } from '../../../services/api/aiVerification.api';
 import {
   AiScanResult,
+  DatasetMatchResult,
   SignalCheckResult,
   VerificationDecision,
 } from '../../../types/verification.type';
@@ -10,6 +11,10 @@ import { readApiErrorMessage } from '../utils/errorMessage';
 export interface UseAiVerification {
   /** Kết quả `analyze-photos`: điểm chính hãng + điểm thành phần. */
   analysis: AiScanResult | null;
+  /** Mức độ khớp data set + mức trừ tương ứng (từ `analyze-photos`). */
+  datasetMatch: DatasetMatchResult | null;
+  /** Token AI còn lại sau lần phân tích gần nhất; null khi không trừ. */
+  remainingTokens: number | null;
   /** Kết quả `verify-and-decide`: APPROVED / REVIEW_NEEDED / REJECTED. */
   decision: VerificationDecision | null;
   /** Kết quả `check-signals`: tổng hợp tín hiệu đạt/trượt. */
@@ -25,8 +30,13 @@ export interface UseAiVerification {
  *
  * Gọi SONG SONG 3 endpoint của `AiVerificationExample`:
  *   • `analyze-photos`   → điểm chính hãng và các điểm thành phần
- *   • `verify-and-decide`→ quyết định duyệt / cần xem xét / từ chối
+ *   • `verify-and-decide`→ đối chiếu brand với danh sách NeonDB, áp trừ điểm
+ *                         nếu hồ sơ luxury thiếu hoá đơn, rồi ra quyết định
  *   • `check-signals`    → bảng đối chiếu từng tín hiệu thị giác
+ *
+ * `hasBillPhoto` được truyền vào để backend biết có cần trừ điểm hay không.
+ * Thay đổi nó sẽ chạy lại xác thực, nên seller tải/xoá hoá đơn ở Bước 01 thấy
+ * điểm ở Bước 05 cập nhật theo ngay.
  *
  * Cả 3 cùng nhận một body `{ brand, photos }` và đều là endpoint chỉ-đọc (không
  * trừ token, không ghi database — việc trừ token thuộc Bước 06 khi đăng tin),
@@ -39,8 +49,11 @@ export interface UseAiVerification {
 export const useAiVerification = (
   photos: Record<string, string>,
   brand: string,
+  hasBillPhoto = false,
 ): UseAiVerification => {
   const [analysis, setAnalysis] = useState<AiScanResult | null>(null);
+  const [datasetMatch, setDatasetMatch] = useState<DatasetMatchResult | null>(null);
+  const [remainingTokens, setRemainingTokens] = useState<number | null>(null);
   const [decision, setDecision] = useState<VerificationDecision | null>(null);
   const [signals, setSignals] = useState<SignalCheckResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -55,6 +68,7 @@ export const useAiVerification = (
   const run = useCallback(async () => {
     if (photoCount === 0) {
       setAnalysis(null);
+      setDatasetMatch(null);
       setDecision(null);
       setSignals(null);
       return;
@@ -63,7 +77,7 @@ export const useAiVerification = (
     setIsLoading(true);
     setError(null);
 
-    const body = buildAnalyzeRequest(photos, brandKey);
+    const body = buildAnalyzeRequest(photos, brandKey, hasBillPhoto);
 
     const [a, d, s] = await Promise.allSettled([
       aiVerificationApi.analyzePhotos(body),
@@ -71,7 +85,28 @@ export const useAiVerification = (
       aiVerificationApi.checkSignals(body),
     ]);
 
-    setAnalysis(a.status === 'fulfilled' ? a.value : null);
+    // `analyze-photos` trả về `{ aiResult, datasetMatch, remainingTokenBalance }`.
+    // Số dư đọc từ đây có thể chưa phản ánh lần trừ của `verify-and-decide`
+    // vì hai endpoint chạy SONG SONG — nên ưu tiên con số của `decision` (nơi
+    // thực sự trừ) và chỉ fallback sang giá trị này khi `decision` chưa về.
+    if (a.status === 'fulfilled') {
+      setAnalysis(a.value.aiResult ?? null);
+      setDatasetMatch(a.value.datasetMatch ?? null);
+      setRemainingTokens(
+        d.status === 'fulfilled' && typeof d.value?.remainingTokenBalance === 'number'
+          ? d.value.remainingTokenBalance
+          : (a.value.remainingTokenBalance ?? null),
+      );
+    } else {
+      setAnalysis(null);
+      setDatasetMatch(null);
+      setRemainingTokens(
+        d.status === 'fulfilled' && typeof d.value?.remainingTokenBalance === 'number'
+          ? d.value.remainingTokenBalance
+          : null,
+      );
+    }
+
     setDecision(d.status === 'fulfilled' ? d.value : null);
     setSignals(s.status === 'fulfilled' ? s.value : null);
 
@@ -83,13 +118,22 @@ export const useAiVerification = (
     setError(failures.length > 0 ? failures.join(' • ') : null);
     setIsLoading(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [photosKey, brandKey]);
+  }, [photosKey, brandKey, hasBillPhoto]);
 
   useEffect(() => {
     void run();
   }, [run]);
 
-  return { analysis, decision, signals, isLoading, error, reverify: run };
+  return {
+    analysis,
+    datasetMatch,
+    remainingTokens,
+    decision,
+    signals,
+    isLoading,
+    error,
+    reverify: run,
+  };
 };
 
 export default useAiVerification;

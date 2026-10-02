@@ -54,6 +54,15 @@ export interface VerificationThresholds {
    * theo phần trăm của điểm gốc (94 - 15 = 79, không phải 94 × 15% = 80).
    */
   missingBillPenaltyPercent: number;
+
+  /**
+   * Số token AI bị trừ cho MỖI lần Bước 04 phân tích.
+   *
+   * Dùng để giải thích cho seller: chỉ hiện "còn N token" thì số dư tụt dần
+   * mà không biết tốn bao nhiêu mỗi lần. Đọc từ khoá cấu hình
+   * `AI_ANALYSIS_TOKEN_COST` nên admin chỉnh được không cần deploy.
+   */
+  aiAnalysisTokenCost?: number;
 }
 
 /** Kết quả áp dụng cấu hình lên điểm kiểm định của một hồ sơ. */
@@ -70,39 +79,91 @@ export interface ConfidenceEvaluation {
   outcome: 'auto-publish' | 'auto-reject' | 'manual-review';
 }
 
+/** Tuỳ chọn cho `evaluateConfidence`. */
+export interface EvaluateConfidenceOptions {
+  /** Phân khúc brand có bắt buộc hoá đơn hay không. Mặc định: coi như có. */
+  requiresBillPhoto?: boolean;
+  /** Điểm backend đã trừ sẵn — khi có, bỏ qua việc trừ ở client. */
+  finalScoreFromDecision?: number;
+}
+
 /**
- * Tính điểm cuối và kết luận tự động.
+ * Tính điểm cuối và kết luận tự động cho Bước 05.
  *
- * Quy tắc:
- * - Không có hóa đơn → trừ cố định `missingBillPenaltyPercent` ĐIỂM
- *   (không phải phần trăm của điểm gốc)
- * - `finalScore >= autoPublishThreshold` → đăng tin tự động
- * - `finalScore <= autoRejectThreshold` → từ chối tự động
- * - còn lại → chuyển chuyên viên xem xét thủ công
+ * QUAN TRỌNG — penalty đã được backend áp sẵn:
+ * `verify-and-decide` (Bước 04) đã trừ `missingBillPenaltyPercent` vào điểm và
+ * trả kết quả ở `decision.finalScore`. Vì vậy khi có `decision`, hàm này KHÔNG
+ * trừ thêm lần nữa mà chỉ dùng `decision.finalScore` rồi kẹp về 0–100.
+ * Trừ hai lần sẽ làm seller mất điểm gấp đôi so với nghiệp vụ.
  *
- * Điểm được kẹp trong khoảng 0–100 và làm tròn về số nguyên.
+ * Còn khi chưa có `decision` (ví dụ mở thẳng Bước 05, hoặc endpoint hỏng) thì
+ * mới tính tại chỗ theo công thức của backend: `score * (1 - penalty / 100)`,
+ * và chỉ trừ khi phân khúc thực sự BẮT BUỘC hoá đơn mà người bán không tải.
+ *
+ * - `requiresBillPhoto`: phân khúc có bắt buộc hoá đơn hay không (quyết định
+ *   việc có được trừ hay không — hàng popular/local không bị trừ).
+ * - `finalScoreFromDecision`: điểm backend đã trừ sẵn.
+ *
+ * `finalScore >= autoPublishThreshold` → đăng tin tự động
+ * `finalScore <= autoRejectThreshold` → từ chối tự động
+ * còn lại → chuyển chuyên viên xem xét thủ công
  */
 export const evaluateConfidence = (
   baseScore: number,
   hasBill: boolean,
   thresholds: VerificationThresholds,
+  options?: EvaluateConfidenceOptions,
 ): ConfidenceEvaluation => {
   const clampedBase = Math.max(0, Math.min(100, Math.round(baseScore)));
-  // Trừ cố định theo điểm: 94 - 15 = 79.
-  const penalty = hasBill
-    ? 0
-    : Math.max(0, Math.round(thresholds.missingBillPenaltyPercent));
-  const finalScore = Math.max(0, Math.min(100, clampedBase - penalty));
+  const requiresBill = options?.requiresBillPhoto ?? true;
 
-  const outcome: ConfidenceEvaluation['outcome'] =
-    finalScore >= thresholds.autoPublishThreshold
-      ? 'auto-publish'
-      : finalScore <= thresholds.autoRejectThreshold
-        ? 'auto-reject'
-        : 'manual-review';
+  // Backend đã trừ rồi: lấy nguyên điểm đó, chỉ kẹp khoảng cho an toàn.
+  const alreadyAdjusted = options?.finalScoreFromDecision;
 
-  return { baseScore: clampedBase, penalty, finalScore, hasBill, outcome };
+  if (typeof alreadyAdjusted === 'number' && Number.isFinite(alreadyAdjusted)) {
+    const finalScore = Math.max(0, Math.min(100, Math.round(alreadyAdjusted)));
+    const outcome = resolveOutcome(finalScore, thresholds);
+
+    return {
+      baseScore: clampedBase,
+      penalty: Math.max(0, clampedBase - finalScore),
+      finalScore,
+      hasBill,
+      outcome,
+    };
+  }
+
+  // Chưa có kết quả backend: tự tính theo đúng công thức của backend.
+  const shouldPenalize = requiresBill && !hasBill;
+  const penaltyPercent = shouldPenalize
+    ? Math.max(0, thresholds.missingBillPenaltyPercent)
+    : 0;
+
+  const finalScore = Math.max(
+    0,
+    Math.round(clampedBase * (1 - penaltyPercent / 100)),
+  );
+
+  return {
+    baseScore: clampedBase,
+    // `penalty` được hiển thị là "mất bao nhiêu điểm", nên tính từ chênh
+    // lệch thực tế thay vì lấy thẳng phần trăm.
+    penalty: Math.max(0, clampedBase - finalScore),
+    finalScore,
+    hasBill,
+    outcome: resolveOutcome(finalScore, thresholds),
+  };
 };
+
+const resolveOutcome = (
+  finalScore: number,
+  thresholds: VerificationThresholds,
+): ConfidenceEvaluation['outcome'] =>
+  finalScore >= thresholds.autoPublishThreshold
+    ? 'auto-publish'
+    : finalScore <= thresholds.autoRejectThreshold
+      ? 'auto-reject'
+      : 'manual-review';
 
 /* ═══════════════════════════════════════════════════════════════════════════
  * BƯỚC 04 — Xác thực AI & Đối soát chính hãng
@@ -115,6 +176,14 @@ export interface AnalyzePhotosRequest {
   /** Thương hiệu sản phẩm, dùng để AI đối chiếu đặc trưng thương hiệu. */
   brand: string;
   photos: CreateListingPhoto[];
+  /**
+   * Người bán đã tải ảnh hoá đơn hay chưa.
+   *
+   * Chỉ `verify-and-decide` dùng: khi brand thuộc phân khúc LUXURY mà
+   * `hasBillPhoto` là false, backend trừ `missingBillPenaltyPercent` khỏi điểm
+   * TRƯỚC khi so ngưỡng, rồi trả điểm đã trừ ở `decision.finalScore`.
+   */
+  hasBillPhoto?: boolean;
 }
 
 /** Một tín hiệu thị giác AI phát hiện. Khớp `VisualSignalDto`. */
@@ -122,6 +191,36 @@ export interface VisualSignal {
   signalName: string;
   isPassed: boolean;
   note?: string;
+}
+
+/**
+ * Mức độ khớp với data set chuẩn của hãng. Khớp `DatasetMatchResultDto`.
+ *
+ * Tách riêng khỏi `AiScanResult.rawScore`: đó là điểm chính hãng tổng thể, còn
+ * đây là mức độ TIN CẬY của kết quả so khớp — ảnh đẹp mà không thuộc bộ dữ
+ * liệu thì vẫn bị trừ.
+ */
+export interface DatasetMatchResult {
+  /** Điểm khớp dataset tổng hợp (0-100). 100 = khớp hoàn toàn. */
+  matchScore: number;
+  /** Phần trăm điểm đã bị trừ vì mức khớp thấp (0 khi đạt). */
+  penaltyPercent: number;
+  /** Có nên hiển thị cảnh báo cho seller không. */
+  hasMismatchWarning: boolean;
+  /** Cảnh báo bằng tiếng Anh từ backend, hiển thị nguyên văn. */
+  warning: string;
+  /** Các tín hiệu AI báo trượt — gợi ý góc ảnh cần chụp lại. */
+  mismatchedSignals: string[];
+  /** Cách tính, để seller thấy công khai vì sao bị trừ. */
+  explanation: string;
+}
+
+/** Response của `analyze-photos`. Khớp `AnalyzePhotosResponseDto`. */
+export interface AnalyzePhotosResult {
+  aiResult: AiScanResult;
+  datasetMatch: DatasetMatchResult;
+  /** Token còn lại sau lần phân tích; null khi gọi không xác thực. */
+  remainingTokenBalance: number | null;
 }
 
 /** Kết quả phân tích ảnh. Khớp `AiScanResultDto`. */
@@ -147,6 +246,48 @@ export interface VerificationDecision {
   reason: string;
   aiScores: AiScanResult;
   recommendation: string;
+
+  /**
+   * Điểm AI GỐC, chưa trừ thiếu hoá đơn.
+   *
+   * Bước 05 phải hiển thị `finalScore`, KHÔNG dùng `aiScores.rawScore`: với
+   * hồ sơ luxury thiếu hoá đơn, hai điểm này khác nhau.
+   */
+  baseScore: number;
+  /** Phần trăm đã trừ vì thiếu hoá đơn (0 khi không bị trừ). */
+  penaltyPercent: number;
+  /** Điểm CUỐI CÙNG sau khi trừ — backend đã áp trừ trước khi so ngưỡng. */
+  finalScore: number;
+  /** Phân khúc brand: LUXURY / POPULAR / LOCAL_NO_BRAND. */
+  brandSegment: string;
+  /** Phân khúc này có bắt buộc ảnh hoá đơn không. */
+  requiresBillPhoto: boolean;
+  /** Người bán đã tải ảnh hoá đơn hay chưa. */
+  hasBillPhoto: boolean;
+  /** true nếu điểm đã bị trừ vì thiếu hoá đơn. */
+  missingBillPenaltyApplied: boolean;
+  /**
+   * true nếu brand người bán nhập không nằm trong danh sách NeonDB nào.
+   *
+   * CHỈ là cảnh báo để seller kiểm tra lại chính tả, không chặn hồ sơ — hàng
+   * local / không nhãn hiệu vẫn đăng bình thường.
+   */
+  isBrandUnrecognized: boolean;
+  /**
+   * Chi tiết mức độ khớp với data set chuẩn của hãng và mức trừ đã áp.
+   *
+   * `penaltyPercent` của chính nó đã CỘNG DỒN cả trừ thiếu hoá đơn lẫn trừ
+   * lệch dataset, nên Bước 05 không trừ thêm lần nữa.
+   */
+  datasetMatch: DatasetMatchResult;
+
+  /**
+   * Số token AI còn lại sau lượt kiểm định.
+   *
+   * Ưu tiên hơn `analyze-photos.remainingTokenBalance` vì endpoint này là nơi
+   * thực sự trừ token.
+   */
+  remainingTokenBalance?: number | null;
 }
 
 /** Tổng hợp tín hiệu đạt/trượt. Khớp `SignalCheckResultDto`. */

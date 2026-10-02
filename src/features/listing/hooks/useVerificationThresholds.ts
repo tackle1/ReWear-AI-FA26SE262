@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import listingApi from '../../../services/api/listing.api';
 import {
   ConfidenceEvaluation,
+  EvaluateConfidenceOptions,
   evaluateConfidence,
   VerificationThresholds,
 } from '../../../types/verification.type';
@@ -11,6 +12,7 @@ const FALLBACK_THRESHOLDS: VerificationThresholds = {
   autoPublishThreshold: 75,
   autoRejectThreshold: 50,
   missingBillPenaltyPercent: 15,
+  aiAnalysisTokenCost: 1,
 };
 
 export type ThresholdsStatus = 'loading' | 'success' | 'error';
@@ -21,8 +23,17 @@ export interface UseVerificationThresholdsResult {
   /** true nếu đang dùng cấu hình dự phòng vì API lỗi. */
   isFallback: boolean;
   reload: () => void;
-  /** Áp dụng cấu hình lên điểm AI gốc để ra điểm cuối và kết luận. */
-  evaluate: (baseScore: number, hasBill: boolean) => ConfidenceEvaluation;
+  /**
+   * Áp dụng cấu hình lên điểm của hồ sơ để ra điểm cuối và kết luận.
+   *
+   * `options` cho phép truyền điểm ĐÃ áp penalty ở Bước 04 (`finalScoreFromDecision`)
+   * cùng phân khúc brand (`requiresBillPhoto`) để không tính trừ hai lần.
+   */
+  evaluate: (
+    baseScore: number,
+    hasBill: boolean,
+    options?: EvaluateConfidenceOptions,
+  ) => ConfidenceEvaluation;
 }
 
 /**
@@ -57,6 +68,12 @@ export const useVerificationThresholds = (): UseVerificationThresholdsResult => 
         autoPublishThreshold: response.autoPublishThreshold,
         autoRejectThreshold: response.autoRejectThreshold,
         missingBillPenaltyPercent: response.missingBillPenaltyPercent,
+        // Tuỳ chọn: backend cũ chưa trả trường này thì vẫn chạy bình thường,
+        // chỉ thiếu con số "mỗi lần tốn mấy token" trên UI.
+        aiAnalysisTokenCost:
+          typeof response.aiAnalysisTokenCost === 'number'
+            ? response.aiAnalysisTokenCost
+            : FALLBACK_THRESHOLDS.aiAnalysisTokenCost,
       });
       setIsFallback(false);
       setStatus('success');
@@ -72,8 +89,11 @@ export const useVerificationThresholds = (): UseVerificationThresholdsResult => 
   }, [fetchThresholds]);
 
   const evaluate = useCallback(
-    (baseScore: number, hasBill: boolean) =>
-      evaluateConfidence(baseScore, hasBill, thresholds),
+    (
+      baseScore: number,
+      hasBill: boolean,
+      options?: EvaluateConfidenceOptions,
+    ) => evaluateConfidence(baseScore, hasBill, thresholds, options),
     [thresholds],
   );
 

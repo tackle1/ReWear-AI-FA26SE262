@@ -119,6 +119,16 @@ export interface ListingAiVerificationStepProps {
   signals?: SignalCheckResult | null;
   /** Đang gọi 3 endpoint của Bước 04. */
   isVerifying?: boolean;
+  /**
+   * Số token AI còn lại sau lần phân tích vừa rồi.
+   *
+   * `null` khi chưa có kết quả, hoặc gọi không xác thực (không trừ token).
+   * Backend trừ token ở mỗi endpoint Bước 04, nên số này giảm dần mỗi lần
+   * seller bấm xác thực lại — cần hiện ra để họ không bất ngờ khi bị chặn.
+   */
+  remainingTokens?: number | null;
+  /** Phí token cho mỗi lần phân tích, để giải thích vì sao số dư giảm. */
+  tokenCost?: number;
   /** Lỗi khi gọi endpoint Bước 04. */
   verifyError?: string | null;
   onCancel?: () => void;
@@ -140,6 +150,8 @@ export const ListingAiVerificationStep: React.FC<ListingAiVerificationStepProps>
   decision = null,
   signals = null,
   isVerifying = false,
+  remainingTokens = null,
+  tokenCost,
   verifyError = null,
   onCancel,
   onWaitResult,
@@ -199,6 +211,18 @@ export const ListingAiVerificationStep: React.FC<ListingAiVerificationStepProps>
   const percent = total > 0 ? Math.round((okCount / total) * 100) : 0;
   const isReady = okCount === total && total > 0;
 
+  /**
+   * Token AI còn lại không đủ cho một lần xác thực nữa.
+   *
+   * Backend chặn (403) khi số dư nhỏ hơn phí, nên báo TRƯỚC khi seller bấm mới
+   * bị chặn — nếu không, họ sẽ thấy Bước 04 lỗi mà không hiểu vì sao.
+   */
+  const isOutOfTokens =
+    typeof remainingTokens === 'number' &&
+    typeof tokenCost === 'number' &&
+    tokenCost > 0 &&
+    remainingTokens < tokenCost;
+
   /** Chỉ số tóm tắt — tất cả suy ra từ dữ liệu đo, không có số bịa đặt. */
   const metrics = useMemo<VerificationMetric[]>(() => {
     const items: VerificationMetric[] = [
@@ -231,8 +255,20 @@ export const ListingAiVerificationStep: React.FC<ListingAiVerificationStepProps>
       items.push({ label: 'NGƯỠNG ĐĂNG TIN', value: `${thresholds.autoPublishThreshold}%` });
     }
 
+    // Số dư token AI. Hiện "còn N" kèm phí mỗi lần để seller hiểu vì sao
+    // số này tụt mỗi lần bấm xác thực lại, thay vì tự nhiên mất đi.
+    if (typeof remainingTokens === 'number') {
+      items.push({
+        label: 'TOKEN AI CÒN LẠI',
+        value:
+          typeof tokenCost === 'number' && tokenCost > 0
+            ? `${remainingTokens} (mỗi lần −${tokenCost})`
+            : `${remainingTokens}`,
+      });
+    }
+
     return items;
-  }, [okCount, total, isChecking, thresholds, analysis, signals, isVerifying]);
+  }, [okCount, total, isChecking, thresholds, analysis, signals, isVerifying, remainingTokens, tokenCost]);
 
   return (
     <>
@@ -260,6 +296,15 @@ export const ListingAiVerificationStep: React.FC<ListingAiVerificationStepProps>
           <div className="rw-lc-ai-notice" role="alert">
             <AlertTriangle width={15} height={15} aria-hidden="true" />
             Không đọc được kết quả kiểm tra ảnh: {checkError}
+          </div>
+        )}
+
+        {isOutOfTokens && (
+          <div className="rw-lc-ai-notice" role="alert">
+            <AlertTriangle width={15} height={15} aria-hidden="true" />
+            Bạn còn <strong>{remainingTokens}</strong> token AI, không đủ cho một
+            lần xác thực (mỗi lần tốn <strong>{tokenCost}</strong> token). Hãy
+            nạp thêm token để tiếp tục kiểm định sản phẩm.
           </div>
         )}
 

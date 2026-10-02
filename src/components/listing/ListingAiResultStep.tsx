@@ -20,6 +20,7 @@ import trenchCoatImage from '../../assets/images/Burberry-Trench-Coat-Folded.png
 import useVerificationThresholds from '../../features/listing/hooks/useVerificationThresholds';
 import {
   ConfidenceEvaluation,
+  VerificationDecision,
   VerificationThresholds,
 } from '../../types/verification.type';
 import '../../styles/listing/ListingAiResultStep.css';
@@ -59,6 +60,8 @@ export interface ResultProduct {
   verifiedLabel?: string;
   statusLabel?: string;
   name?: string;
+  /** Thương hiệu người bán nhập ở Bước 01 — hiện trong cảnh báo brand lạ. */
+  brand?: string;
   sku?: string;
   marketLabel?: string;
   marketPrice?: string;
@@ -152,12 +155,21 @@ const buildExplainItems = (
 
   // Không bị trừ điểm — giải thích thẳng điểm cuối.
   if (penalty === 0) {
+    // Không nhắc "đã vượt ngưỡng" khi thực tế còn dưới ngưỡng: điểm không bị
+    // trừ không có nghĩa là được đăng. Nói đúng kết luận đang hiển thị.
+    const thresholdNote =
+      finalScore >= thresholds.autoPublishThreshold
+        ? ` Điểm này đã vượt ngưỡng đăng tin tự động (${thresholds.autoPublishThreshold}%).`
+        : finalScore <= thresholds.autoRejectThreshold
+          ? ` Điểm này thấp hơn ngưỡng tối thiểu (${thresholds.autoRejectThreshold}%), hồ sơ bị từ chối tự động.`
+          : ` Điểm này nằm trong vùng ${thresholds.autoRejectThreshold}% – ${thresholds.autoPublishThreshold}%, hệ thống chuyển chuyên viên đối soát.`;
+
     return [
       {
         title: `Tại sao điểm đạt ${finalScore.toFixed(1)}%?`,
         body: `${baseExplanation} Điểm AI gốc là ${baseScore}%, không bị trừ thêm vì ${
-          hasBill ? 'hồ sơ đã có hóa đơn' : 'hình thức hàng không yêu cầu hóa đơn'
-        }. Điểm này đã vượt ngưỡng đăng tin tự động (${thresholds.autoPublishThreshold}%).`,
+          hasBill ? 'hồ sơ đã có hóa đơn' : 'phân khúc thương hiệu này không yêu cầu hóa đơn'
+        }.${thresholdNote}`,
       },
       EXPLAIN_ITEM_NO_PERFECT_SCORE,
     ];
@@ -177,7 +189,7 @@ const buildExplainItems = (
       body:
         `${baseExplanation} Điểm AI gốc ${baseScore}%, ` +
         `bị trừ ${penalty} điểm vì chưa tải hóa đơn hoặc bằng chứng mua hàng ` +
-        `(mức trừ ${thresholds.missingBillPenaltyPercent} điểm). ${outcomeText}`,
+        `(mức trừ ${thresholds.missingBillPenaltyPercent}% theo nghiệp vụ). ${outcomeText}`,
     },
     EXPLAIN_ITEM_NO_PERFECT_SCORE,
   ];
@@ -186,6 +198,7 @@ const buildExplainItems = (
 const PRODUCT_DEFAULT: Required<ResultProduct> = {
   image: trenchCoatImage,
   tier: 'Burberry Vintage',
+  brand: '',
   verifiedLabel: '8 góc ảnh xác thực',
   statusLabel: 'Đã xác thực',
   name: 'Burberry Vintage Trench Coat Gabardine',
@@ -209,6 +222,7 @@ const withProductDefaults = (product?: ResultProduct): Required<ResultProduct> =
   if (product.verifiedLabel) merged.verifiedLabel = product.verifiedLabel;
   if (product.statusLabel) merged.statusLabel = product.statusLabel;
   if (product.name) merged.name = product.name;
+  if (product.brand) merged.brand = product.brand;
   if (product.sku) merged.sku = product.sku;
   if (product.marketLabel) merged.marketLabel = product.marketLabel;
   if (product.marketPrice) merged.marketPrice = product.marketPrice;
@@ -264,6 +278,17 @@ export interface ListingAiResultStepProps {
   onApprove?: () => void;
   /** Người bán đã tải hóa đơn hay chưa — quyết định có bị trừ điểm hay không. */
   hasBill?: boolean;
+  /**
+   * Kết quả `verify-and-decide` của Bước 04.
+   *
+   * Mang theo điểm ĐÃ áp trừ thiếu hoá đơn (`finalScore`) và phân khúc brand
+   * (`requiresBillPhoto`). Bước 05 dùng luôn `decision.finalScore` để không
+   * tính trừ lần thứ hai, và hiển thị cảnh báo brand lạ cho seller.
+   *
+   * Còn `null` (chưa xác thực, hoặc endpoint lỗi) thì bước này tự tính theo
+   * `confidence` + `hasBill` như trước.
+   */
+  decision?: VerificationDecision | null;
   /** Có bị chặn đăng tin khi điểm dưới ngưỡng tự động. */
   canPublish?: boolean;
   /** Báo ra ngoài khi trạng thái đăng tin thay đổi, để khóa nút ở action bar. */
@@ -335,6 +360,7 @@ export const ListingAiResultStep: React.FC<ListingAiResultStepProps> = ({
   nextListingNote = 'Bảo vệ danh tính và dữ liệu ĐỘNG lệch theo tiêu chuẩn cơ chế chấm điểm.',
   nextListingCert = 'Chứng thực giám định: License REWEAR-CERT-2024',
   hasBill = true,
+  decision = null,
   canPublish = true,
   onCanPublishChange,
   onConfidenceChange,
@@ -348,13 +374,42 @@ export const ListingAiResultStep: React.FC<ListingAiResultStepProps> = ({
   } = useVerificationThresholds();
 
   /**
-   * Điểm AI gốc do Bước 04 trả về, sau đó áp cấu hình ngưỡng:
-   * trừ điểm nếu thiếu hóa đơn và suy ra kết luận tự động.
+   * Điểm cuối của hồ sơ.
+   *
+   * Khi Bước 04 đã trả `decision`, penalty đã được backend áp sẵn trong
+   * `decision.finalScore` — dùng luôn điểm đó, KHÔNG trừ thêm ở đây (trừ hai
+   * lần sẽ làm seller mất điểm gấp đôi).
+   *
+   * Chỉ khi chưa có `decision` (endpoint lỗi, hoặc mở thẳng bước này) mới tự
+   * tính từ `confidence` + `hasBill` như trước.
    */
   const evaluation: ConfidenceEvaluation = useMemo(
-    () => evaluate(confidence, hasBill),
-    [evaluate, confidence, hasBill],
+    () =>
+      evaluate(confidence, hasBill, {
+        requiresBillPhoto: decision?.requiresBillPhoto,
+        finalScoreFromDecision: decision?.finalScore,
+      }),
+    [evaluate, confidence, hasBill, decision],
   );
+
+  /**
+   * Brand người bán nhập không nằm trong danh sách NeonDB nào.
+   *
+   * Chỉ cảnh báo để seller kiểm tra lại chính tả — KHÔNG chặn hồ sơ, vì hàng
+   * local / không nhãn hiệu vẫn đăng bình thường.
+   */
+  const showBrandWarning = Boolean(decision?.isBrandUnrecognized);
+
+  /** Bước 04 đã trừ điểm vì thiếu hoá đơn (điểm đã bị giảm ở Bước 04). */
+  const showBillPenaltyNotice = Boolean(decision?.missingBillPenaltyApplied);
+
+  /**
+   * Ảnh không khớp data set chuẩn của hãng.
+   *
+   * Chỉ cảnh báo, không chặn hồ sơ — nhưng điểm đã bị trừ ở Bước 04 nên nói rõ
+   * để seller biết cần chụp lại góc nào, nếu không sẽ tưởng điểm tự nhiên giảm.
+   */
+  const showDatasetWarning = Boolean(decision?.datasetMatch?.hasMismatchWarning);
 
   const productData = withProductDefaults(product);
   const roundedConfidence = evaluation.finalScore;
@@ -451,6 +506,49 @@ export const ListingAiResultStep: React.FC<ListingAiResultStepProps> = ({
             {latencyLabel}
           </span>
         </header>
+
+        {/* ══ CẢNH BÁO TỪ BƯỚC 04 ══
+            Brand không có trong danh sách NeonDB (chỉ nhắc lại chính tả, KHÔNG
+            chặn hồ sơ) và điểm đã bị trừ vì thiếu hoá đơn. */}
+        {(showBrandWarning || showBillPenaltyNotice || showDatasetWarning) && (
+          <div
+            className="rw-lc-result-alerts"
+            role="status"
+            aria-live="polite"
+          >
+            {showBrandWarning && (
+              <p className="rw-lc-result-alert is-warning">
+                Thương hiệu <strong>{productData.brand || 'bạn chọn'}</strong>{' '}
+                không có trong danh sách thương hiệu đã cấu hình. Hồ sơ vẫn được
+                tiếp tục, nhưng bạn nên kiểm tra lại chính tả — thương hiệu có
+                trong danh sách mới được áp dụng quy tắc bắt buộc ảnh hoá đơn và
+                đối chiếu đúng phân khúc.
+              </p>
+            )}
+
+            {showDatasetWarning && (
+              <p className="rw-lc-result-alert is-dataset">
+                Ảnh chưa khớp dữ liệu chuẩn của hãng: điểm đối chiếu{' '}
+                <strong>{decision?.datasetMatch?.matchScore}</strong>/100, đã trừ{' '}
+                <strong>{decision?.datasetMatch?.penaltyPercent}%</strong>.
+                {decision?.datasetMatch?.mismatchedSignals.length
+                  ? ' Các tín hiệu chưa đạt: '
+                  : ''}
+                {decision?.datasetMatch?.mismatchedSignals.join(', ')}
+                . Hãy chụp lại các góc này rồi xác thực lại.
+              </p>
+            )}
+
+            {showBillPenaltyNotice && (
+              <p className="rw-lc-result-alert is-penalty">
+                Bước 04 đã trừ điểm vì thương hiệu này bắt buộc phải có ảnh hoá
+                đơn mà bạn chưa tải: điểm AI gốc <strong>{evaluation.baseScore}</strong>{' '}
+                còn <strong>{evaluation.finalScore}</strong>. Tải ảnh hoá đơn ở
+                Bước 01 và xác thực lại để được hoàn điểm.
+              </p>
+            )}
+          </div>
+        )}
 
         <div className="rw-lc-result-columns">
           {/* ══ CỘT TRÁI ══ */}
