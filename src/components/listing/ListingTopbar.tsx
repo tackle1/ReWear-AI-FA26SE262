@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import ROUTES from '../../routes/routes.config';
+import useCurrentUser from '../../hooks/useCurrentUser';
 import '../../styles/listing/ListingTopbar.css';
 
 export interface ListingNavItem {
@@ -25,7 +26,8 @@ export interface ListingTopbarProps {
   items?: ListingNavItem[];
   regionLabel?: string;
   userName?: string;
-  userMeta?: string;
+  /** Dòng phụ; mặc định suy từ vai trò thật, truyền `null` để ẩn. */
+  userMeta?: string | null;
   hasUnread?: boolean;
   onBack?: () => void;
   onRegionClick?: () => void;
@@ -40,14 +42,35 @@ export const ListingTopbar: React.FC<ListingTopbarProps> = ({
   activeKey = 'listings',
   items = LISTING_NAV_ITEMS,
   regionLabel = 'VND / TP. Hồ Chí Minh',
-  userName = 'Mai Linh Vintage',
-  userMeta = 'Cấp 1 • Đã xác thực',
+  userName,
+  userMeta,
   hasUnread = true,
   onBack,
   onRegionClick,
   onNotificationClick,
   onAvatarClick,
 }) => {
+  /*
+   * Tên hiển thị lấy từ tài khoản đang đăng nhập; prop `userName` vẫn ưu tiên
+   * để các trang khác tự truyền tên khi cần.
+   *
+   * Không rơi về tên mẫu cố định — trước đây mọi tài khoản đều hiện
+   * "Mai Linh Vintage", và ký tự đầu của tên mẫu đó cũng được dùng làm avatar
+   * khi không có ảnh. Khi chưa có tên thì hiển thị nhãn trung tính.
+   */
+  const { name: currentUserName, role } = useCurrentUser();
+  const displayName = userName || currentUserName || 'Người bán';
+
+  /*
+   * Dòng phụ mặc định lấy từ VAI TRÒ thật trong phiên đăng nhập, thay vì chuỗi
+   * bịa "Cấp 1 • Đã xác thực" áp cho mọi seller. Truyền `null` để ẩn hẳn.
+   */
+  const metaText =
+    userMeta === null
+      ? null
+      : userMeta ??
+        (role === 'SELLER' ? 'Tài khoản người bán' : 'Tài khoản thành viên');
+
   return (
     <header className="rw-lc-topbar">
       <div className="rw-lc-topbar-inner">
@@ -103,15 +126,15 @@ export const ListingTopbar: React.FC<ListingTopbarProps> = ({
 
         <div className="rw-lc-user">
           <div className="rw-lc-user-text">
-            <b>{userName}</b>
-            <span>{userMeta}</span>
+            <b>{displayName}</b>
+            <span>{metaText}</span>
           </div>
-          <button type="button" className="rw-lc-avatar" onClick={onAvatarClick} aria-label={userName}>
+          <button type="button" className="rw-lc-avatar" onClick={onAvatarClick} aria-label={displayName}>
             {avatarSrc ? (
-              <img className="rw-lc-avatar-img" src={avatarSrc} alt={userName} />
+              <img className="rw-lc-avatar-img" src={avatarSrc} alt={displayName} />
             ) : (
               <span className="rw-lc-avatar-fallback" aria-hidden="true">
-                {userName.charAt(0)}
+                {displayName.charAt(0)}
               </span>
             )}
           </button>

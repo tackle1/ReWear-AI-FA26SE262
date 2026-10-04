@@ -1,8 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Alert from '../../../components/feedback/Alert';
-import { AuthRole, RegisterFormData } from '../types/auth.type';
+import { AuthRole, PHONE_PATTERN, PASSWORD_PATTERN, RegisterFormData } from '../types/auth.type';
 import { useRegister } from '../hooks/useRegister';
+import ROUTES from '../../../routes/routes.config';
 
 export interface RegisterFormProps {
   role: AuthRole;
@@ -11,7 +12,7 @@ export interface RegisterFormProps {
 
 export const RegisterForm: React.FC<RegisterFormProps> = ({ role, onSuccess }) => {
   const navigate = useNavigate();
-  const { register, isLoading, error, isSuccess } = useRegister();
+  const { register, isLoading, error, errorField, isSuccess, resetState } = useRegister();
 
   const [formData, setFormData] = useState<RegisterFormData>({
     fullName: '',
@@ -39,11 +40,12 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ role, onSuccess }) =
       errors.fullName = 'Vui lòng nhập họ và tên';
     }
 
-    const phoneRegex = /(84|0[3|5|7|8|9])+([0-9]{8})\b/;
+    // Đúng luật backend `[RegularExpression(@"^\+?[0-9]{9,15}$")]` — dùng chung
+    // hằng PHONE_PATTERN để UI không nhận được số SĐT mà server sẽ từ chối.
     if (!formData.phone.trim()) {
       errors.phone = 'Vui lòng nhập số điện thoại';
-    } else if (!phoneRegex.test(formData.phone.trim())) {
-      errors.phone = 'Số điện thoại không đúng định dạng';
+    } else if (!PHONE_PATTERN.test(formData.phone.trim())) {
+      errors.phone = 'Số điện thoại phải gồm 9-15 chữ số, có thể bắt đầu bằng +';
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -53,10 +55,10 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ role, onSuccess }) =
       errors.email = 'Email không hợp lệ';
     }
 
-    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d).{8,}$/;
+    // Đúng luật AuthService.ValidatePasswordStrength: >= 8 ký tự, có chữ và số.
     if (!formData.password) {
       errors.password = 'Vui lòng nhập mật khẩu';
-    } else if (!passwordRegex.test(formData.password)) {
+    } else if (!PASSWORD_PATTERN.test(formData.password)) {
       errors.password = 'Mật khẩu cần tối thiểu 8 ký tự, bao gồm cả chữ cái và số.';
     }
 
@@ -78,6 +80,14 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ role, onSuccess }) =
   }, [validationErrors]);
 
   const handleChange = (field: keyof RegisterFormData, value: string | boolean) => {
+    /*
+     * Bỏ lỗi của lần gửi vừa thất bại khi người dùng sửa đúng ô đó. Nếu giữ
+     * lại, khối đỏ vẫn hiện "Email này đã được đăng ký" dù họ vừa sửa email.
+     * Lỗi validate cục bộ KHÔNG xoá: nó tự tính lại từ `validationErrors`.
+     */
+    if (errorField === field) {
+      resetState();
+    }
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -103,11 +113,20 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ role, onSuccess }) =
     if (success) {
       if (onSuccess) {
         onSuccess();
-      } else {
-        setTimeout(() => {
-          navigate('/login');
-        }, 1200);
+        return;
       }
+
+      /*
+       * Đăng ký xong -> chuyển sang trang ĐĂNG NHẬP.
+       *
+       * `useRegister` đã xoá sạch token/user trong localStorage nên
+       * `ProtectedRoute` không đẩy người dùng khỏi /login. `replace: true` để
+       * nút "Back" không quay lại form đăng ký đã submit (gửi lại sẽ báo trùng
+       * email). Chờ 1.2s để người dùng kịp đọc thông báo thành công.
+       */
+      setTimeout(() => {
+        navigate(ROUTES.AUTH.LOGIN, { replace: true });
+      }, 1200);
     }
   };
 
@@ -126,8 +145,17 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ role, onSuccess }) =
   );
 
   return (
-    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '100%' }}>
-      {error && (
+    <form
+      onSubmit={handleSubmit}
+      noValidate
+      style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '100%' }}
+    >
+      {/*
+       * Lỗi đã gắn vào một ô cụ thể (email trùng, số điện thoại trùng) sẽ hiện
+       * NGAY DƯỚI ô đó, nên không lặp lại ở đây — tránh hai bản thông báo giống
+       * nhau trong cùng một form.
+       */}
+      {error && !errorField && (
         <Alert
           type="error"
           message="Lỗi đăng ký"
@@ -185,12 +213,24 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ role, onSuccess }) =
             value={formData.phone}
             onChange={(e) => handleChange('phone', e.target.value)}
             onBlur={() => handleBlur('phone')}
+            autoComplete="tel"
+            aria-invalid={(touched.phone && !!validationErrors.phone) || errorField === 'phone'}
+            aria-describedby={
+              errorField === 'phone'
+                ? 'register-phone-server-error'
+                : touched.phone && validationErrors.phone
+                  ? 'register-phone-error'
+                  : undefined
+            }
             style={{
               width: '100%',
               height: '44px',
               padding: '0 14px',
               backgroundColor: '#EDF3FE',
-              border: touched.phone && validationErrors.phone ? '1px solid #EF4444' : '1px solid transparent',
+              border:
+                (touched.phone && validationErrors.phone) || errorField === 'phone'
+                  ? '1px solid #EF4444'
+                  : '1px solid transparent',
               borderRadius: '10px',
               fontSize: '13.5px',
               color: '#0F172A',
@@ -199,8 +239,18 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ role, onSuccess }) =
             }}
           />
           {touched.phone && validationErrors.phone && (
-            <span style={{ fontSize: '11.5px', color: '#EF4444', marginTop: '3px', display: 'block' }}>
+            <span id="register-phone-error" style={{ fontSize: '11.5px', color: '#EF4444', marginTop: '3px', display: 'block' }}>
               {validationErrors.phone}
+            </span>
+          )}
+          {/* Lỗi "số điện thoại đã được sử dụng" từ backend — cùng cơ chế với email trùng. */}
+          {errorField === 'phone' && error && (
+            <span
+              id="register-phone-server-error"
+              role="alert"
+              style={{ fontSize: '11.5px', color: '#EF4444', marginTop: '3px', display: 'block' }}
+            >
+              {error}
             </span>
           )}
         </div>
@@ -218,12 +268,24 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ role, onSuccess }) =
             value={formData.email}
             onChange={(e) => handleChange('email', e.target.value)}
             onBlur={() => handleBlur('email')}
+            autoComplete="email"
+            aria-invalid={(touched.email && !!validationErrors.email) || errorField === 'email'}
+            aria-describedby={
+              errorField === 'email'
+                ? 'register-email-server-error'
+                : touched.email && validationErrors.email
+                  ? 'register-email-error'
+                  : undefined
+            }
             style={{
               width: '100%',
               height: '44px',
               padding: '0 40px 0 14px',
               backgroundColor: '#EDF3FE',
-              border: touched.email && validationErrors.email ? '1px solid #EF4444' : '1px solid transparent',
+              border:
+                (touched.email && validationErrors.email) || errorField === 'email'
+                  ? '1px solid #EF4444'
+                  : '1px solid transparent',
               borderRadius: '10px',
               fontSize: '13.5px',
               color: '#0F172A',
@@ -236,8 +298,22 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ role, onSuccess }) =
           </div>
         </div>
         {touched.email && validationErrors.email && (
-          <span style={{ fontSize: '11.5px', color: '#EF4444', marginTop: '3px', display: 'block' }}>
+          <span id="register-email-error" style={{ fontSize: '11.5px', color: '#EF4444', marginTop: '3px', display: 'block' }}>
             {validationErrors.email}
+          </span>
+        )}
+        {/*
+         * Lỗi "email đã tồn tại" do BACKEND trả về (email đã có trong DB). Hiện
+         * ngay dưới ô email + viền đỏ, đúng chỗ người dùng đang nhìn, thay vì
+         * chỉ một dòng chung ở đầu form.
+         */}
+        {errorField === 'email' && error && (
+          <span
+            id="register-email-server-error"
+            role="alert"
+            style={{ fontSize: '11.5px', color: '#EF4444', marginTop: '3px', display: 'block' }}
+          >
+            {error}
           </span>
         )}
       </div>

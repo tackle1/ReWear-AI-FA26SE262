@@ -26,7 +26,21 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
   return (
     <article className={`rw-mkt-card${layout === 'list' ? ' rw-mkt-card--list' : ''}`}>
-      <div className="rw-mkt-card-media">
+      {/* Bấm ảnh hoặc phần nội dung cũng mở trang chi tiết, không chỉ nút bên dưới.
+          Các nút con (tim, "Xem chi tiết") gọi stopPropagation để không kích hoạt hai lần. */}
+      <div
+        className="rw-mkt-card-media"
+        role="button"
+        tabIndex={0}
+        aria-label={`Xem chi tiết ${product.title}`}
+        onClick={() => onViewDetails?.(product)}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            onViewDetails?.(product);
+          }
+        }}
+      >
         <img className="rw-mkt-card-img" src={product.image} alt={product.title} loading="lazy" />
         <div className="rw-mkt-card-badges">
           <span className="rw-mkt-card-ai">
@@ -43,7 +57,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           className={`rw-mkt-card-heart${isSaved ? ' active' : ''}`}
           aria-pressed={isSaved}
           aria-label={isSaved ? `Bỏ lưu ${product.title}` : `Lưu ${product.title}`}
-          onClick={() => onToggleSave?.(product.id)}
+          onClick={(event) => {
+            event.stopPropagation();
+            onToggleSave?.(product.id);
+          }}
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill={isSaved ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <path d="M12 20s-7.5-4.6-7.5-10A4.5 4.5 0 0 1 12 7.4 4.5 4.5 0 0 1 19.5 10c0 5.4-7.5 10-7.5 10Z" />
@@ -95,7 +112,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           <button
             type="button"
             className="rw-mkt-detail-btn"
-            onClick={() => onViewDetails?.(product)}
+            onClick={(event) => {
+              event.stopPropagation();
+              onViewDetails?.(product);
+            }}
             aria-label={`Xem chi tiết ${product.title}`}
           >
             Xem chi tiết

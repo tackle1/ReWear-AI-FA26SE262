@@ -1,6 +1,7 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import ROUTES from '../../../routes/routes.config';
+import useWishlist from '../hooks/useWishlist';
 import '../../../styles/marketplace/BuyerTopbar.css';
 
 export interface BuyerNavItem {
@@ -12,7 +13,7 @@ export interface BuyerNavItem {
 /** Menu điều hướng ngang của không gian người mua. */
 export const BUYER_NAV_ITEMS: BuyerNavItem[] = [
   { key: 'explore', label: 'Khám phá', path: ROUTES.MARKETPLACE.ROOT },
-  { key: 'purchases', label: 'Danh mục', path: ROUTES.BUYER.PURCHASES },
+  { key: 'purchases', label: 'Tài khoản', path: ROUTES.BUYER.ACCOUNT },
   { key: 'orders', label: 'Đơn hàng', path: ROUTES.BUYER.ORDERS },
   { key: 'messages', label: 'Tin nhắn', path: ROUTES.BUYER.MESSAGES },
 ];
@@ -27,6 +28,7 @@ export interface BuyerTopbarProps {
   searchValue?: string;
   activeNavKey?: string;
   items?: BuyerNavItem[];
+  /** Số sản phẩm đã lưu. Bỏ trống để lấy tự động từ store yêu thích dùng chung. */
   wishlistCount?: number;
   hasUnreadNotifications?: boolean;
   hasUnreadMessages?: boolean;
@@ -49,7 +51,7 @@ export const BuyerTopbar: React.FC<BuyerTopbarProps> = ({
   searchValue,
   activeNavKey = 'explore',
   items = BUYER_NAV_ITEMS,
-  wishlistCount = 0,
+  wishlistCount,
   hasUnreadNotifications = true,
   hasUnreadMessages = true,
   onSearchChange,
@@ -61,11 +63,20 @@ export const BuyerTopbar: React.FC<BuyerTopbarProps> = ({
   onLogout,
 }) => {
   const [inner, setInner] = React.useState('');
+  const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
   const menuRef = React.useRef<HTMLDivElement>(null);
   const triggerRef = React.useRef<HTMLButtonElement>(null);
   const logoutRef = React.useRef<HTMLButtonElement>(null);
   const value = searchValue ?? inner;
+
+  // Badge yêu thích đọc từ store dùng chung nên mọi màn hình đều hiện đúng
+  // số đang lưu, kể cả trang không truyền prop `wishlistCount`.
+  const { savedIds } = useWishlist();
+  const wishlistBadge = wishlistCount ?? savedIds.length;
+
+  // Bấm biểu tượng tim mặc định mở trang Danh sách yêu thích.
+  const handleWishlistClick = onWishlistClick ?? (() => navigate(ROUTES.BUYER.WISHLIST));
 
   React.useEffect(() => {
     if (!isMenuOpen) return;
@@ -139,13 +150,13 @@ export const BuyerTopbar: React.FC<BuyerTopbarProps> = ({
           <button
             type="button"
             className="rw-buyer-icon-btn"
-            aria-label={wishlistCount > 0 ? `Danh sách yêu thích (${wishlistCount} sản phẩm)` : 'Danh sách yêu thích'}
-            onClick={onWishlistClick}
+            aria-label={wishlistBadge > 0 ? `Danh sách yêu thích (${wishlistBadge} sản phẩm)` : 'Danh sách yêu thích'}
+            onClick={handleWishlistClick}
           >
             <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M12 20s-7.5-4.6-7.5-10A4.5 4.5 0 0 1 12 7.4 4.5 4.5 0 0 1 19.5 10c0 5.4-7.5 10-7.5 10Z" />
             </svg>
-            {wishlistCount > 0 && <i className="rw-buyer-dot danger">{wishlistCount}</i>}
+            {wishlistBadge > 0 && <i className="rw-buyer-dot danger">{wishlistBadge}</i>}
           </button>
 
           <button type="button" className="rw-buyer-icon-btn" aria-label="Thông báo" onClick={onNotificationClick}>
@@ -214,11 +225,8 @@ export const BuyerTopbar: React.FC<BuyerTopbarProps> = ({
                   <span>Tài khoản người mua</span>
                   <strong>{userName}</strong>
                 </div>
-                <Link to={ROUTES.BUYER.PURCHASES} className="rw-buyer-menu-item" role="menuitem">
-                  Đơn mua của tôi
-                </Link>
-                <Link to={ROUTES.BUYER.WISHLIST} className="rw-buyer-menu-item" role="menuitem">
-                  Danh sách yêu thích
+                <Link to={ROUTES.BUYER.ACCOUNT} className="rw-buyer-menu-item" role="menuitem">
+                  Tài khoản của tôi
                 </Link>
                 <button
                   ref={logoutRef}

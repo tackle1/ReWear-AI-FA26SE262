@@ -1,11 +1,11 @@
 import React from 'react';
+import useCurrentUser from '../../hooks/useCurrentUser';
 import '../../styles/dashboard/DashboardTopbar.css';
 
 export interface DashboardTopbarProps {
   avatarSrc?: string;
   userName?: string;
   verifiedLabel?: string;
-  userSubtitle?: string;
   regionLabel?: string;
   searchPlaceholder?: string;
   searchValue?: string;
@@ -20,13 +20,15 @@ export interface DashboardTopbarProps {
 
 export const DashboardTopbar: React.FC<DashboardTopbarProps> = ({
   avatarSrc,
-  userName = 'Mai Linh Vintage',
+  userName,
   verifiedLabel = 'Người bán đã xác thực',
-  userSubtitle = 'Đối tác ký quỹ • Quận 1',
-  regionLabel = 'VND / HCM City',
+  // Chỉ hiện đơn vị tiền tệ; khu vực/địa điểm không có dữ liệu thật nên không
+  // ghi cứng "HCM City" cho mọi tài khoản.
+  regionLabel = 'VND',
   searchPlaceholder = 'Tìm kiếm tin đăng đã xác thực, SKU, mã đơn...',
   searchValue,
-  hasUnread = true,
+  // Mặc định false: chưa có API thông báo nên không hiện chấm đỏ "có tin mới" bịa.
+  hasUnread = false,
   onSearchChange,
   onSearchSubmit,
   onRegionClick,
@@ -40,6 +42,17 @@ export const DashboardTopbar: React.FC<DashboardTopbarProps> = ({
   const accountTriggerRef = React.useRef<HTMLButtonElement>(null);
   const logoutMenuItemRef = React.useRef<HTMLButtonElement>(null);
   const value = searchValue ?? inner;
+
+  /*
+   * Tên hiển thị lấy từ tài khoản đang đăng nhập; prop `userName` vẫn ưu tiên
+   * để trang khác tự truyền tên khi cần.
+   *
+   * Không rơi về một tên mẫu cố định — trước đây mọi tài khoản chưa đăng nhập
+   * đều hiện "Mai Linh Vintage", tức là dữ liệu bịa. Khi không có tên, hiển thị
+   * nhãn trung tính theo vai trò.
+   */
+  const { name: currentUserName } = useCurrentUser();
+  const displayName = userName || currentUserName || 'Người bán';
 
   React.useEffect(() => {
     if (!isAccountMenuOpen) return;
@@ -77,7 +90,7 @@ export const DashboardTopbar: React.FC<DashboardTopbarProps> = ({
   return (
     <header className="rw-topbar">
       <div className="rw-topbar-search">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden="true">
+        <svg className="rw-topbar-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden="true">
           <circle cx="11" cy="11" r="6" />
           <path d="m20 20-4.2-4.2" />
         </svg>
@@ -91,8 +104,35 @@ export const DashboardTopbar: React.FC<DashboardTopbarProps> = ({
           }}
           onKeyDown={(e) => {
             if (e.key === 'Enter') onSearchSubmit?.(value);
+            // Escape xoá nội dung đang lọc — thoát nhanh khỏi ô tìm kiếm.
+            if (e.key === 'Escape' && value) {
+              e.stopPropagation();
+              setInner('');
+              onSearchChange?.('');
+            }
           }}
+          aria-label={searchPlaceholder}
         />
+        {/*
+          * Nút "xoá" chỉ hiện khi đang có nội dung; nếu không, nó chiếm chỗ
+          * trống vô nghĩa và làm ô tìm kiếm trông nặng nề.
+          */}
+        {value && (
+          <button
+            type="button"
+            className="rw-topbar-search-clear"
+            aria-label="Xoá từ khoá tìm kiếm"
+            onClick={() => {
+              setInner('');
+              onSearchChange?.('');
+            }}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" aria-hidden="true">
+              <line x1="6" y1="6" x2="18" y2="18" />
+              <line x1="18" y1="6" x2="6" y2="18" />
+            </svg>
+          </button>
+        )}
       </div>
       <div className="rw-topbar-right">
         <button type="button" className="rw-region-pill" onClick={onRegionClick}>
@@ -126,7 +166,7 @@ export const DashboardTopbar: React.FC<DashboardTopbarProps> = ({
                   window.requestAnimationFrame(() => logoutMenuItemRef.current?.focus());
                 }
               }}
-              aria-label={`Mở menu tài khoản của ${userName}`}
+              aria-label={`Mở menu tài khoản của ${displayName}`}
               aria-haspopup="menu"
               aria-expanded={isAccountMenuOpen}
               aria-controls="rw-account-menu"
@@ -135,15 +175,39 @@ export const DashboardTopbar: React.FC<DashboardTopbarProps> = ({
                 {avatarSrc ? (
                   <img className="rw-avatar-img" src={avatarSrc} alt="" />
                 ) : (
-                  <span className="rw-avatar-fallback" aria-hidden="true">{userName.charAt(0)}</span>
+                  <span className="rw-avatar-fallback" aria-hidden="true">{displayName.charAt(0)}</span>
                 )}
               </span>
               <span className="rw-user-meta">
                 <span className="rw-user-line1">
-                  <b>{userName}</b>
-                  <span className="rw-verified-badge">{verifiedLabel}</span>
+                  <b>{displayName}</b>
                 </span>
-                <span className="rw-user-line2">{userSubtitle}</span>
+                {/*
+                 * Badge xác thực nằm ở DÒNG DƯỚI tên, không đứng cạnh tên như
+                 * trước: chuỗi "Người bán đã xác thực" khá dài nên đặt cạnh tên
+                 * làm cụm này tràn rộng, kéo cả thanh navbar rộng ra. Đặt xuống
+                 * dòng hai giữ phần tên gọn và cân với avatar.
+                 */}
+                {verifiedLabel && (
+                  <span className="rw-user-line2">
+                    <span className="rw-verified-badge">
+                      <svg
+                        width="11"
+                        height="11"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="3.2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden="true"
+                      >
+                        <path d="m5 13 4 4L19 7" />
+                      </svg>
+                      {verifiedLabel}
+                    </span>
+                  </span>
+                )}
               </span>
               <svg className="rw-account-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="m6 9 6 6 6-6" />
@@ -153,7 +217,7 @@ export const DashboardTopbar: React.FC<DashboardTopbarProps> = ({
               <div id="rw-account-menu" className="rw-account-menu" role="menu" aria-label="Tùy chọn tài khoản">
                 <div className="rw-account-menu-header" aria-hidden="true">
                   <span>Tài khoản seller</span>
-                  <strong>{userName}</strong>
+                  <strong>{displayName}</strong>
                 </div>
                 <button
                   ref={logoutMenuItemRef}

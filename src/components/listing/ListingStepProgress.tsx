@@ -11,21 +11,30 @@ export interface ListingStep {
   description?: string;
 }
 
-/** 6 bước của quy trình kiểm định AI & niêm yết */
+/**
+ * 5 bước của quy trình kiểm định AI & niêm yết.
+ *
+ * Bước "Đăng tin" cũ (Bước 06) đã tách thành HAI TRANG RIÊNG ngoài thanh tiến
+ * trình: sau Bước 05, luồng rẽ theo điểm confidence —
+ *   • >= ngưỡng đăng (75) → trang Đăng tin   (`ROUTES.LISTING.PUBLISH`)
+ *   • 50 – <75            → trang Gắn cờ   (`ROUTES.LISTING.FLAG`)
+ *   • < 50                → từ chối, quay lại Bước 01
+ * Nên bước cuối trong thanh tiến trình là Bước 05.
+ */
 export const LISTING_STEPS: ListingStep[] = [
   {
     id: 1,
     short: 'Thông tin SP',
     title: 'Thông tin sản phẩm',
     description:
-      'Nhập các thông số cốt lõi và dữ liệu tham chiếu để hệ thống AI kích hoạt mô hình đối sánh quang học trước khi sang Bước 02 (Chụp ảnh).',
+      'Nhập thông tin sản phẩm và tải ảnh chính. Hệ thống dùng dữ liệu này để đối chiếu ở Bước 02.',
   },
   {
     id: 2,
     short: 'Chụp ảnh',
     title: 'Chụp ảnh sản phẩm theo hướng dẫn',
     description:
-      'Chụp đủ 5 góc theo khung ngắm hướng dẫn để AI trích xuất đặc trưng vi cấu trúc của sản phẩm trước khi thẩm định.',
+      'Chụp đủ 4 góc theo khung ngắm hướng dẫn để AI trích xuất đặc trưng vi cấu trúc của sản phẩm trước khi thẩm định.',
   },
   {
     id: 3,
@@ -47,13 +56,6 @@ export const LISTING_STEPS: ListingStep[] = [
     title: 'Kết quả thẩm định',
     description:
       'Xem chỉ số tin cậy, kết luận thẩm định và các khuyến nghị điều chỉnh trước khi tin đăng được niêm yết.',
-  },
-  {
-    id: 6,
-    short: 'Đăng tin',
-    title: 'Đăng tin & Niêm yết',
-    description:
-      'Hoàn tất niêm yết, gắn huy hiệu xác thực AI và đưa tin đăng lên chợ ReWear AI để người mua yên tâm giao dịch.',
   },
 ];
 

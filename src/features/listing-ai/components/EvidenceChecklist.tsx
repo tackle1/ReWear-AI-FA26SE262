@@ -1,7 +1,11 @@
 import React from 'react';
 import { EvidenceChecklistItem, EvidenceChecklistProps } from '../types/evidence-checklist.type';
-import coatImage from '../../../assets/images/Burberry-Vintage-Trench-Coat.png';
 
+/**
+ * Danh sách góc mẫu chỉ dùng làm khung bố cục khi chưa truyền `items`.
+ * Trong luồng thật, Bước 02 luôn truyền danh sách góc động từ `ANGLES_DATA`
+ * nên dữ liệu này không ảnh hưởng tiến trình hiển thị.
+ */
 export const DEFAULT_EVIDENCE_ITEMS: EvidenceChecklistItem[] = [
   {
     id: '01',
@@ -9,7 +13,6 @@ export const DEFAULT_EVIDENCE_ITEMS: EvidenceChecklistItem[] = [
     title: 'Toàn bộ sản phẩm',
     subtitle: 'Front Silhouette • Đã đạt chuẩn AI',
     status: 'completed',
-    thumbnailUrl: coatImage,
   },
   {
     id: '02',
@@ -34,24 +37,30 @@ export const DEFAULT_EVIDENCE_ITEMS: EvidenceChecklistItem[] = [
     subtitle: 'Engraved Horn Buttons & Buckles',
     status: 'locked',
   },
-  {
-    id: '05',
-    number: '05',
-    title: 'Kết cấu vải & Lót Nova Check',
-    subtitle: 'Cotton Twill Weave & Plaid Align',
-    status: 'locked',
-  },
 ];
 
 export const EvidenceChecklist: React.FC<EvidenceChecklistProps> = ({
   items = DEFAULT_EVIDENCE_ITEMS,
-  title = '5 Góc bằng chứng bắt buộc (Evidence Checklist)',
-  subtitle = 'Đã hoàn thành 1/5 mẫu ảnh',
-  completionPercentage = 20,
+  title = 'Góc bằng chứng bắt buộc (Evidence Checklist)',
+  subtitle,
+  completionPercentage,
   onItemClick,
   className = '',
   style,
 }) => {
+  /*
+   * Tiến trình luôn suy ra từ chính danh sách góc đang truyền vào thay vì để
+   * giá trị mặc định cố định — nhờ đó Bước 02 có bao nhiêu góc thì thông tin
+   * hiển thị bấy nhiêu, không bao giờ lệch với dữ liệu thật.
+   */
+  const totalCount = items.length;
+  const completedCount = items.filter((item) => item.status === 'completed').length;
+  const percent =
+    completionPercentage ??
+    (totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0);
+  const resolvedSubtitle =
+    subtitle ?? `Đã hoàn thành ${completedCount}/${totalCount} mẫu ảnh`;
+
   return (
     <div
       className={`rw-evidence-checklist-card ${className}`}
@@ -106,11 +115,11 @@ export const EvidenceChecklist: React.FC<EvidenceChecklistProps> = ({
               fontWeight: 400,
             }}
           >
-            {subtitle}
+            {resolvedSubtitle}
           </p>
         </div>
 
-        {/* 20% Badge */}
+        {/* Phần trăm hoàn thành — suy ra từ số góc đã chụp. */}
         <div
           style={{
             backgroundColor: '#DBEAFE',
@@ -123,8 +132,35 @@ export const EvidenceChecklist: React.FC<EvidenceChecklistProps> = ({
             flexShrink: 0,
           }}
         >
-          {completionPercentage}%
+          {percent}%
         </div>
+      </div>
+
+      {/* Thanh tiến trình, rộng bằng chiều ngang thực tế của `percent`. */}
+      <div
+        style={{
+          height: '6px',
+          borderRadius: '999px',
+          backgroundColor: '#E2E8F0',
+          overflow: 'hidden',
+          marginTop: '-8px',
+          marginBottom: '16px',
+        }}
+        role="progressbar"
+        aria-valuenow={percent}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label="Tiến trình chụp ảnh bằng chứng"
+      >
+        <div
+          style={{
+            width: `${percent}%`,
+            height: '100%',
+            borderRadius: '999px',
+            background: 'linear-gradient(90deg, #3B82F6, #22D3EE)',
+            transition: 'width 0.35s ease',
+          }}
+        />
       </div>
 
       {/* ── Checklist Items List ── */}
@@ -160,7 +196,11 @@ export const EvidenceChecklist: React.FC<EvidenceChecklistProps> = ({
                       height: '46px',
                       borderRadius: '12px',
                       backgroundColor: '#C8BEB2',
-                      backgroundImage: `url(${item.thumbnailUrl || coatImage})`,
+                      // Không dùng ảnh mẫu cố định: góc đã chụp thì hiện ảnh
+                      // thật, góc chưa chụp thì để màu nền trơn.
+                      backgroundImage: item.thumbnailUrl
+                        ? `url(${item.thumbnailUrl})`
+                        : 'none',
                       backgroundSize: 'cover',
                       backgroundPosition: 'center',
                       position: 'relative',
@@ -209,6 +249,24 @@ export const EvidenceChecklist: React.FC<EvidenceChecklistProps> = ({
                     <div style={{ fontSize: '11.5px', color: '#475569', marginTop: '3px', fontWeight: 400 }}>
                       {item.subtitle}
                     </div>
+                    {item.angleType && (
+                      <code
+                        style={{
+                          display: 'inline-block',
+                          marginTop: '5px',
+                          padding: '2px 6px',
+                          borderRadius: '5px',
+                          background: '#F1F5F9',
+                          color: '#475569',
+                          fontSize: '10px',
+                          fontWeight: 700,
+                          letterSpacing: '0.03em',
+                          fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+                        }}
+                      >
+                        {item.angleType}
+                      </code>
+                    )}
                   </div>
                 </div>
 
@@ -300,6 +358,24 @@ export const EvidenceChecklist: React.FC<EvidenceChecklistProps> = ({
                     <div style={{ fontSize: '11.5px', color: '#94A3B8', marginTop: '3px' }}>
                       {item.subtitle}
                     </div>
+                    {item.angleType && (
+                      <code
+                        style={{
+                          display: 'inline-block',
+                          marginTop: '5px',
+                          padding: '2px 6px',
+                          borderRadius: '5px',
+                          background: 'rgba(255,255,255,0.14)',
+                          color: '#E2E8F0',
+                          fontSize: '10px',
+                          fontWeight: 700,
+                          letterSpacing: '0.03em',
+                          fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+                        }}
+                      >
+                        {item.angleType}
+                      </code>
+                    )}
                   </div>
                 </div>
 
@@ -370,6 +446,24 @@ export const EvidenceChecklist: React.FC<EvidenceChecklistProps> = ({
                     <div style={{ fontSize: '11.5px', color: '#64748B', marginTop: '3px' }}>
                       {item.subtitle}
                     </div>
+                    {item.angleType && (
+                      <code
+                        style={{
+                          display: 'inline-block',
+                          marginTop: '5px',
+                          padding: '2px 6px',
+                          borderRadius: '5px',
+                          background: '#F1F5F9',
+                          color: '#64748B',
+                          fontSize: '10px',
+                          fontWeight: 700,
+                          letterSpacing: '0.03em',
+                          fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+                        }}
+                      >
+                        {item.angleType}
+                      </code>
+                    )}
                   </div>
                 </div>
 
@@ -440,6 +534,24 @@ export const EvidenceChecklist: React.FC<EvidenceChecklistProps> = ({
                   <div style={{ fontSize: '11.5px', color: '#64748B', marginTop: '3px' }}>
                     {item.subtitle}
                   </div>
+                  {item.angleType && (
+                    <code
+                      style={{
+                        display: 'inline-block',
+                        marginTop: '5px',
+                        padding: '2px 6px',
+                        borderRadius: '5px',
+                        background: '#F1F5F9',
+                        color: '#94A3B8',
+                        fontSize: '10px',
+                        fontWeight: 700,
+                        letterSpacing: '0.03em',
+                        fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+                      }}
+                    >
+                      {item.angleType}
+                    </code>
+                  )}
                 </div>
               </div>
 

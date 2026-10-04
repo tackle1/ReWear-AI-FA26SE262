@@ -175,6 +175,54 @@
   transition: opacity 0.25s ease, transform 0.4s ease;
 }
 
+/* Khung hình camera trước tiếp, đồng bộ kích thước với ảnh bạn chụp. */
+.rw-lc-capture-video {
+  display: block;
+  width: 100%;
+  height: 440px;
+  object-fit: cover;
+  background: #0F172A;
+}
+
+/* Chưa có ảnh của góc đang chọn: hiện hướng dẫn chụp thay cho ảnh mẫu. */
+.rw-lc-capture-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-height: 440px;
+  padding: 32px 40px;
+  background: #F8FAFC;
+  text-align: center;
+}
+
+.rw-lc-capture-placeholder svg { color: #94A3B8; }
+
+.rw-lc-capture-placeholder b {
+  font-size: 15px;
+  font-weight: 800;
+  color: #0F172A;
+}
+
+.rw-lc-capture-placeholder small {
+  max-width: 520px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: #64748B;
+}
+
+.rw-lc-capture-placeholder span {
+  font-size: 12px;
+  color: #94A3B8;
+}
+
+.rw-lc-capture-placeholder em {
+  font-style: normal;
+  font-weight: 700;
+  color: #2563EB;
+}
+
 /* Shutter flash overlay */
 .rw-lc-capture-flash {
   position: absolute;
@@ -188,6 +236,41 @@
 
 .rw-lc-capture-flash.active {
   opacity: 0.92;
+}
+
+/* Lớp phủ định hướng khi đang ngắm qua camera. */
+.rw-lc-capture-guide {
+  position: absolute;
+  inset: 0;
+  display: none;
+  place-items: center;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      circle at 50% 50%,
+      transparent 0 34%,
+      rgba(2, 6, 23, 0.32) 46%,
+      rgba(2, 6, 23, 0.62) 100%
+    );
+}
+
+.rw-lc-capture-guide.is-live { display: grid; }
+
+/* Vòng tròn định vị tâm, giống vòng ngắm của máy ảnh. */
+.rw-lc-capture-guide-ring {
+  position: absolute;
+  width: 42%;
+  aspect-ratio: 1;
+  border: 1.5px dashed rgba(56, 189, 248, 0.75);
+  border-radius: 50%;
+}
+
+.rw-lc-capture-guide-dot {
+  width: 12px;
+  height: 12px;
+  border: 2px solid #38BDF8;
+  border-radius: 50%;
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.9);
 }
 
 /* High-tech targeting brackets (L-corners) */
@@ -302,99 +385,110 @@
   z-index: 15;
 }
 
-.rw-lc-hud-tag.tl {
-  top: 24px;
-  left: 60px;
-}
-
 .rw-lc-hud-tag.tr {
   top: 24px;
   right: 60px;
   color: #38BDF8;
 }
 
-.rw-lc-hud-tag.bl {
-  bottom: 24px;
-  left: 60px;
-}
-
-.rw-lc-hud-tag.br {
-  bottom: 24px;
-  right: 60px;
-  background: rgba(30, 58, 138, 0.85);
-  border-color: rgba(56, 189, 248, 0.4);
-  color: #FFFFFF;
-}
-
-/* Bottom camera metadata strip */
-.rw-lc-capture-camera-meta {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 20px;
-  font-size: 11px;
-  color: #64748B;
-  background: #F8FAFC;
-  border-top: 1px solid #E2E8F0;
-  border-bottom: 1px solid #E2E8F0;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-}
-
 /* Action Button Bar */
 .rw-lc-capture-actions {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 10px;
-  padding: 18px 20px;
+  padding: 16px 20px;
   background: #FFFFFF;
+  border-top: 1px solid #F1F5F9;
 }
 
 .rw-lc-capture-actions button {
   height: 44px;
-  padding: 0 16px;
-  border-radius: 12px;
+  padding: 0 18px;
+  border-radius: 999px;
   border: 1px solid #E2E8F0;
-  background: #F8FAFC;
-  color: #334155;
-  font-size: 13px;
+  background: #FFFFFF;
+  color: #475569;
+  font-size: 13.5px;
   font-weight: 600;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
-  transition: all 0.15s ease;
+  white-space: nowrap;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
-.rw-lc-capture-actions button:hover {
-  background: #F1F5F9;
+.rw-lc-capture-actions button:hover:not(:disabled) {
+  background: #F8FAFC;
   border-color: #CBD5E1;
   color: #0F172A;
-  transform: translateY(-1px);
 }
 
+/* Nút không dùng được (VD: chưa bật camera) — dùng điều kiện disabled. */
+.rw-lc-capture-actions button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.rw-lc-capture-actions button:disabled:hover {
+  background: #fff;
+  border-color: #E2E8F0;
+  color: #475569;
+}
+
+/* Input file ẩn, kích hoạt bằng nút "Tải ảnh từ máy". */
+.rw-lc-capture-file-input {
+  display: none;
+}
+
+/* Cảnh báo lỗi quyền camera / định dạng ảnh không hợp lệ. */
+.rw-lc-capture-error {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 12px;
+  padding: 11px 13px;
+  border: 1px solid #FECACA;
+  border-radius: 10px;
+  background: #FEF2F2;
+  color: #991B1B;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.rw-lc-capture-error span { flex: 1; min-width: 0; }
+
+.rw-lc-capture-error button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #991B1B;
+  cursor: pointer;
+}
+
+.rw-lc-capture-error button:hover { background: #FEE2E2; }
+
+/* Nút chính — nền đậm, luôn dùng để chụp góc hiện tại. */
 .rw-lc-capture-actions button.primary {
-  margin-left: auto;
-  background: #000000;
+  background: #0F172A;
   color: #FFFFFF;
-  border: none;
-  padding: 0 22px;
+  border-color: #0F172A;
   font-weight: 700;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.18);
 }
 
-.rw-lc-capture-actions button.primary:hover {
+.rw-lc-capture-actions button.primary:hover:not(:disabled) {
   background: #1E293B;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
-  transform: translateY(-1px);
-}
-
-.rw-lc-capture-actions button.primary kbd {
-  background: rgba(255, 255, 255, 0.2);
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 10px;
-  letter-spacing: 0.05em;
-  font-family: inherit;
+  border-color: #1E293B;
+  color: #FFFFFF;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.26);
 }
 
 /* AI Guidance Banner */
@@ -418,205 +512,16 @@
   margin-bottom: 4px;
 }
 
-/* AI Live Pre-Check Metrics */
-.rw-lc-capture-metrics-wrap {
-  margin: 0 20px 20px;
-  padding: 16px 18px;
-  background: #F8FAFC;
-  border: 1px solid #E2E8F0;
-  border-radius: 16px;
-}
-
-.rw-lc-capture-metrics-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 14px;
-}
-
-.rw-lc-capture-metrics-head strong {
-  font-size: 13.5px;
-  color: #0F172A;
-  font-weight: 700;
-}
-
-.rw-lc-capture-metrics-head span {
-  font-size: 11px;
-  font-weight: 800;
-  color: #16A34A;
-  background: #DCFCE7;
-  padding: 3px 8px;
-  border-radius: 6px;
-  letter-spacing: 0.02em;
-}
-
-.rw-lc-capture-metrics {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
-}
-
-.rw-lc-capture-metrics div {
-  padding: 12px;
-  background: #FFFFFF;
-  border: 1px solid #E2E8F0;
-  border-radius: 10px;
-  transition: all 0.2s ease;
-}
-
-.rw-lc-capture-metrics div:hover {
-  border-color: #38BDF8;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(56, 189, 248, 0.12);
-}
-
-.rw-lc-capture-metrics span {
-  display: block;
-  font-size: 11px;
-  color: #64748B;
-  margin-bottom: 4px;
-}
-
-.rw-lc-capture-metrics b {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 13px;
-  font-weight: 800;
-  color: #0F172A;
-}
-
-.rw-lc-capture-metrics b svg {
-  color: #16A34A;
-}
-
-/* ── Right Column: Checklist & Certifications ── */
+/* ===== Right Column: Checklist ===== */
 .rw-lc-capture-side {
   display: flex;
   flex-direction: column;
   gap: 20px;
 }
 
-/* Seller Protection Card */
-.rw-lc-capture-protection {
-  background: #FFFFFF;
-  border: 1px solid #E2E8F0;
-  border-radius: 20px;
-  padding: 22px;
-  box-shadow: 0 4px 20px -4px rgba(15, 23, 42, 0.05);
-}
-
-.rw-lc-capture-protection h3 {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 14px;
-  font-weight: 800;
-  color: #0F172A;
-  margin: 0 0 10px 0;
-}
-
-.rw-lc-capture-protection h3 svg {
-  color: #2563EB;
-}
-
-.rw-lc-capture-protection p {
-  font-size: 12.5px;
-  line-height: 1.55;
-  color: #475569;
-  margin: 0 0 14px 0;
-}
-
-.rw-lc-capture-protection > span {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 14px;
-  border-radius: 10px;
-  background: #F8FAFC;
-  border: 1px solid #E2E8F0;
-  font-size: 11.5px;
-  color: #334155;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-}
-
-.rw-lc-capture-protection > span b {
-  color: #16A34A;
-  font-size: 10px;
-  font-weight: 800;
-  background: #DCFCE7;
-  padding: 2px 6px;
-  border-radius: 4px;
-}
-
-/* Reference Standard Section */
-.rw-lc-capture-reference {
-  background: #FFFFFF;
-  border: 1px solid #E2E8F0;
-  border-radius: 20px;
-  padding: 22px;
-  box-shadow: 0 4px 20px -4px rgba(15, 23, 42, 0.05);
-}
-
-.rw-lc-capture-reference > b {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 13.5px;
-  font-weight: 800;
-  color: #0F172A;
-  margin-bottom: 14px;
-}
-
-.rw-lc-capture-reference-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-}
-
-.rw-lc-capture-reference-grid figure {
-  position: relative;
-  height: 110px;
-  margin: 0;
-  border-radius: 12px;
-  overflow: hidden;
-  background: #F1F5F9;
-  border: 1px solid #E2E8F0;
-}
-
-.rw-lc-capture-reference-grid img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transition: transform 0.3s ease;
-}
-
-.rw-lc-capture-reference-grid figure:hover img {
-  transform: scale(1.08);
-}
-
-.rw-lc-capture-reference-grid figcaption {
-  position: absolute;
-  inset-inline: 6px;
-  bottom: 6px;
-  padding: 5px 8px;
-  border-radius: 6px;
-  background: rgba(15, 23, 42, 0.82);
-  color: #FFFFFF;
-  font-size: 10.5px;
-  font-weight: 600;
-  text-align: center;
-  backdrop-filter: blur(4px);
-}
-
-/* ── Responsive ── */
 @media (max-width: 1100px) {
   .rw-lc-capture-grid {
     grid-template-columns: 1fr;
-  }
-  .rw-lc-capture-metrics {
-    grid-template-columns: repeat(2, 1fr);
   }
 }
 
@@ -630,12 +535,7 @@
     flex-direction: column;
     align-items: stretch;
   }
-  .rw-lc-capture-actions button.primary {
-    margin-left: 0;
-  }
-  .rw-lc-capture-camera-meta {
-    flex-direction: column;
-    gap: 6px;
-    align-items: flex-start;
+  .rw-lc-capture-actions button {
+    width: 100%;
   }
 }

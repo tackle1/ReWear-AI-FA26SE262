@@ -19,7 +19,79 @@ export interface ListingEvidenceSectionProps {
   initialFile?: BrandEvidenceFile | null;
   isLuxuryBrand?: boolean;
   onNoInvoice?: () => void;
+  /** Báo người dùng có tải hóa đơn hay không — dùng để tính điểm ở Bước 05. */
+  onBillChange?: (hasBill: boolean) => void;
+  /** Báo data URL của ảnh hóa đơn để gửi lên API (`billPhotoUrl`). */
+  onBillPhotoChange?: (dataUrl: string) => void;
 }
+
+/** Định dạng và dung lượng tối đa của file bằng chứng. */
+const ACCEPTED_TYPES = ['application/pdf', 'image/jpeg', 'image/png'];
+const MAX_SIZE_BYTES = 10 * 1024 * 1024;
+const INVALID_FILE_MESSAGE =
+  'File phải là PDF, JPG hoặc PNG và dung lượng không vượt quá 10MB.';
+
+/**
+ * Ô tải file bằng chứng (hóa đơn). Dùng chung cho cả hai nhánh để không lặp
+ * lại logic kiểm tra file và giao diện.
+ */
+const EvidenceFileInput: React.FC<{
+  file: BrandEvidenceFile | null;
+  onPick: (picked: File) => void;
+  onRemove: () => void;
+  error: string | null;
+  onErrorChange: (message: string | null) => void;
+}> = ({ file, onPick, onRemove, error, onErrorChange }) => {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const picked = event.target.files?.[0];
+    if (!picked) return;
+
+    const validType = ACCEPTED_TYPES.includes(picked.type) || /\.(pdf|jpe?g|png)$/i.test(picked.name);
+    if (!validType || picked.size > MAX_SIZE_BYTES) {
+      onErrorChange(INVALID_FILE_MESSAGE);
+      event.target.value = '';
+      return;
+    }
+
+    onErrorChange(null);
+    onPick(picked);
+  };
+
+  return (
+    <div className="rw-lc-ev-field">
+      <label>File tài liệu đính kèm</label>
+
+      <input
+        ref={inputRef}
+        type="file"
+        accept=".pdf,.jpg,.jpeg,.png"
+        className="rw-lc-ev-file-input"
+        onChange={handleChange}
+      />
+
+      {file ? (
+        <div className="rw-lc-ev-file">
+          <DocumentIcon />
+          <button type="button" className="rw-lc-ev-file-name" onClick={() => inputRef.current?.click()}>
+            {file.name}
+          </button>
+          <span>{file.meta}</span>
+          <button type="button" className="rw-lc-ev-file-remove" aria-label="Xóa file" onClick={onRemove}>
+            ×
+          </button>
+        </div>
+      ) : (
+        <button type="button" className="rw-lc-ev-upload" onClick={() => inputRef.current?.click()}>
+          + Tải lên tài liệu
+        </button>
+      )}
+
+      {error && <p className="rw-lc-ev-error" role="alert">{error}</p>}
+    </div>
+  );
+};
 
 const DocumentIcon = () => (
   <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -37,23 +109,49 @@ const InfoIcon = () => (
 
 export const ListingEvidenceSection: React.FC<ListingEvidenceSectionProps> = ({
   variant = 'secondhand',
-  title = '4. Hóa đơn & Bằng chứng mua hàng',
+  title = '3. Hóa đơn & Bằng chứng mua hàng',
   sub = 'Tăng độ tin cậy và hồ sơ truy nguyên nguồn gốc',
   initialFile = null,
   isLuxuryBrand = true,
   onNoInvoice,
+  onBillChange,
+  onBillPhotoChange,
 }) => {
   const [brand, setBrand] = useState('luxury');
   const [hasInvoice, setHasInvoice] = useState(true);
   const [file, setFile] = useState<BrandEvidenceFile | null>(initialFile);
   const [error, setError] = useState<string | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+
+  /** Ghi nhận file đã chọn và báo ra ngoài (kèm data URL cho `billPhotoUrl`). */
+  const acceptFile = (picked: File) => {
+    setFile({
+      extension: (picked.name.split('.').pop() ?? 'file').toUpperCase().slice(0, 4),
+      name: picked.name,
+      meta: `${(picked.size / (1024 * 1024)).toFixed(1)} MB`,
+    });
+    onBillChange?.(true);
+
+    // Chỉ đọc data URL cho file ảnh; PDF không thể nhúng vào thẻ img.
+    if (picked.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result === 'string') onBillPhotoChange?.(reader.result);
+      };
+      reader.readAsDataURL(picked);
+    }
+  };
+
+  const removeFile = () => {
+    setFile(null);
+    onBillChange?.(false);
+    onBillPhotoChange?.('');
+  };
 
   if (variant === 'clearance') {
     return (
       <section className="rw-lc-card rw-lc-ev rw-lc-ev-clearance">
-        <h2 className="rw-lc-ev-title">Phân loại thương hiệu &amp; Bằng chứng mua hàng</h2>
-        <p className="rw-lc-ev-sub">Phân loại thương hiệu chỉ quyết định việc yêu cầu bằng chứng mua hàng, không phải loại sản phẩm.</p>
+        <h2 className="rw-lc-ev-title">Phân khúc thương hiệu</h2>
+        <p className="rw-lc-ev-sub">Giúp hệ thống đối chiếu chính xác hơn.</p>
         <div className="rw-lc-ev-seg" role="tablist" aria-label="Phân loại thương hiệu">
           {[
             ['luxury', 'Luxury / Major Brand'],
@@ -65,50 +163,30 @@ export const ListingEvidenceSection: React.FC<ListingEvidenceSectionProps> = ({
             </button>
           ))}
         </div>
+
+        {/*
+          Hàng thanh lý vẫn được phép đính kèm hóa đơn (không bắt buộc). Có hóa
+          đơn thì Bước 05 không trừ điểm, nên nhãn ghi rõ là tùy chọn.
+        */}
         <div className="rw-lc-ev-divider" aria-hidden="true" />
-        <div className="rw-lc-ev-label-row">
-          <span className="rw-lc-ev-label">Hóa đơn / Bằng chứng mua hàng <span className="rw-lc-ev-requirement">{brand === 'luxury' ? '(Bắt buộc đối với Luxury)' : '(Không bắt buộc)'}</span></span>
-          <span className="rw-lc-ev-hint">PDF, JPG, PNG (tối đa 10MB)</span>
-        </div>
-        <input
-          ref={inputRef}
-          type="file"
-          accept=".pdf,.jpg,.jpeg,.png"
-          className="rw-lc-ev-file-input"
-          onChange={(event) => {
-            const picked = event.target.files?.[0];
-            if (!picked) return;
-            const validType = ['application/pdf', 'image/jpeg', 'image/png'].includes(picked.type)
-              || /\.(pdf|jpe?g|png)$/i.test(picked.name);
-            if (!validType || picked.size > 10 * 1024 * 1024) {
-              setFile(null);
-              setError('File phải là PDF, JPG hoặc PNG và dung lượng không vượt quá 10MB.');
-              event.target.value = '';
-              return;
-            }
-            setError(null);
-            setFile({
-              extension: (picked.name.split('.').pop() ?? 'file').toUpperCase().slice(0, 4),
-              name: picked.name,
-              meta: `${(picked.size / (1024 * 1024)).toFixed(1)} MB`,
-            });
-          }}
-        />
-        {file ? (
-          <div className="rw-lc-file-row">
-            <span className="rw-lc-file-badge">{file.extension}</span>
-            <span className="rw-lc-file-text"><span className="rw-lc-file-name">{file.name}</span><span className="rw-lc-file-meta">{file.meta} • Đã tải lên</span></span>
-            <button type="button" className="rw-lc-file-remove" aria-label="Xóa tệp" onClick={() => setFile(null)}>×</button>
+
+        <div className="rw-lc-ev-optional-head">
+          <DocumentIcon />
+          <div>
+            <b>Hóa đơn hoặc bằng chứng mua hàng (Tùy chọn)</b>
+            <p>Giúp truy nguyên nguồn gốc và giữ điểm tin cậy không bị trừ.</p>
           </div>
-        ) : (
-          <button type="button" className="rw-lc-file-empty rw-lc-file-add" onClick={() => inputRef.current?.click()}>
-            <DocumentIcon />
-            <span>Chọn file hóa đơn / bằng chứng mua hàng</span>
-            <small>PDF, JPG hoặc PNG · tối đa 10MB</small>
-          </button>
-        )}
-        <p className="rw-lc-ev-legal">Ghi chú pháp lý: Bằng chứng mua hàng là tài liệu bổ sung (Supporting Evidence) và không thay thế quá trình kiểm định thị giác quang học AI.</p>
-        {error && <p className="rw-lc-ev-error" role="alert">{error}</p>}
+        </div>
+
+        <div className="rw-lc-ev-fields rw-lc-ev-fields-single">
+          <EvidenceFileInput
+            file={file}
+            onPick={acceptFile}
+            onRemove={removeFile}
+            error={error}
+            onErrorChange={setError}
+          />
+        </div>
       </section>
     );
   }
@@ -117,8 +195,9 @@ export const ListingEvidenceSection: React.FC<ListingEvidenceSectionProps> = ({
     setHasInvoice(value);
     if (!value && isLuxuryBrand) onNoInvoice?.();
     if (!value) {
-      setFile(null);
-      setError(null);
+      removeFile();
+      // Không có hóa đơn thì báo ra ngoài để Bước 05 áp dụng điểm trừ.
+      onBillChange?.(false);
     }
   };
 
@@ -158,48 +237,14 @@ export const ListingEvidenceSection: React.FC<ListingEvidenceSectionProps> = ({
           <label htmlFor="evidence-type">Loại bằng chứng nguồn gốc</label>
           <div id="evidence-type" className="rw-lc-ev-select">Hóa đơn mua hàng (Retail Invoice)</div>
         </div>
-        <div className="rw-lc-ev-field">
-          <label>File tài liệu đính kèm</label>
-          <input
-            ref={inputRef}
-            type="file"
-            accept=".pdf,.jpg,.jpeg,.png"
-            className="rw-lc-ev-file-input"
-            onChange={(event) => {
-              const picked = event.target.files?.[0];
-              if (!picked) return;
-              const validType = ['application/pdf', 'image/jpeg', 'image/png'].includes(picked.type)
-                || /\.(pdf|jpe?g|png)$/i.test(picked.name);
-              if (!validType || picked.size > 10 * 1024 * 1024) {
-                setFile(null);
-                setError('File phải là PDF, JPG hoặc PNG và dung lượng không vượt quá 10MB.');
-                event.target.value = '';
-                return;
-              }
-              setError(null);
-              setFile({
-                extension: (picked.name.split('.').pop() ?? 'file').toUpperCase().slice(0, 4),
-                name: picked.name,
-                meta: `${(picked.size / (1024 * 1024)).toFixed(1)} MB`,
-              });
-            }}
-          />
-          {file ? (
-            <div className="rw-lc-ev-file">
-              <DocumentIcon />
-              <button type="button" className="rw-lc-ev-file-name" onClick={() => inputRef.current?.click()}>
-                {file.name}
-              </button>
-              <span>{file.meta}</span>
-              <button type="button" className="rw-lc-ev-file-remove" aria-label="Xóa file" onClick={() => setFile(null)}>×</button>
-            </div>
-          ) : (
-            <button type="button" className="rw-lc-ev-upload" onClick={() => inputRef.current?.click()}>
-              + Tải lên tài liệu
-            </button>
-          )}
-          {error && <p className="rw-lc-ev-error" role="alert">{error}</p>}
-        </div>
+
+        <EvidenceFileInput
+          file={file}
+          onPick={acceptFile}
+          onRemove={removeFile}
+          error={error}
+          onErrorChange={setError}
+        />
       </div>
 
       <div className="rw-lc-ev-note">

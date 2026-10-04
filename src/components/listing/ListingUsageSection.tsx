@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import '../../styles/listing/ListingUsageSection.css';
 
 export type UsageConditionKey = 'like-new' | 'good' | 'fair' | 'worn';
@@ -15,6 +15,10 @@ export interface ListingUsageSectionProps {
   value?: Partial<ListingUsageValue>;
   onChange?: (v: ListingUsageValue) => void;
   minCondition?: UsageConditionKey;
+  /** Bật hiển thị lỗi (thường chỉ bật sau khi người dùng bấm "Tiếp theo"). */
+  showValidation?: boolean;
+  /** Báo trạng thái hợp lệ để trang cha chặn chuyển bước. */
+  onValidityChange?: (isValid: boolean) => void;
 }
 
 export const CONDITION_LABEL: Record<UsageConditionKey, string> = {
@@ -32,13 +36,19 @@ export const CONDITION_RANK: Record<UsageConditionKey, number> = {
 const FREQS = ['Ít sử dụng', 'Thỉnh thoảng', 'Thường xuyên'];
 const CONDDESC: Record<string, string> = { 'like-new': 'Còn tag hoặc không nếp gấp', good: 'Bề mặt ít nguyên vẹn, sờn nhẹ', fair: 'Có vết mòn tự nhiên, đủ khuyết góc', worn: 'Có dấu phục hồi, sờn rõ rệt' };
 const WEARALL: string[] = ['Hơi mòn đường may nhẹ', 'Sờn vải', 'Mờ logo tem mác', 'Vết ố nhỏ', 'Trầy xước phụ kiện', 'Không có dấu hiệu đáng kể'];
+/*
+ * Giá trị khởi tạo rỗng — người bán phải tự nhập. Trước đây các trường này
+ * để sẵn lịch sử của một món hàng mẫu ("Mua lại từ nhà sưu tầm vintage tại
+ * Ginza, Tokyo…"), khiến tin đăng mới vô tình mang thông tin hàng khác.
+ * `frequency`/`condition`/`repair` là lựa chọn mặc định hợp lý nên vẫn giữ.
+ */
 const DEF: ListingUsageValue = {
-  usageTime: '1 – 2 năm',
+  usageTime: '',
   frequency: 'rare',
   condition: 'good',
-  wearSigns: ['Hơi mòn đường may nhẹ'],
+  wearSigns: [],
   repair: 'none',
-  careHistory: 'Mua lại từ nhà sưu tầm vintage tại Ginza, Tokyo. Đã qua làm sạch bảo quản bằng khí ozone tại Studio ReWear tháng 10/2023. Nguyên khuy sừng nguyên bản.',
+  careHistory: '',
 };
 export const ListingUsageSection: React.FC<ListingUsageSectionProps> = (props) => {
   const minC = props.minCondition ?? 'good';
@@ -50,6 +60,24 @@ export const ListingUsageSection: React.FC<ListingUsageSectionProps> = (props) =
     props.onChange?.(n);
   };
   const passed = CONDITION_RANK[m.condition] >= CONDITION_RANK[minC];
+
+  /**
+   * Lỗi của khối thông tin sử dụng. Trước đây khối này không có validation
+   * nào nên người bán có thể bỏ trống mà vẫn qua bước, dù thông tin này quyết
+   * định mức thẩm định ở Bước 03+.
+   */
+  const usageErrors = {
+    usageTime: m.usageTime.trim().length < 2 ? 'Vui lòng nhập thời gian đã sử dụng.' : '',
+    wearSigns: m.wearSigns.length === 0 ? 'Chọn ít nhất một dấu hiệu (hoặc "Không có dấu hiệu đáng kể").' : '',
+    careHistory:
+      m.careHistory.trim().length < 10 ? 'Nhập lịch sử bảo quản, tối thiểu 10 ký tự.' : '',
+  };
+
+  const usageValid = !Object.values(usageErrors).some(Boolean);
+
+  useEffect(() => {
+    props.onValidityChange?.(usageValid && passed);
+  }, [props.onValidityChange, usageValid, passed]);
   const toggleWear = (w: string) => {
     const NONE = 'Không có dấu hiệu đáng kể';
     if (w === NONE) {
@@ -74,8 +102,21 @@ export const ListingUsageSection: React.FC<ListingUsageSectionProps> = (props) =
       </div>
       <div className="rw-lc-usage-grid-2">
         <div className="rw-lc-usage-field">
-          <label className="rw-lc-usage-label" htmlFor="rw-usage-time">Thời gian đã sử dụng</label>
-          <input id="rw-usage-time" className="rw-lc-usage-input" value={m.usageTime} onChange={(e) => patch({ usageTime: e.target.value })} />
+          <label className="rw-lc-usage-label" htmlFor="rw-usage-time">
+            Thời gian đã sử dụng{' '}
+            <span className="rw-lc-usage-req">*</span>
+          </label>
+          <input
+            id="rw-usage-time"
+            className={`rw-lc-usage-input${props.showValidation && usageErrors.usageTime ? ' is-invalid' : ''}`}
+            placeholder="VD: 1 – 2 năm"
+            value={m.usageTime}
+            onChange={(e) => patch({ usageTime: e.target.value })}
+            aria-invalid={Boolean(props.showValidation && usageErrors.usageTime)}
+          />
+          {props.showValidation && usageErrors.usageTime && (
+            <span className="rw-lc-usage-error">{usageErrors.usageTime}</span>
+          )}
         </div>
         <div className="rw-lc-usage-field">
           <span className="rw-lc-usage-label">Tần suất sử dụng</span>
@@ -88,7 +129,6 @@ export const ListingUsageSection: React.FC<ListingUsageSectionProps> = (props) =
       </div>
       <div className="rw-lc-usage-cond-head">
         <span className="rw-lc-usage-label">Tình trạng sản phẩm</span>
-        <span className="rw-lc-usage-cond-note">Tình trạng tối thiểu được kiểm soát theo cấu hình MF-04.</span>
       </div>
       <div className="rw-lc-usage-cond-grid">
         {( ['like-new', 'good', 'fair', 'worn'] as const).map((k) => (
@@ -102,7 +142,6 @@ export const ListingUsageSection: React.FC<ListingUsageSectionProps> = (props) =
           </label>
         ))}
       </div>
-      <p className="rw-lc-usage-hierarchy">Thứ bậc tình trạng: Like New &gt; Good (Tốt) &gt; Fair (Khá) &gt; Worn (Đã SD).</p>
       <div className="rw-lc-usage-threshold">
         <div className="rw-lc-usage-threshold-head">
           <span className="rw-lc-usage-threshold-title">
@@ -123,18 +162,23 @@ export const ListingUsageSection: React.FC<ListingUsageSectionProps> = (props) =
           </span>
           <div>
             <p className="rw-lc-usage-verdict-title">{passed ? 'Đạt ngưỡng tình trạng tối thiểu' : 'Chưa đạt ngưỡng tình trạng tối thiểu'}</p>
-            <p className="rw-lc-usage-verdict-desc">{passed ? 'Đạt yêu cầu Hàng 2hand theo tiêu chuẩn hiện hành. Tình trạng này đủ điều kiện chuyển sang quy trình thẩm định ảnh vi mô ở Bước 02.' : 'Tình trạng hiện tại thấp hơn ngưỡng tối thiểu. Vui lòng phục hồi / nâng cấp trước khi sang Bước 02.'}</p>
+            <p className="rw-lc-usage-verdict-desc">{passed ? 'Đạt yêu cầu Hàng 2hand theo tiêu chuẩn hiện hành. Tình trạng này đủ điều kiện chuyển sang quy trình chụp ảnh ở Bước 02.' : 'Tình trạng hiện tại thấp hơn ngưỡng tối thiểu. Vui lòng phục hồi / nâng cấp trước khi sang Bước 02.'}</p>
           </div>
         </div>
-        <p className="rw-lc-usage-rule">Quy tắc hợp lệ: Tình trạng sản phẩm chỉ HỢP LỆ khi bằng hoặc cao hơn ngưỡng tình trạng tối thiểu theo quy định hiện hành. Ví dụ: Good = Hợp lệ; Fair, Worn = Không hợp lệ.</p>
       </div>
       <div className="rw-lc-usage-block">
-        <span className="rw-lc-usage-label">Dấu hiệu sử dụng cụ thể (Chọn các mục phù hợp)</span>
+        <span className="rw-lc-usage-label">
+          Dấu hiệu sử dụng cụ thể (Chọn các mục phù hợp){' '}
+          <span className="rw-lc-usage-req">*</span>
+        </span>
         <div className="rw-lc-usage-chips">
           {WEARALL.map((w) => (
             <button key={w} type="button" onClick={() => toggleWear(w)} className={m.wearSigns.includes(w) ? 'rw-lc-usage-chip active' : 'rw-lc-usage-chip'}>{w}</button>
           ))}
         </div>
+        {props.showValidation && usageErrors.wearSigns && (
+          <span className="rw-lc-usage-error">{usageErrors.wearSigns}</span>
+        )}
       </div>
       <div className="rw-lc-usage-block">
         <span className="rw-lc-usage-label">Lịch sử sửa chữa &amp; phục hồi</span>
@@ -153,13 +197,26 @@ export const ListingUsageSection: React.FC<ListingUsageSectionProps> = (props) =
       </div>
       <div className="rw-lc-usage-block">
         <div className="rw-lc-usage-label-row">
-          <span className="rw-lc-usage-label">Lịch sử bảo quản &amp; Vệ sinh đồ hiệu</span>
+          <span className="rw-lc-usage-label">
+            Lịch sử bảo quản &amp; Vệ sinh đồ hiệu{' '}
+            <span className="rw-lc-usage-req">*</span>
+          </span>
           <button type="button" className="rw-lc-usage-voice">
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="9" y="2.5" width="6" height="11" rx="3" /><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0" /><path d="M12 18v3.5" /></svg>
             Ghi âm giọng nói
           </button>
         </div>
-        <textarea className="rw-lc-usage-textarea" value={m.careHistory} onChange={(e) => patch({ careHistory: e.target.value })} rows={3} />
+        <textarea
+          className={`rw-lc-usage-textarea${props.showValidation && usageErrors.careHistory ? ' is-invalid' : ''}`}
+          placeholder="Mô tả cách bạn bảo quản & vệ sinh sản phẩm"
+          value={m.careHistory}
+          onChange={(e) => patch({ careHistory: e.target.value })}
+          rows={3}
+          aria-invalid={Boolean(props.showValidation && usageErrors.careHistory)}
+        />
+        {props.showValidation && usageErrors.careHistory && (
+          <span className="rw-lc-usage-error">{usageErrors.careHistory}</span>
+        )}
       </div>
     </section>
   );

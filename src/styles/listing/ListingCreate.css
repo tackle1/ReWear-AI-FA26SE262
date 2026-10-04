@@ -1,3 +1,321 @@
+/* ── Trang Gắn cờ / Trang Đăng tin: khối trạng thái rỗng + khối quy trình ── */
+
+/*
+ * Trạng thái rỗng: người bán mở thẳng URL (không có hồ sơ trong sessionStorage).
+ * Hiển thị đúng lý do và một nút quay lại, thay vì trang trắng.
+ */
+.rw-flag-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin: 40px auto;
+  max-width: 520px;
+  padding: 40px 28px;
+  text-align: center;
+  color: #14213a;
+  background: #fff;
+  border: 1px solid #e2e8f5;
+  border-radius: 18px;
+  box-shadow: 0 20px 45px -34px rgba(31, 64, 122, 0.45);
+}
+.rw-flag-empty h1 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+}
+.rw-flag-empty p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #5a6b87;
+}
+.rw-flag-empty button {
+  margin-top: 6px;
+  padding: 10px 20px;
+  font: inherit;
+  font-weight: 600;
+  color: #fff;
+  background: #1f4fa0;
+  border: 0;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.rw-flag-empty button:hover { background: #17407f; }
+
+/* Khối mô tả quy trình chờ Admin — chỉ có ở trang Gắn cờ. */
+.rw-flag-review {
+  padding: 22px 24px;
+  background: #fffdf7;
+  border: 1px solid #f0e2c4;
+  border-radius: 16px;
+  box-shadow: 0 18px 40px -34px rgba(120, 84, 20, 0.5);
+}
+.rw-flag-review header {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #8a6412;
+  margin-bottom: 14px;
+}
+.rw-flag-review h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #14213a;
+}
+.rw-flag-review ol {
+  margin: 0;
+  padding-left: 20px;
+  display: grid;
+  gap: 10px;
+}
+.rw-flag-review li b { display: block; font-size: 14px; color: #14213a; }
+.rw-flag-review li small { display: block; font-size: 13px; line-height: 1.55; color: #5a6b87; }
+.rw-flag-review code {
+  padding: 1px 5px;
+  font-size: 12px;
+  background: #f4ead4;
+  border-radius: 5px;
+}
+
+/* Biến thể thông báo thành công trên thanh toast của cả hai trang. */
+.rw-flag-done {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+/* Dòng cảnh báo trạng thái lệch dự kiến (dùng ở trang Đăng tin). */
+.rw-flag-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+  padding: 11px 15px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: #7a4a06;
+  background: #fff8e8;
+  border: 1px solid #f2dcae;
+  border-radius: 10px;
+}
+
+/* ── Thẻ gắn cờ chờ đối soát (trang Gắn cờ) ── */
+
+.rw-flag-review-card {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 26px 28px 24px;
+  background: #fff;
+  border: 1px solid #e2e8f5;
+  border-radius: 18px;
+  box-shadow: 0 22px 50px -36px rgba(31, 64, 122, 0.5);
+}
+
+/* Banner trạng thái — hổ phách khi chờ gửi, xanh khi đã gửi thành công. */
+.rw-flag-review-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 18px 20px;
+  background: #fff8e8;
+  border: 1px solid #f2dcae;
+  border-radius: 14px;
+}
+.rw-flag-review-banner.is-sent {
+  background: #eefaf3;
+  border-color: #bfe8d3;
+}
+.rw-flag-review-banner-icon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  color: #8a6412;
+  background: #f6e7c4;
+  border-radius: 12px;
+}
+.rw-flag-review-banner.is-sent .rw-flag-review-banner-icon {
+  color: #0f7a4d;
+  background: #d3f0e0;
+}
+.rw-flag-review-banner small {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  color: #8a6412;
+}
+.rw-flag-review-banner.is-sent small { color: #0f7a4d; }
+.rw-flag-review-banner strong {
+  display: block;
+  margin: 3px 0 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #14213a;
+}
+.rw-flag-review-banner em {
+  display: block;
+  margin-top: 5px;
+  font-size: 13px;
+  font-style: normal;
+  color: #5a6b87;
+}
+
+/* Điểm kiểm định + các lý do cần đối soát. */
+.rw-flag-review-score {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+.rw-flag-review-score-main {
+  padding: 16px 18px;
+  text-align: center;
+  background: #f7faff;
+  border: 1px solid #e2e8f5;
+  border-radius: 14px;
+}
+.rw-flag-review-score-main span {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #5a6b87;
+}
+.rw-flag-review-score-main strong {
+  display: block;
+  margin: 4px 0;
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1.1;
+  color: #1f4fa0;
+}
+.rw-flag-review-score-main em {
+  font-size: 12px;
+  font-style: normal;
+  line-height: 1.5;
+  color: #5a6b87;
+}
+.rw-flag-review-reasons {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 10px;
+}
+.rw-flag-review-reasons li {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 11px 14px;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: #3a4a66;
+  background: #fbfcff;
+  border: 1px solid #e6ecf7;
+  border-radius: 11px;
+}
+.rw-flag-review-reasons svg { flex-shrink: 0; margin-top: 2px; color: #b8860b; }
+
+/* Sản phẩm đang chờ duyệt. */
+.rw-flag-review-product {
+  display: flex;
+  gap: 16px;
+  padding: 16px;
+  background: #f7faff;
+  border: 1px solid #e2e8f5;
+  border-radius: 14px;
+}
+.rw-flag-review-product img {
+  width: 132px;
+  height: 132px;
+  object-fit: cover;
+  background: #eef2f9;
+  border-radius: 11px;
+}
+.rw-flag-review-product small {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  color: #1f4fa0;
+}
+.rw-flag-review-product h3 {
+  margin: 3px 0 10px;
+  font-size: 16px;
+  color: #14213a;
+}
+.rw-flag-review-product dl {
+  margin: 0;
+  display: flex;
+  gap: 26px;
+}
+.rw-flag-review-product dt {
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #5a6b87;
+}
+.rw-flag-review-product dd {
+  margin: 2px 0 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #14213a;
+}
+
+/* Dòng thời gian 3 bước. */
+.rw-flag-review-timeline {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 12px;
+}
+.rw-flag-review-timeline li {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.rw-flag-review-timeline li > span {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  color: #1f4fa0;
+  background: #e6eefc;
+  border-radius: 10px;
+}
+.rw-flag-review-timeline p { margin: 0; }
+.rw-flag-review-timeline b { display: block; font-size: 14px; color: #14213a; }
+.rw-flag-review-timeline small {
+  display: block;
+  font-size: 13px;
+  line-height: 1.55;
+  color: #5a6b87;
+}
+
+.rw-flag-review-footnote {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding-top: 14px;
+  border-top: 1px dashed #dbe4f2;
+  font-size: 12.5px;
+  color: #5a6b87;
+}
+
+@media (max-width: 760px) {
+  .rw-flag-review-score { grid-template-columns: minmax(0, 1fr); }
+  .rw-flag-review-product { flex-direction: column; }
+  .rw-flag-review-product img { width: 100%; height: 190px; }
+}
+
 /* ── Trang Tạo tin đăng mới: khung trang, hero, cột nội dung, thanh hành động ── */
 .rw-lc-page {
   min-height: 100vh;
@@ -164,6 +482,46 @@
   line-height: 1;
   cursor: pointer;
 }
+
+/* Trạng thái tạo tin đăng: đang gửi / thành công / lỗi */
+.rw-lc-submit-toast {
+  position: fixed;
+  right: 24px;
+  bottom: 86px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  max-width: 390px;
+  padding: 13px 14px;
+  border: 1px solid #b7e3c8;
+  border-radius: 12px;
+  background: #eefaf2;
+  color: #14532d;
+  box-shadow: 0 18px 40px -20px rgba(20, 83, 45, .35);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.rw-lc-submit-toast.is-error {
+  border-color: #fecaca;
+  background: #fef2f2;
+  color: #991b1b;
+  box-shadow: 0 18px 40px -20px rgba(153, 27, 27, .35);
+}
+
+.rw-lc-submit-toast button {
+  flex: 0 0 auto;
+  align-self: flex-start;
+  padding: 0 2px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
 @media (max-width: 800px) {
   .rw-lc-actionbar { padding: 12px 14px; }
   .rw-lc-actionbar-inner { flex-wrap: wrap; }
@@ -171,4 +529,5 @@
   .rw-lc-actionbar-btns { width: 100%; }
   .rw-lc-btn-ghost, .rw-lc-btn-primary { flex: 1 1 0; justify-content: center; }
   .rw-lc-warning-toast { right: 14px; bottom: 76px; left: 14px; max-width: none; }
+  .rw-lc-submit-toast { right: 14px; bottom: 76px; left: 14px; max-width: none; }
 }

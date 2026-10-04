@@ -19,7 +19,7 @@ export const DashboardPageHeader: React.FC<DashboardPageHeaderProps> = ({
   description = 'Tạo tin đăng thời trang xa xỉ uy tín trong vài phút. ReWear AI tự động đối soát ảnh trang phục để đánh giá chỉ số xác thực, phân loại tình trạng vải và bằng chứng vi cấu trúc trước khi niêm yết.',
   ctaLabel = 'Tạo tin đăng mới',
   aiBadge = 'AI',
-  hint = 'Mất ~3 phút • Chụp ảnh theo hướng dẫn & Chẩn đoán tình trạng AI tức thì',
+  hint = 'Chụp đủ các góc ảnh bắt buộc & nhận kết quả kiểm định từ hệ thống',
   onCreate,
 }) => {
   return (

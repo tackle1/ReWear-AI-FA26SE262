@@ -1,16 +1,20 @@
 import axiosClient from '../../../services/axiosClient';
-import envConfig from '../../../config/env.config';
 import { ApiResponse } from '../../../types/apiResponse.type';
 import { RegisterPayload, RegisterResponseData } from '../types/auth.type';
-import { mockAuthApi } from './mockAuth.api';
 
 export const registerApi = {
-  register: (payload: RegisterPayload): Promise<ApiResponse<RegisterResponseData>> => {
-    if (envConfig.useMockApi) {
-      return mockAuthApi.register(payload);
-    }
-    return axiosClient.post<never, ApiResponse<RegisterResponseData>>('/auth/register', payload);
-  },
+  /*
+   * Route của backend: POST /api/Auth/register — xem giải thích ở `login.api.ts`.
+   *
+   * Chỉ gọi API thật: tài khoản được tạo trong PostgreSQL của backend, không
+   * còn kho tài khoản giả lập trong localStorage.
+   */
+  register: (payload: RegisterPayload): Promise<ApiResponse<RegisterResponseData>> =>
+    axiosClient.post<never, ApiResponse<RegisterResponseData>>(
+      '/api/Auth/register',
+      payload,
+      { baseURL: '' },
+    ),
 };
 
 export default registerApi;

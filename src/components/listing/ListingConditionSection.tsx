@@ -45,24 +45,24 @@ export const CONDITION_OPTIONS: ConditionOption[] = [
     key: 'clearance',
     title: 'Hàng thanh lý',
     badge: 'CHƯA QUA SỬ DỤNG',
-    desc: 'Sản phẩm mới chưa qua sử dụng. Không yêu cầu khai báo lịch sử sử dụng, condition mặc định Like New.',
+    desc: 'Sản phẩm mới, chưa qua sử dụng. Tình trạng tự động là Like New.',
     footIcon: 'check',
-    footText: 'Bỏ qua khai báo mòn vải & phục hồi',
+    footText: 'Không cần khai báo lịch sử sử dụng',
   },
   {
     key: 'secondhand',
     title: 'Hàng Secondhand',
     badge: 'ĐÃ QUA SỬ DỤNG',
-    desc: 'Sản phẩm đã qua sử dụng, yêu cầu khai báo quá trình sử dụng và phải đạt ngưỡng Condition tối thiểu',
+    desc: 'Sản phẩm đã qua sử dụng, cần khai báo tình trạng thực tế.',
     footIcon: 'shield',
-    footText: 'Khai báo độ mòn & kiểm tra ngưỡng Good',
+    footText: 'Cần khai báo độ mòn & tình trạng',
   },
 ];
 
 export const ListingConditionSection: React.FC<ListingConditionSectionProps> = ({
-  title = 'Phân loại hình thức sản phẩm',
-  sub = 'Chọn loại hàng để hệ thống cấu hình chuẩn xác quy tắc kiểm định',
-  actionLabel = 'Bước 1 cốt lõi',
+  title = 'Hình thức sản phẩm',
+  sub = 'Chọn loại hàng để áp dụng đúng quy tắc kiểm định',
+  actionLabel = '',
   options = CONDITION_OPTIONS,
   value,
   onChange,
@@ -91,7 +91,7 @@ export const ListingConditionSection: React.FC<ListingConditionSectionProps> = (
           <h2 className="rw-lc-cat-title">{title}</h2>
           <p className="rw-lc-cat-sub">{sub}</p>
         </div>
-        <span className="rw-lc-cat-pill">{actionLabel}</span>
+        {actionLabel && <span className="rw-lc-cat-pill">{actionLabel}</span>}
       </div>
 
       <div className="rw-lc-cat-grid" role="radiogroup" aria-label={title}>

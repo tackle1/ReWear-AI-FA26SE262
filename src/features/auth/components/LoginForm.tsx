@@ -1,13 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLogin } from '../hooks/useLogin';
 import { LoginFormData } from '../types/auth.type';
 import storage from '../../../utils/storage';
+import { SessionUser } from '../utils/session';
 import ROUTES from '../../../routes/routes.config';
 
 export const LoginForm: React.FC = () => {
   const navigate = useNavigate();
-  const { login, isLoading, error } = useLogin();
+  const { login, isLoading, error, resetState } = useLogin();
 
   const [formData, setFormData] = useState<LoginFormData>({
     email: '',
@@ -18,9 +19,64 @@ export const LoginForm: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [touched, setTouched] = useState<Record<string, boolean>>({});
 
-  const isFormValid = formData.email.trim().length > 0 && formData.password.length >= 1;
+  /*
+   * Validate khớp ĐÚNG luật backend trong `LoginRequestDto`:
+   *   Email    = [Required] + [EmailAddress]
+   *   Password = [Required]   (KHÔNG có độ dài tối thiểu)
+   *
+   * Cố ý KHÔNG dùng `PASSWORD_PATTERN` ở đây: luật đó thuộc về đăng ký
+   * (`AuthService.ValidatePasswordStrength`). Áp vào đăng nhập sẽ chặn nhầm
+   * tài khoản cũ đã tạo trước khi luật này có hiệu lực — và backend vẫn trả lỗi
+   * chung "Email hoặc mật khẩu không đúng" nên validate UI chỉ nên bắt lỗi
+   * chắc chắn sai (thiếu / sai định dạng), không đoán trước mật khẩu.
+   */
+  const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+  const validationErrors = useMemo(() => {
+    const errors: Record<string, string> = {};
+
+    const email = formData.email.trim();
+    if (!email) {
+      errors.email = 'Vui lòng nhập địa chỉ email';
+    } else if (email.length > 255) {
+      // Khớp [StringLength(255)] phía backend.
+      errors.email = 'Email không được vượt quá 255 ký tự';
+    } else if (!EMAIL_PATTERN.test(email)) {
+      errors.email = 'Email không hợp lệ';
+    }
+
+    // Chỉ kiểm "không rỗng" — xem giải thích về PASSWORD_PATTERN ở trên.
+    // KHÔNG trim: mật khẩu có thể cố ý chứa khoảng trắng ở đầu/cuối.
+    if (!formData.password) {
+      errors.password = 'Vui lòng nhập mật khẩu';
+    }
+
+    return errors;
+  }, [formData]);
+
+  const isFormValid = useMemo(() => {
+    return Object.keys(validationErrors).length === 0;
+  }, [validationErrors]);
+
+  /*
+   * Nút "Đăng nhập" bị disable khi form chưa hợp lệ (giữ đúng quy ước của
+   * `RegisterForm`), nên người dùng không thể bấm để "kích hoạt" validate.
+   * Vì vậy phải CẢNH BÁO TRƯỚC khi họ bắt đầu gõ mà để trống ô, thay vì
+   * im lặng cho nút xám. Ô đã chạm (`touched`) mới báo để không làm phiền
+   * lúc mới mở trang.
+   */
+  const showValidationSummary =
+    (touched.email && !!validationErrors.email) ||
+    (touched.password && !!validationErrors.password);
+
+  /*
+   * Xoá ngay lỗi của lần đăng nhập vừa thất bại khi người dùng bắt đầu sửa
+   * email/mật khẩu. Nếu giữ lại, thông báo đỏ vẫn nằm trên form dù đã nhập
+   * đúng — gây hiểu nhầm là vẫn đang sai. Việc validate lỗi CỐ Ý không xoá:
+   * lỗi validate tính lại từ `validationErrors` nên tự biến mất khi hợp lệ.
+   */
   const handleChange = (field: keyof LoginFormData, value: string | boolean) => {
+    if (error) resetState();
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -34,7 +90,9 @@ export const LoginForm: React.FC = () => {
     if (!isFormValid || isLoading) return;
     const success = await login(formData);
     if (success) {
-      const user = storage.getItem<{ role: string }>('rewear_current_user');
+      // Đọc đúng kiểu phiên để vai trò khớp với thứ `useLogin` vừa lưu (role đã
+      // chuẩn hoá từ `roleName` của backend).
+      const user = storage.getItem<SessionUser>('rewear_current_user');
       // Người mua vào sàn giao dịch đã xác thực, người bán vào bảng điều khiển seller.
       navigate(user?.role === 'SELLER' ? ROUTES.SELLER.DASHBOARD : ROUTES.MARKETPLACE.ROOT, {
         replace: true,
@@ -56,10 +114,43 @@ export const LoginForm: React.FC = () => {
   );
 
   return (
-    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-      {/* API error */}
+    <form
+      onSubmit={handleSubmit}
+      noValidate
+      style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}
+    >
+      {/* Tóm tắt lỗi validate — aria-live để screen reader đọc khi lỗi xuất hiện */}
+      {showValidationSummary && (
+        <div
+          role="alert"
+          aria-live="polite"
+          style={{
+            padding: '10px 14px',
+            borderRadius: '10px',
+            backgroundColor: '#FFFBEB',
+            border: '1px solid #FDE68A',
+            fontSize: '12.5px',
+            color: '#92400E',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '4px',
+          }}
+        >
+          <strong style={{ fontWeight: 700 }}>Vui lòng kiểm tra lại thông tin:</strong>
+          {touched.email && validationErrors.email && (
+            <span>• {validationErrors.email}</span>
+          )}
+          {touched.password && validationErrors.password && (
+            <span>• {validationErrors.password}</span>
+          )}
+        </div>
+      )}
+
+      {/* API error — thông báo "Email hoặc mật khẩu không đúng" từ backend */}
       {error && (
         <div
+          role="alert"
+          aria-live="polite"
           style={{
             padding: '10px 14px',
             borderRadius: '10px',
@@ -98,12 +189,15 @@ export const LoginForm: React.FC = () => {
             value={formData.email}
             onChange={(e) => handleChange('email', e.target.value)}
             onBlur={() => handleBlur('email')}
+            autoComplete="email"
+            aria-invalid={touched.email && !!validationErrors.email}
+            aria-describedby={touched.email && validationErrors.email ? 'login-email-error' : undefined}
             style={{
               width: '100%',
               height: '44px',
               padding: '0 14px 0 40px',
               backgroundColor: '#EDF3FE',
-              border: touched.email && !formData.email ? '1px solid #EF4444' : '1px solid transparent',
+              border: touched.email && validationErrors.email ? '1px solid #EF4444' : '1px solid transparent',
               borderRadius: '10px',
               fontSize: '13.5px',
               color: '#0F172A',
@@ -112,6 +206,25 @@ export const LoginForm: React.FC = () => {
             }}
           />
         </div>
+        {touched.email && validationErrors.email && (
+          <p
+            id="login-email-error"
+            role="alert"
+            style={{
+              margin: '6px 0 0',
+              fontSize: '12px',
+              color: '#DC2626',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+            }}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+            {validationErrors.email}
+          </p>
+        )}
       </div>
 
       {/* Password field */}
@@ -152,12 +265,15 @@ export const LoginForm: React.FC = () => {
             value={formData.password}
             onChange={(e) => handleChange('password', e.target.value)}
             onBlur={() => handleBlur('password')}
+            autoComplete="current-password"
+            aria-invalid={touched.password && !!validationErrors.password}
+            aria-describedby={touched.password && validationErrors.password ? 'login-password-error' : undefined}
             style={{
               width: '100%',
               height: '44px',
               padding: '0 42px 0 40px',
               backgroundColor: '#EDF3FE',
-              border: touched.password && !formData.password ? '1px solid #EF4444' : '1px solid transparent',
+              border: touched.password && validationErrors.password ? '1px solid #EF4444' : '1px solid transparent',
               borderRadius: '10px',
               fontSize: '13.5px',
               color: '#0F172A',
@@ -183,6 +299,25 @@ export const LoginForm: React.FC = () => {
             {showPassword ? eyeOffIcon : eyeIcon}
           </button>
         </div>
+        {touched.password && validationErrors.password && (
+          <p
+            id="login-password-error"
+            role="alert"
+            style={{
+              margin: '6px 0 0',
+              fontSize: '12px',
+              color: '#DC2626',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+            }}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+            {validationErrors.password}
+          </p>
+        )}
       </div>
 
       {/* Remember me */}

@@ -3,13 +3,36 @@ import '../../styles/dashboard/DashboardFooterNote.css';
 
 export interface DashboardFooterNoteProps {
   title?: string;
+  /**
+   * Mô tả chính sách. Nếu không truyền, component tự dựng từ ngưỡng thật của
+   * hệ thống — trước đây "75%" và "TP. Hồ Chí Minh" bị ghi cứng dù backend đã có
+   * endpoint cấu hình ngưỡng, nên mọi seller đều thấy cùng một con số.
+   */
   description?: string;
+  /** Ngưỡng đăng tự động (%) từ API thresholds. */
+  autoPublishThreshold?: number;
+  /** Ngưỡng từ chối tự động (%) từ API thresholds. */
+  autoRejectThreshold?: number;
 }
 
 export const DashboardFooterNote: React.FC<DashboardFooterNoteProps> = ({
   title = 'Chính sách Ký quỹ An toàn & Thẩm định Độc lập',
-  description = 'Quy trình xác thực có sự hỗ trợ của AI vận hành dựa trên các mô hình nơ-ron thị giác đối soát kho mẫu lưu trữ. Các sản phẩm có độ tin cậy dưới 75% sẽ tự động chuyển tiếp tới trung tâm kiểm định thực tế tại TP. Hồ Chí Minh mà không bị phạt. Quyền lợi được bảo hộ theo quy chuẩn bảo vệ người tiêu dùng thời trang xa xỉ.',
+  description,
+  autoPublishThreshold,
+  autoRejectThreshold,
 }) => {
+  const hasThresholds =
+    typeof autoPublishThreshold === 'number' &&
+    typeof autoRejectThreshold === 'number';
+
+  const text =
+    description ??
+    (hasThresholds
+      ? `Quy trình xác thực có sự hỗ trợ của AI đối soát ảnh với kho mẫu lưu trữ. ` +
+        `Tin đạt từ ${autoPublishThreshold} điểm được đăng tự động; dưới ${autoRejectThreshold} điểm bị từ chối tự động; ` +
+        `khoảng giữa chuyển chuyên viên thẩm định. Tiền được giữ trong tài khoản ký quỹ tới khi người mua xác nhận.`
+      : 'Quy trình xác thực có sự hỗ trợ của AI đối soát ảnh với kho mẫu lưu trữ. Tiền được giữ trong tài khoản ký quỹ tới khi người mua xác nhận.');
+
   return (
     <div className="rw-footer-note">
       <span className="rw-footer-icon" aria-hidden="true">
@@ -21,7 +44,7 @@ export const DashboardFooterNote: React.FC<DashboardFooterNoteProps> = ({
       </span>
       <div className="rw-footer-text">
         <b className="rw-footer-title">{title}</b>
-        <p className="rw-footer-desc">{description}</p>
+        <p className="rw-footer-desc">{text}</p>
       </div>
     </div>
   );
