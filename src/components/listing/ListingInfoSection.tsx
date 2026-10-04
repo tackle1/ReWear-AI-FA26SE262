@@ -170,6 +170,26 @@ const DEFAULT_FORM = {
   sku: '',
 };
 
+const createSku = (brand: string): string => {
+  const prefix =
+    brand
+      .trim()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-zA-Z0-9]/g, '')
+      .slice(0, 3)
+      .toUpperCase()
+      .padEnd(3, 'X') || 'SKU';
+  const digits = Math.floor(Math.random() * 100000)
+    .toString()
+    .padStart(5, '0');
+  const letters = Array.from({ length: 3 }, () =>
+    String.fromCharCode(65 + Math.floor(Math.random() * 26)),
+  ).join('');
+
+  return `${prefix}-${digits}-${letters}`;
+};
+
 /**
  * Danh mục sản phẩm — dùng chung cho cả "Hàng Secondhand" và "Hàng thanh lý"
  * để hai nhánh không lệch danh mục (kéo theo cả bộ kích cỡ hiển thị).
@@ -295,6 +315,26 @@ export const ListingInfoSection: React.FC<ListingInfoSectionProps> = ({
    * sản phẩm không thuộc danh sách gợi ý (kể cả danh sách lấy từ API).
    */
   const [isCustomBrandOpen, setIsCustomBrandOpen] = useState(false);
+
+  useEffect(() => {
+    if (!form.brand.trim()) {
+      if (form.sku) setForm((prev) => ({ ...prev, sku: '' }));
+      return;
+    }
+
+    const brandPrefix = form.brand
+      .trim()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-zA-Z0-9]/g, '')
+      .slice(0, 3)
+      .toUpperCase()
+      .padEnd(3, 'X');
+
+    if (!form.sku.startsWith(`${brandPrefix}-`)) {
+      setForm((prev) => ({ ...prev, sku: createSku(prev.brand) }));
+    }
+  }, [form.brand, form.sku]);
 
   /**
    * Danh sách thương hiệu bảo chứng lấy từ `premium-brands` (backend đọc hàng
@@ -860,6 +900,21 @@ const brandGroups: Record<BrandSegment, typeof SECONDHAND_BRAND_GROUPS[BrandSegm
 
           <label className="rw-lc-sh-input-field">
             <div className="rw-lc-sh-input-label-row">
+              <span>Mã SKU</span>
+              <span className="rw-lc-sh-counter">Tự động tạo</span>
+            </div>
+            <div className="rw-lc-sh-input-wrap">
+              <input
+                value={form.sku}
+                readOnly
+                placeholder="Chọn thương hiệu để tạo mã"
+                aria-label="Mã SKU tự động"
+              />
+            </div>
+          </label>
+
+          <label className="rw-lc-sh-input-field">
+            <div className="rw-lc-sh-input-label-row">
               <span>
                 Màu sắc nhận diện{' '}
                 <span className="rw-lc-req">*</span>
@@ -1276,6 +1331,19 @@ const brandGroups: Record<BrandSegment, typeof SECONDHAND_BRAND_GROUPS[BrandSegm
               {errors.name}
             </span>
           )}
+        </div>
+
+        <div className="rw-lc-info-field">
+          <label className="rw-lc-label" htmlFor="rw-li-sku">
+            Mã SKU <span className="rw-lc-info-label-opt">— Tự động tạo</span>
+          </label>
+          <input
+            id="rw-li-sku"
+            className="rw-lc-input"
+            value={form.sku}
+            readOnly
+            placeholder="Chọn thương hiệu để tạo mã"
+          />
         </div>
 
         {/* SIZE */}

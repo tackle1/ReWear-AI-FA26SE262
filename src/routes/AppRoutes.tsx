@@ -15,8 +15,12 @@ import BuyerOrderDetailPage from '../features/marketplace/pages/BuyerOrderDetail
 import BuyerWishlistPage from '../features/marketplace/pages/BuyerWishlistPage';
 import BuyerAccountPage from '../features/marketplace/pages/BuyerAccountPage';
 import SellerDashboardPage from '../features/seller/pages/SellerDashboardPage';
+import SellerListingDetailPage from '../features/seller/pages/SellerListingDetailPage';
 import ListingCreatePage from '../features/listing/pages/ListingCreatePage';
+import ListingFlagPage from '../features/listing/pages/ListingFlagPage';
+import ListingPublishPage from '../features/listing/pages/ListingPublishPage';
 import SellerSectionPlaceholder from '../features/seller/pages/SellerSectionPlaceholder';
+import SellerMyListingsPage from '../features/seller/pages/SellerMyListingsPage';
 
 export const AppRoutes: React.FC = () => {
   return (
@@ -73,13 +77,34 @@ export const AppRoutes: React.FC = () => {
 
         <Route path={ROUTES.SELLER.DASHBOARD} element={<SellerDashboardPage />} />
 
+        {/*
+          Trang CHI TIẾT hồ sơ — mở bằng cách bấm tên sản phẩm hoặc nút hành
+          động trong bảng "Tin đăng gần đây". Bảng chỉ hiện tóm tắt; mọi giải
+          thích dài (lý do gắn cờ, điểm trừ vì thiếu hóa đơn) nằm ở trang này
+          để bảng không bị chữ dồn.
+        */}
+        <Route
+          path={ROUTES.SELLER.LISTING_DETAIL}
+          element={<SellerListingDetailPage />}
+        />
+
         {/* ── Seller: Tạo tin đăng mới (từ nút CTA ở Bảng điều khiển) ── */}
         <Route path={ROUTES.LISTING.CREATE} element={<ListingCreatePage />} />
+
+        {/*
+          ── Hai trang kết quả sau Bước 05 (thay cho "Bước 06" cũ) ──
+          Luồng rẽ theo điểm confidence mà Bước 05 chốt:
+            • >= 75%            → Đăng tin (ACTIVE, lên sàn ngay)
+            • 50% – <75%        → Gắn cờ (FLAGGED, chờ Admin đối soát)
+            • < 50%             → từ chối, đưa người bán về lại Bước 01
+        */}
+        <Route path={ROUTES.LISTING.FLAG} element={<ListingFlagPage />} />
+        <Route path={ROUTES.LISTING.PUBLISH} element={<ListingPublishPage />} />
 
         {/* ── Seller: các mục trong menu ngang của không gian người bán ── */}
         <Route
           path={ROUTES.SELLER.LISTINGS}
-          element={<SellerSectionPlaceholder title="Tin đăng của tôi" activeKey="listings" />}
+          element={<SellerMyListingsPage />}
         />
         <Route
           path={ROUTES.SELLER.ORDERS}

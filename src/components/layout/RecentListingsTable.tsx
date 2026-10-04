@@ -1,6 +1,17 @@
 import React, { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import '../../styles/dashboard/RecentListingsTable.css';
+import ROUTES from '../../routes/routes.config';
 import { SellerListingRow, SellerListingStage } from '../../features/seller/hooks/useSellerDashboard';
+
+/**
+ * Đường dẫn trang chi tiết của một hồ sơ.
+ *
+ * `LISTING_DETAIL` chứa tham số `:listingId` nên phải thay bằng id thật —
+ * gom vào một chỗ để sau này đổi hậu tố URL chỉ phải sửa một dòng.
+ */
+const detailPath = (listingId: string) =>
+  ROUTES.SELLER.LISTING_DETAIL.replace(':listingId', encodeURIComponent(listingId));
 
 /** Nhóm lọc theo giai đoạn của tin. */
 export type ListingFilter = 'all' | SellerListingStage;
@@ -47,6 +58,7 @@ export const RecentListingsTable: React.FC<RecentListingsTableProps> = ({
   isLoading,
   autoPublishThreshold,
 }) => {
+  const navigate = useNavigate();
   const [filter, setFilter] = useState<ListingFilter>('all');
 
   /*
@@ -73,7 +85,7 @@ export const RecentListingsTable: React.FC<RecentListingsTableProps> = ({
   /** Hành động gợi ý theo giai đoạn — nhãn, không phải số liệu. */
   const actionOf = (stage: SellerListingStage) => {
     if (stage === 'verified') return { label: 'AI Evidence', icon: 'eye' as const };
-    if (stage === 'review') return { label: 'Chờ thẩm định', icon: 'tag' as const };
+    if (stage === 'review') return { label: 'Chờ Admin', icon: 'tag' as const };
     return { label: 'Xem hồ sơ', icon: 'receipt' as const };
   };
 
@@ -102,7 +114,7 @@ export const RecentListingsTable: React.FC<RecentListingsTableProps> = ({
       <div className="rw-table-wrap">
         <table className="rw-table">
           <thead>
-            <tr><th>SẢN PHẨM &amp; PHÂN LOẠI</th><th>DANH MỤC</th><th>GIÁ NIÊM YẾT</th><th>ĐIỂM TIN CẬY &amp; TÌNH TRẠNG AI</th><th>TRẠNG THÁI</th><th className="rw-th-right">HÀNH ĐỘNG</th></tr>
+            <tr><th>SẢN PHẨM &amp; PHÂN LOẠI</th><th>DANH MỤC</th><th>GIÁ NIÊM YẾT</th><th>ĐIỂM &amp; HẠNG AI</th><th>TRẠNG THÁI</th><th className="rw-th-right">HÀNH ĐỘNG</th></tr>
           </thead>
           <tbody>
             {isLoading ? (
@@ -131,29 +143,65 @@ export const RecentListingsTable: React.FC<RecentListingsTableProps> = ({
                           <span className="rw-thumb" aria-hidden="true">{r.name.charAt(0)}</span>
                         )}
                         <div>
-                          <div className="rw-prod-name">{r.name}</div>
-                          <div className="rw-prod-sku">{r.id} &nbsp;•&nbsp; {r.createdAt}</div>
+                          {/* Tên sản phẩm là điểm mở trang chi tiết — vùng bấm rộng,
+                              không bắt người dùng tìm đúng nút nhỏ ở cột cuối. */}
+                          <button
+                            type="button"
+                            className="rw-prod-link"
+                            onClick={() => navigate(detailPath(r.id))}
+                          >
+                            {r.name}
+                          </button>
+                          <div className="rw-prod-sku">
+                            SKU: {r.sku || '—'} &nbsp;•&nbsp; {r.createdAt}
+                          </div>
                         </div>
                       </div>
                     </td>
                     <td><span className="rw-cat">{r.category}</span></td>
                     <td><div className="rw-price">{formatPrice(r.price)}</div></td>
                     <td>
+                      <div className="rw-score-cell">
                       <div className={`rw-score${scoreWarn ? ' warn' : ''}`}>
                         <ScoreIcon warn={scoreWarn} />
-                        <span>{r.score === null ? 'Chưa chấm điểm' : `${r.score}% Độ tin cậy`}</span>
+                        <span>{r.score === null ? 'Chưa chấm điểm' : `${r.score}%`}</span>
                       </div>
-                      <span className="rw-cond">{r.condition}</span>
+                      {/*
+                        * Cột này chỉ hiện HẠNG AI. Mọi giải thích dài (vì sao trừ
+                        * điểm, vì sao phải chờ Admin) đã chuyển sang trang chi tiết —
+                        * để dòng bảng giữ một chiều cao, người bán quét nhìn là
+                        * nhận ra tin nào cần xem kỹ.
+                        */}
+                      <span className="rw-cond">{r.gradeLabel}</span>
+                      </div>
                     </td>
                     <td>
+                      {/*
+                        * Cột trạng thái chỉ còn badge. Trước đây ghi kèm cả đoạn
+                        * `statusReason` dài 3-4 dòng ở đây, làm cả bảng cao lên và
+                        * mắt không biết dừng ở đâu — nguyên nhân chính gây rối.
+                         */}
+                      <div className="rw-status-cell">
+                      {r.isFlagged && (
+                        <span className="rw-flag-chip">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <path d="M5 21V4M5 5h11l-2 4 2 4H5" />
+                          </svg>
+                          Chưa hiện trên sàn
+                        </span>
+                      )}
                       <span className={`rw-escrow ${STAGE_TONE[r.stage]}`}>
                         <i />{r.statusLabel}
                       </span>
-                      {r.statusReason && <div className="rw-cond">{r.statusReason}</div>}
+                      </div>
                     </td>
                     <td>
                       <div className="rw-actions">
-                        <button type="button" className="rw-act-btn">
+                        <button
+                          type="button"
+                          className="rw-act-btn"
+                          onClick={() => navigate(detailPath(r.id))}
+                        >
                           <ActionIcon kind={action.icon} />{action.label}
                         </button>
                         <button type="button" className="rw-kebab" aria-label="Tùy chọn">⋮</button>

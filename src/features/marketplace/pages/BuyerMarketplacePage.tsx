@@ -26,6 +26,7 @@ import type {
   MarketplaceSortKey,
   MarketplaceViewMode,
 } from '../types/marketplace.type';
+import { isListingPublic } from '../../../types/listing.type';
 import '../../../styles/marketplace/MarketplacePage.css';
 
 const PAGE_SIZE = 16;
@@ -108,6 +109,21 @@ export const BuyerMarketplacePage: React.FC = () => {
     const keyword = searchValue.trim().toLowerCase();
 
     return CATALOG.filter((product) => {
+      /*
+       * RÀNH GIỚI HIỂN THỊ: chỉ tin ĐÃ PHÁT HÀNH mới lên sàn.
+       *
+       * Tin gắn cờ (`FLAGGED`, điểm 50–75) đang chờ chuyên viên đối soát —
+       * tuyệt đối không hiện cho người mua thấy cho tới khi Admin phát hành.
+       * `MARKETPLACE_CATALOG` hiện là dữ liệu mô phỏng nên mọi tin đều `ACTIVE`;
+       * khi backend bổ sung endpoint đọc danh sách tin, bộ lọc này giữ nguyên
+       * hiệu lực mà không phải sửa lại logic ở đây.
+       *
+       * Lưu ý bảo mật: đây chỉ là chặn phía client. Backend PHẢI lọc
+       * `Status = ACTIVE` ở tầng query, nếu không thì gọi API trực tiếp vẫn
+       * lấy được tin đang chờ duyệt.
+       */
+      if (!isListingPublic(product.listingStatus)) return false;
+
       if (filters.verifiedSellersOnly && !product.sellerVerified) return false;
       if (filters.aiConfidence === '80' && product.aiScore < 80) return false;
       if (filters.aiConfidence === '90' && product.aiScore < 90) return false;

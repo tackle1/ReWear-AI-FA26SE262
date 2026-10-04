@@ -15,8 +15,24 @@ import { CreateListingResult } from '../../../types/listing.type';
  * - Ghi thất bại thì bỏ qua, không làm hỏng dữ liệu đang có.
  */
 
-/** Tiền tố kho, phần cuối là `userId` của seller. */
+/** Khoá lưu trong localStorage. */
 const STORAGE_PREFIX = 'rewear_seller_listings_';
+
+/**
+ * Tên sự kiện tùy biến báo "kho tin của tôi vừa đổi".
+ *
+ * Vì sao cần: sự kiện `storage` của trình duyệt KHÔNG bắn trong chính tab đang
+ * thao tác. Nên khi bấm "Gửi hồ sơ chờ Admin" ở trang gắn cờ rồi bấm sang
+ * Dashboard, trang Dashboard mount sau nên vẫn đọc kho mới — nhưng nếu nó
+ * đã mở sẵn (ví dụ mở tab mới) thì không có tín hiệu nào để nạp lại.
+ * Phát sự kiện này sau mỗi lần ghi để các trang đang mở cùng cập nhật ngay.
+ */
+export const SELLER_LISTINGS_CHANGED_EVENT = 'rewear:seller-listings-changed';
+
+/** Thông báo các trang khác nạp lại kho tin. */
+const notifyListingsChanged = () => {
+  window.dispatchEvent(new Event(SELLER_LISTINGS_CHANGED_EVENT));
+};
 
 /** Giới hạn số tin giữ lại để localStorage không phình vô hạn. */
 const MAX_RECORDS = 50;
@@ -24,6 +40,7 @@ const MAX_RECORDS = 50;
 /** Một tin đăng đã tạo, ghép dữ liệu người dùng nhập với kết quả backend trả. */
 export interface SellerListingRecord {
   listingId: string;
+  sku?: string;
   title: string;
   categoryId: string;
   brand: string;
@@ -73,6 +90,7 @@ export const saveSellerListing = (
     ].slice(0, MAX_RECORDS);
 
     storage.setItem(storageKey(userId), next);
+    notifyListingsChanged();
   } catch {
     // localStorage hết chỗ hoặc bị chặn: bỏ qua, giao diện vẫn chạy bình thường.
   }

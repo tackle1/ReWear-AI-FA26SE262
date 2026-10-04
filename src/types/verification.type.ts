@@ -47,11 +47,11 @@ export interface VerificationThresholds {
   /** Điểm dưới ngưỡng này bị từ chối tự động. */
   autoRejectThreshold: number;
   /**
-   * Số điểm bị trừ khi người bán không tải hóa đơn (15 = trừ 15 điểm).
+   * Số điểm bị trừ vì thiếu hóa đơn (15 = trừ 15 điểm).
    *
-   * Backend đặt tên trường là `missingBillPenaltyPercent` và UI hiển thị kèm
-   * dấu "%", nhưng nghiệp vụ áp dụng là trừ cố định theo điểm, KHÔNG phải
-   * theo phần trăm của điểm gốc (94 - 15 = 79, không phải 94 × 15% = 80).
+   * Tên khoá là `MISSING_BILL_PENALTY_PERCENT` nhưng nghiệp vụ áp dụng là trừ
+   * CỐ ĐỊNH theo điểm, KHÔNG phải theo phần trăm của điểm gốc:
+   * 82.5 − 15 = 67.5, không phải 82.5 × 85% = 70.13.
    */
   missingBillPenaltyPercent: number;
 
@@ -63,6 +63,17 @@ export interface VerificationThresholds {
    * `AI_ANALYSIS_TOKEN_COST` nên admin chỉnh được không cần deploy.
    */
   aiAnalysisTokenCost?: number;
+
+  /**
+   * Hạn mức token khởi tạo cho tài khoản SELLER mới, đọc từ khoá cấu hình
+   * `SELLER_DEFAULT_AI_TOKEN_QUOTA`.
+   *
+   * Đây là số MẶC ĐỊNH của hệ thống, KHÔNG phải số dư hiện tại của người gọi —
+   * số dư đó nằm ở `remainingTokens` của `verify-and-decide`. Nhờ tách hai khái
+   * niệm này, UI hiển thị được dạng "còn 7/10 token" mà không cần thêm lời gọi
+   * API nào.
+   */
+  sellerDefaultAiTokenQuota?: number;
 }
 
 /** Kết quả áp dụng cấu hình lên điểm kiểm định của một hồ sơ. */
@@ -121,28 +132,36 @@ export const evaluateConfidence = (
   const alreadyAdjusted = options?.finalScoreFromDecision;
 
   if (typeof alreadyAdjusted === 'number' && Number.isFinite(alreadyAdjusted)) {
-    const finalScore = Math.max(0, Math.min(100, Math.round(alreadyAdjusted)));
+    /*
+     * Nhánh có `decision`: giữ nguyên độ chính xác backend trả về (1 chữ số
+     * thập phân) thay vì làm tròn. Bước 04 hiển thị 82.5 → 70.1, nếu ở đây
+     * làm tròn thành 83 → 70 thì seller thấy hai bước khác nhau dù cùng một kết
+     * quả. Chỉ kẹp khoảng 0–100 để an toàn.
+     */
+    const finalScore = Math.max(0, Math.min(100, alreadyAdjusted));
     const outcome = resolveOutcome(finalScore, thresholds);
 
     return {
-      baseScore: clampedBase,
-      penalty: Math.max(0, clampedBase - finalScore),
+      baseScore: Math.max(0, Math.min(100, baseScore)),
+      penalty: Math.max(0, baseScore - finalScore),
       finalScore,
       hasBill,
       outcome,
     };
   }
 
-  // Chưa có kết quả backend: tự tính theo đúng công thức của backend.
+  /*
+   * Chưa có kết quả backend: tự tính theo ĐÚNG công thức của backend.
+   *
+   * Trừ thiếu hoá đơn là SỐ ĐIỂM CỐ ĐỊNH: 82.5 − 15 = 67.5, KHÔNG phải
+   * 82.5 × (1 − 15%) = 70.13. Xem `AiVerificationExampleController`.
+   */
   const shouldPenalize = requiresBill && !hasBill;
-  const penaltyPercent = shouldPenalize
+  const penaltyPoints = shouldPenalize
     ? Math.max(0, thresholds.missingBillPenaltyPercent)
     : 0;
 
-  const finalScore = Math.max(
-    0,
-    Math.round(clampedBase * (1 - penaltyPercent / 100)),
-  );
+  const finalScore = Math.max(0, Math.round(clampedBase - penaltyPoints));
 
   return {
     baseScore: clampedBase,
@@ -184,6 +203,14 @@ export interface AnalyzePhotosRequest {
    * TRƯỚC khi so ngưỡng, rồi trả điểm đã trừ ở `decision.finalScore`.
    */
   hasBillPhoto?: boolean;
+  /**
+   * Loại hàng: SECONDHAND / CLEARANCE (chỉ `verify-and-decide` dùng).
+   *
+   * Backend cần để điều kiện "bắt buộc hoá đơn" ở Bước 04 TRÙNG với
+   * `POST /api/ListingsExample/create` (luxury HOẶC SECONDHAND), nếu không
+   * điểm hiển thị ở Bước 05 sẽ khác điểm lưu vào DB.
+   */
+  itemType?: string;
 }
 
 /** Một tín hiệu thị giác AI phát hiện. Khớp `VisualSignalDto`. */
@@ -215,10 +242,20 @@ export interface DatasetMatchResult {
   explanation: string;
 }
 
+/** Kết quả backend phát hiện ảnh được tạo bởi AI và mức trừ confidence tương ứng. */
+export interface AiImageDetectionResult {
+  isAiGenerated: boolean;
+  /** Số điểm confidence backend yêu cầu trừ khi phát hiện ảnh AI. */
+  penaltyPercent: number;
+  confidence?: number;
+  reason?: string;
+}
+
 /** Response của `analyze-photos`. Khớp `AnalyzePhotosResponseDto`. */
 export interface AnalyzePhotosResult {
   aiResult: AiScanResult;
   datasetMatch: DatasetMatchResult;
+  aiImageDetection?: AiImageDetectionResult | null;
   /** Token còn lại sau lần phân tích; null khi gọi không xác thực. */
   remainingTokenBalance: number | null;
 }
@@ -254,8 +291,15 @@ export interface VerificationDecision {
    * hồ sơ luxury thiếu hoá đơn, hai điểm này khác nhau.
    */
   baseScore: number;
-  /** Phần trăm đã trừ vì thiếu hoá đơn (0 khi không bị trừ). */
+  /** Phần trăm quy đương đã trừ (0 khi không bị trừ) — chỉ để hiển thị tương đối. */
   penaltyPercent: number;
+  /**
+   * Số ĐIỂM thực sự bị trừ (thiếu hoá đơn + lệch dataset).
+   *
+   * Đây là con số chuẩn xác theo nghiệp vụ: điểm gốc 82.5 thiếu hoá đơn luxury
+   * → trừ 15 điểm → 67.5. Backend trả thêm từ DTO `PenaltyPoints`.
+   */
+  penaltyPoints?: number;
   /** Điểm CUỐI CÙNG sau khi trừ — backend đã áp trừ trước khi so ngưỡng. */
   finalScore: number;
   /** Phân khúc brand: LUXURY / POPULAR / LOCAL_NO_BRAND. */
@@ -280,6 +324,8 @@ export interface VerificationDecision {
    * lệch dataset, nên Bước 05 không trừ thêm lần nữa.
    */
   datasetMatch: DatasetMatchResult;
+  /** Kết quả phát hiện ảnh AI nếu backend đã chạy kiểm tra này. */
+  aiImageDetection?: AiImageDetectionResult | null;
 
   /**
    * Số token AI còn lại sau lượt kiểm định.

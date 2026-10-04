@@ -2,9 +2,11 @@ import React from 'react';
 import {
   BadgeCheck,
   Check,
+  CircleX,
   ClipboardCheck,
   FileCheck2,
   Fingerprint,
+  Flag,
   Landmark,
   LockKeyhole,
   PackageCheck,
@@ -16,6 +18,21 @@ import {
 } from 'lucide-react';
 import trenchCoatImage from '../../assets/images/Burberry-Trench-Coat-Folded.png';
 import '../../styles/listing/ListingPublishStep.css';
+
+/**
+ * Định dạng điểm để HIỂN THỊ, giữ nguyên độ chính xác backend trả về.
+ *
+ * KHÔNG dùng `Math.round`: điểm thật là 67.5 thì phải hiện "67.5", làm tròn
+ * thành "68" khiến người bán thấy điểm khác hẳn con số ở Bước 05 (nơi dùng
+ * `finalScore` chưa làm tròn) và khác điểm backend thật sự chấm.
+ *
+ * Bỏ các chữ số 0 thừa ở cuối để 67.50 → "67.5" còn 68.0 → "68".
+ */
+export const formatConfidence = (score: number): string => {
+  const safe = Math.max(0, Math.min(100, score));
+  /* `toFixed(2)` bám sát số thập phân backend trả về (thường 1 chữ số). */
+  return safe.toFixed(2).replace(/\.?0+$/, '');
+};
 
 export interface ListingPublishStepProps {
   image?: string;
@@ -38,7 +55,44 @@ export interface ListingPublishStepProps {
   brandSegment?: string;
   /** true nếu hồ sơ bị trừ điểm vì thiếu ảnh hóa đơn. */
   billPenaltyApplied?: boolean;
+  /**
+   * Trạng thái backend quyết định khi đăng tin: ACTIVE / FLAGGED / REJECTED.
+   *
+   * Khoá lớn của luồng "unhappy case": điểm cuối nằm trong khoảng
+   * [ngưỡng từ chối, ngưỡng đăng) — ví dụ 50–75 — thì backend gắn cờ `FLAGGED`
+   * và chuyển tin sang Admin xét duyệt thủ công. Trước đây bước này luôn hiện
+   * "CẤP DUYỆT TỨC THÌ" bất kể kết quả, khiến seller tưởng tin đã lên sàn.
+   */
+  status?: string;
+  /** Lý do backend giải thích cho trạng thái trên. */
+  statusReason?: string | null;
 }
+
+/**
+ * Diễn giải trạng thái đăng tin sang thông điệp cho người bán.
+ *
+ * Trùng khớp với `ListingService.ResolveListingStatus` của backend:
+ *   >= ngưỡng đăng  → ACTIVE   (đăng ngay)
+ *   >= ngưỡng từ chối → FLAGGED (gắn cờ, chờ Admin)
+ *   còn lại          → REJECTED (từ chối)
+ */
+const PUBLISH_STATUS: Record<string, { label: string; note: string; tone: 'ok' | 'flag' | 'reject' }> = {
+  ACTIVE: {
+    label: 'CẤP DUYỆT TỨC THÌ',
+    note: 'Tin đã được đăng ngay lên sàn.',
+    tone: 'ok',
+  },
+  FLAGGED: {
+    label: 'ĐÃ GẮN CỜ — CHỜ ADMIN XÉT DUYỆT',
+    note: 'Điểm nằm trong khoảng cần kiểm duyệt thủ công, nên tin chưa hiện công khai. Admin sẽ xem xét và phát hành sau.',
+    tone: 'flag',
+  },
+  REJECTED: {
+    label: 'KHÔNG ĐƯỢC ĐĂNG',
+    note: 'Điểm thấp hơn ngưỡng tối thiểu nên hệ thống từ chối. Bạn có thể chụp lại ảnh và thử lại.',
+    tone: 'reject',
+  },
+};
 
 /**
  * Nhãn tiếng Việt cho phân khúc backend trả về.
@@ -70,12 +124,29 @@ export const ListingPublishStep: React.FC<ListingPublishStepProps> = ({
   pattern,
   price,
   sku,
-  confidence = 94,
+  confidence,
   brandSegment,
   billPenaltyApplied = false,
+  status,
+  statusReason,
 }) => {
   const segment = brandSegment ? SEGMENT_LABEL[brandSegment] : undefined;
-  const safeConfidence = Math.max(0, Math.min(100, Math.round(confidence)));
+  /*
+   * Trạng thái thật do backend quyết định lúc đăng tin. Chưa đăng thì `status`
+   * còn undefined — lúc đó hiện thông điệp trung tính, KHÔNG đoán trước.
+   */
+  const publishStatus = status ? PUBLISH_STATUS[status] : undefined;
+  /*
+   * Chỉ hiện điểm AI khi có số THẬT từ Bước 04/05. Trước đây default cứng `94`
+   * khiến tin đăng luôn quảng cáo "AI XÁC THỰC 94%" dù hồ sơ thực tế chỉ đạt
+   * 70% — số liệu sai bị niêm yết ra sàn. Không có điểm thì ẩn hẳn các badge
+   * liên quan thay vì hiện số bịa.
+   *
+   * GIỮ NGUYÊN độ chính xác: dùng `formatConfidence` (không `Math.round`) để
+   * điểm 67.5 hiện đúng "67.5", khớp với Bước 05 và với backend.
+   */
+  const hasConfidence = typeof confidence === 'number' && Number.isFinite(confidence);
+  const safeConfidence = hasConfidence ? formatConfidence(confidence) : null;
   const displayImage = image || trenchCoatImage;
   const displayName = name?.trim() || 'Áo măng tô Burberry Vintage hai hàng cực';
   const displayBrand = brand?.trim() || 'BURBERRY LONDON • VINTAGE ARCHIVE';
@@ -107,10 +178,12 @@ export const ListingPublishStep: React.FC<ListingPublishStepProps> = ({
             <h1>Xác nhận đăng tin & Kích hoạt bảo vệ ký quỹ</h1>
             <p>Được cuối cùng để niêm yết sản phẩm lên sàn giao dịch ReWear AI và phát hành mã bảo chứng Smart-Escrow.</p>
             <div className="rw-publish-header-badges" aria-label="Các chứng nhận an toàn">
-              <span className="is-verified">
-                <BadgeCheck width={15} height={15} aria-hidden="true" />
-                AI VERIFIED <b>{safeConfidence}%</b>
-              </span>
+              {safeConfidence !== null && (
+                <span className="is-verified">
+                  <BadgeCheck width={15} height={15} aria-hidden="true" />
+                  AI VERIFIED <b>{safeConfidence}%</b>
+                </span>
+              )}
               <span className="is-secured">
                 <ShieldCheck width={15} height={15} aria-hidden="true" />
                 SMART-ESCROW SECURED
@@ -135,14 +208,47 @@ export const ListingPublishStep: React.FC<ListingPublishStepProps> = ({
 
       <div className="rw-publish-grid">
         <div className="rw-publish-main">
-          <div className="rw-publish-ai-banner">
-            <span className="rw-publish-ai-icon"><BadgeCheck width={21} height={21} aria-hidden="true" /></span>
-            <span className="rw-publish-ai-copy">
-              <small>XÁC THỨC TƯỞNG THÀNH CÔNG</small>
-              <strong>{safeConfidence}% ĐẠT CHUẨN KIỂM ĐỊNH MÁY QUANG HỌC</strong>
-            </span>
-            <span className="rw-publish-tier"><Sparkles width={13} height={13} aria-hidden="true" /> CẤP DUYỆT TỨC THÌ</span>
-          </div>
+          {/*
+            * Banner kết quả đăng tin. Trạng thái lấy từ `status` backend trả về:
+            *   • ACTIVE   → đăng ngay
+            *   • FLAGGED  → gắn cờ, chờ Admin xét duyệt (luồng unhappy case)
+            *   • REJECTED → bị từ chối
+            * Chưa đăng thì hiện thông điệp trung tính, không bịa kết quả.
+            */}
+          {publishStatus ? (
+            <div className={`rw-publish-ai-banner is-${publishStatus.tone}`} role="status">
+              <span className="rw-publish-ai-icon">
+                {publishStatus.tone === 'ok' ? (
+                  <BadgeCheck width={21} height={21} aria-hidden="true" />
+                ) : publishStatus.tone === 'flag' ? (
+                  <Flag width={21} height={21} aria-hidden="true" />
+                ) : (
+                  <CircleX width={21} height={21} aria-hidden="true" />
+                )}
+              </span>
+              <span className="rw-publish-ai-copy">
+                <small>{publishStatus.label}</small>
+                <strong>{publishStatus.note}</strong>
+                {statusReason && <em>{statusReason}</em>}
+              </span>
+              {safeConfidence !== null && (
+                <span className="rw-publish-tier">
+                  <Sparkles width={13} height={13} aria-hidden="true" /> ĐIỂM {safeConfidence}%
+                </span>
+              )}
+            </div>
+          ) : (
+            safeConfidence !== null && (
+              <div className="rw-publish-ai-banner">
+                <span className="rw-publish-ai-icon"><BadgeCheck width={21} height={21} aria-hidden="true" /></span>
+                <span className="rw-publish-ai-copy">
+                  <small>ĐÃ SẴN SÀNG ĐĂNG TIN</small>
+                  <strong>{safeConfidence}% ĐẠT CHUẨN KIỂM ĐỊNH MÁY QUANG HỌC</strong>
+                </span>
+                <span className="rw-publish-tier"><Sparkles width={13} height={13} aria-hidden="true" /> CHỜ ĐĂNG</span>
+              </div>
+            )
+          )}
 
           {/*
            * Phân khúc do BACKEND suy ra từ tên thương hiệu — hiện lại để người
@@ -174,7 +280,9 @@ export const ListingPublishStep: React.FC<ListingPublishStepProps> = ({
             <div className="rw-publish-market-card">
               <div className="rw-publish-photo-wrap">
                 <img className="rw-publish-photo" src={displayImage} alt={displayName} onError={(event) => { event.currentTarget.src = trenchCoatImage; }} />
-                <span className="rw-publish-ai-badge"><BadgeCheck width={13} height={13} aria-hidden="true" /> AI XÁC THỰC: {safeConfidence}%</span>
+                {safeConfidence !== null && (
+                  <span className="rw-publish-ai-badge"><BadgeCheck width={13} height={13} aria-hidden="true" /> AI XÁC THỰC: {safeConfidence}%</span>
+                )}
                 <span className="rw-publish-condition">Tình trạng: Tuyệt hảo (9.5/10)</span>
               </div>
               <div className="rw-publish-listing-copy">

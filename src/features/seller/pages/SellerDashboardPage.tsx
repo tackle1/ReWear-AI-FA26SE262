@@ -1,6 +1,7 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
+import { TriangleAlert } from 'lucide-react';
 import ROUTES from '../../../routes/routes.config';
 import { logout } from '../../../store/slices/authSlice';
 import storage, { tokenStorage } from '../../../utils/storage';
@@ -27,7 +28,6 @@ const formatVnd = (value: number): string => value.toLocaleString('vi-VN');
 export const SellerDashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const [activeMenu, setActiveMenu] = useState('dashboard');
 
   /*
    * Toàn bộ số liệu của trang lấy từ hook này — hook đọc kho tin đăng thật của
@@ -39,6 +39,7 @@ export const SellerDashboardPage: React.FC = () => {
     rows,
     overview,
     isLoading,
+    sourceError,
     autoPublishThreshold,
     autoRejectThreshold,
     thresholdLabel,
@@ -134,11 +135,22 @@ export const SellerDashboardPage: React.FC = () => {
 
   return (
     <div className="seller-app rw-dashboard-theme">
-      <DashboardSidebar activeKey={activeMenu} onSelect={(key) => setActiveMenu(key)} />
+      <DashboardSidebar activeKey="dashboard" onSelect={(_, item) => navigate(item.path)} />
       <section className="seller-shell">
         <DashboardTopbar onLogout={handleLogout} />
         <main className="seller-main">
           <DashboardPageHeader onCreate={() => navigate(ROUTES.LISTING.CREATE)} />
+          {/*
+            * Báo rõ khi bảng đang dùng dữ liệu cục bộ vì API không trả được.
+            * Thiếu cảnh báo này, seller thấy danh sách "đủ" nhưng bấm vào từng
+            * tin lại 404 — đúng triệu chứng họ vừa gặp.
+            */}
+          {sourceError && (
+            <div className="rw-dash-warn" role="alert">
+              <TriangleAlert width={16} height={16} aria-hidden="true" />
+              {sourceError}
+            </div>
+          )}
           <DashboardStats items={stats} />
           <AiVerificationProcess steps={aiSteps} />
           <RecentListingsTable

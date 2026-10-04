@@ -1,6 +1,6 @@
 import axiosClient from '../axiosClient';
 import { ApiResponse } from '../../types/apiResponse.type';
-import { CreateListingPayload, CreateListingResult, ListingItem } from '../../types/listing.type';
+import { CreateListingPayload, CreateListingResult, ListingDetail, ListingItem, ListingSummary } from '../../types/listing.type';
 import {
   VerificationThresholds,
   PhotoQualityCheckPayload,
@@ -123,6 +123,36 @@ export const listingApi = {
   getThresholds: () =>
     axiosClient.get<never, VerificationThresholds>('/api/ListingsExample/thresholds', {
       baseURL: '',
+    }),
+
+  /**
+   * Chi tiết một hồ sơ: `GET /api/ListingsExample/my-listings/{id}?sellerId=`.
+   *
+   * Endpoint này gom đủ ba bảng `Listings` + `AiEvaluations` + `ListingMedias`
+   * và giải mã tín hiệu thị giác thành object có kiểu, nên trang chi tiết
+   * không phải tự parse JSON hay dựng lại dữ liệu từ các nguồn rời rạc.
+   *
+   * `sellerId` phải là chủ sở hữu hồ sơ — backend trả 404 nếu không khớp,
+   * nên đổi id trên URL sang tin người khác cũng không lộ được dữ liệu.
+   */
+  getMyListingDetail: async (listingId: string, sellerId: string) => {
+    const guid = normalizeGuid(listingId);
+
+    if (!guid) {
+      throw new Error('Mã hồ sơ không hợp lệ, không thể tải chi tiết.');
+    }
+
+    return axiosClient.get<never, ListingDetail>(
+      `/api/ListingsExample/my-listings/${guid}`,
+      { baseURL: '', params: { sellerId } },
+    );
+  },
+
+  /** Danh sách tin của seller (mọi trạng thái, gồm cả đang chờ duyệt). */
+  getMyListings: (sellerId: string) =>
+    axiosClient.get<never, ListingSummary[]>('/api/ListingsExample/my-listings', {
+      baseURL: '',
+      params: { sellerId },
     }),
 };
 

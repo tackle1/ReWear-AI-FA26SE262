@@ -20,6 +20,8 @@ import trenchCoatImage from '../../assets/images/Burberry-Trench-Coat-Folded.png
 import useVerificationThresholds from '../../features/listing/hooks/useVerificationThresholds';
 import {
   ConfidenceEvaluation,
+  AiImageDetectionResult,
+  SignalCheckResult,
   VerificationDecision,
   VerificationThresholds,
 } from '../../types/verification.type';
@@ -60,12 +62,24 @@ export interface ResultProduct {
   verifiedLabel?: string;
   statusLabel?: string;
   name?: string;
+  /**
+   * Giá người bán nhập ở Bước 01 (chuỗi số, ví dụ "8500000").
+   *
+   * Nguồn GIÁ THẬT cho thẻ tóm tắt. Trước đây hai dòng giá lấy từ hằng số
+   * bịa trong `PRODUCT_DEFAULT`, nên mọi tin đăng đều hiện "8.500.000 đ /
+   * 8.202.500 đ" dù người bán nhập giá khác.
+   */
+  price?: string;
   /** Thương hiệu người bán nhập ở Bước 01 — hiện trong cảnh báo brand lạ. */
   brand?: string;
   sku?: string;
   marketLabel?: string;
+  /**
+   * Giá niêm yết. ƯU TIÊN giá người bán nhập ở Bước 01 — dùng chuỗi rỗng thì
+   * component tự lấy từ `price`.
+   */
   marketPrice?: string;
-  deltaLabel?: string;
+  /** Giá gốc bán ra (chưa trừ phí) — mặc định BẰNG `marketPrice`. */
   suggestedLabel?: string;
   suggestedPrice?: string;
   escrowNote?: string;
@@ -87,48 +101,12 @@ export const RESULT_GRADE_METRICS: ResultGradeMetric[] = [
   { label: 'Tính toàn vẹn lót trong', value: '99.0%', note: 'Hoàn toàn đồng bộ' },
 ];
 
-export const RESULT_EVIDENCE_ROWS: ResultEvidenceRow[] = [
-  {
-    id: '01',
-    label: 'Mật độ dệt & Đường chỉ nền (Cotton Woven Labour)',
-    sub: 'Đối soát vi cấu trúc sợi dọc – sợi ngang theo mẫu chuẩn.',
-    score: '99.2%',
-    status: 'Đạt ngưỡng',
-    progress: 99,
-  },
-  {
-    id: '02',
-    label: 'Mũi may khóa & Ve áo (Lapel Stitching)',
-    sub: 'Mật độ 8.6 mũi/inch, sai lệch tối đa 0.42mm trên toàn tuyến.',
-    score: '96.5%',
-    status: 'Đạt ngưỡng',
-    progress: 96,
-  },
-  {
-    id: '03',
-    label: 'Khóa & Cúc kim loại (Horn Buttons & Buckles)',
-    sub: 'Đã bù trừ ảnh hưởng lóa sáng khi đối chiếu khắc laser.',
-    score: '84.1%',
-    status: 'Đạt ngưỡng',
-    progress: 84,
-  },
-  {
-    id: '04',
-    label: 'Kết cấu Gabardine chuẩn (Twill Weave)',
-    sub: 'Tần số dệt và hướng chéo chỉ khớp kho lưu trữ 1990–1998.',
-    score: '91.8%',
-    status: 'Đạt ngưỡng',
-    progress: 92,
-  },
-  {
-    id: '05',
-    label: 'Phom dáng & Độ dựng vai (Hem Flare & Silhouette)',
-    sub: 'Tỷ lệ eo – vai và độ dài tà nằm trong dải dung sai hãng.',
-    score: '98.0%',
-    status: 'Đạt ngưỡng',
-    progress: 98,
-  },
-];
+/*
+ * KHÔNG còn `RESULT_EVIDENCE_ROWS` cứng (99.2%, 96.5%, 84.1%, 91.8%, 98.0 —
+ * luôn "Đạt ngưỡng"). Danh sách điều kiện thẩm định nay dựng từ kết quả
+ * `check-signals` thật của Bước 04, nên hồ sơ ảnh kém sẽ hiện "Trượt" thay vì
+ * quảng cáo 5/5 đạt.
+ */
 
 /** Nội dung giải thích thứ hai — không phụ thuộc điểm số. */
 const EXPLAIN_ITEM_NO_PERFECT_SCORE: ResultExplainItem = {
@@ -146,12 +124,17 @@ const EXPLAIN_ITEM_NO_PERFECT_SCORE: ResultExplainItem = {
 const buildExplainItems = (
   evaluation: ConfidenceEvaluation,
   thresholds: VerificationThresholds,
+  aiImagePenalty: number,
 ): ResultExplainItem[] => {
   const { baseScore, penalty, finalScore, hasBill, outcome } = evaluation;
 
   const baseExplanation =
     `Điểm số tổng hợp được tính toán dựa trên độ sắc nét vi mô của sợi dệt, ` +
     `độ đồng đều sắc thái và mức độ bám sát mô hình chuẩn ReWear Lab.`;
+  const aiPenaltyNote =
+    aiImagePenalty > 0
+      ? ` Backend phát hiện ảnh được tạo bằng AI nên trừ thêm ${aiImagePenalty} điểm confidence.`
+      : '';
 
   // Không bị trừ điểm — giải thích thẳng điểm cuối.
   if (penalty === 0) {
@@ -169,7 +152,7 @@ const buildExplainItems = (
         title: `Tại sao điểm đạt ${finalScore.toFixed(1)}%?`,
         body: `${baseExplanation} Điểm AI gốc là ${baseScore}%, không bị trừ thêm vì ${
           hasBill ? 'hồ sơ đã có hóa đơn' : 'phân khúc thương hiệu này không yêu cầu hóa đơn'
-        }.${thresholdNote}`,
+        }.${aiPenaltyNote}${thresholdNote}`,
       },
       EXPLAIN_ITEM_NO_PERFECT_SCORE,
     ];
@@ -189,7 +172,7 @@ const buildExplainItems = (
       body:
         `${baseExplanation} Điểm AI gốc ${baseScore}%, ` +
         `bị trừ ${penalty} điểm vì chưa tải hóa đơn hoặc bằng chứng mua hàng ` +
-        `(mức trừ ${thresholds.missingBillPenaltyPercent}% theo nghiệp vụ). ${outcomeText}`,
+        `(mức trừ ${thresholds.missingBillPenaltyPercent}% theo nghiệp vụ).${aiPenaltyNote} ${outcomeText}`,
     },
     EXPLAIN_ITEM_NO_PERFECT_SCORE,
   ];
@@ -203,14 +186,58 @@ const PRODUCT_DEFAULT: Required<ResultProduct> = {
   statusLabel: 'Đã xác thực',
   name: 'Burberry Vintage Trench Coat Gabardine',
   sku: 'SKU: BUR-84729-LIQ',
+  /* Giá Bước 01 — không có thì hai dòng giá được ẩn, không hiện số bịa. */
+  price: '',
   marketLabel: 'Giá niêm yết bán:',
-  marketPrice: '8.500.000 đ',
-  deltaLabel: '-297.500 đ',
+  /*
+   * KHÔNG còn `deltaLabel` ('-297.500 đ') và `suggestedPrice` ('8.202.500 đ'):
+   * hai con số này là số bịa cứng trong UI. Nay cả hai dòng đều hiện GIÁ GỐC
+   * người bán nhập ở Bước 01 — không trừ phí 3,5% và không hiện delta giả.
+   */
+  marketPrice: '',
   suggestedLabel: 'Ước tính thực nhận:',
-  suggestedPrice: '8.202.500 đ',
+  /* Sẽ được suy ra từ `price` ở `resolvePriceRows` khi không truyền. */
+  suggestedPrice: '',
   escrowNote: 'Được bảo vệ bởi ReWear Smart-Escrow: khóa thanh toán của người mua được bảo mật và được lưu trữ trên chuỗi dữ liệu an toàn.',
   certificateLabel: 'Chứng nhận mã định danh',
   certificateValue: 'BUR-84729-LIQ',
+};
+
+/**
+ * Định dạng giá tiền Việt Nam từ chuỗi người bán nhập ("8500000" → "8.500.000 đ").
+ * Trả `null` khi không đọc được số hợp lệ.
+ */
+const formatPriceVnd = (raw?: string): string | null => {
+  const digits = (raw ?? '').replace(/\D/g, '');
+  if (!digits) return null;
+
+  const amount = Number(digits);
+  if (!Number.isFinite(amount) || amount <= 0) return null;
+
+  return `${amount.toLocaleString('vi-VN')} ₫`;
+};
+
+/**
+ * Giá hiển thị cho hai dòng "Giá niêm yết bán" và "Ước tính thực nhận".
+ *
+ * Cả hai dòng đều hiện GIÁ GỐC người bán nhập ở Bước 01 — không trừ phí
+ * niêm yết và không hiện delta, vì backend chưa trả phí thực tế. Trước đây
+ * hai dòng này lấy từ hằng số bịa ("8.500.000 đ" / "8.202.500 đ") nên mọi
+ * tin đăng đều hiện cùng một con số dù người bán nhập giá khác.
+ */
+const resolvePriceRows = (
+  product: Required<ResultProduct>,
+): { listedPrice: string; netPrice: string } => {
+  /* Ưu tiên giá thật ở Bước 01, sau đó mới tới giá truyền vào. */
+  const formatted =
+    formatPriceVnd(product.price) ?? formatPriceVnd(product.marketPrice);
+
+  /* Không có giá nào đọc được thì ẩn hẳn hai dòng thay vì hiện số bịa. */
+  const fallback = formatted ?? '';
+  return {
+    listedPrice: product.marketPrice || fallback,
+    netPrice: product.suggestedPrice || fallback,
+  };
 };
 
 /** Bỏ qua các trường rỗng để không ghi đè giá trị mặc định (tránh ảnh bị vỡ). */
@@ -224,9 +251,9 @@ const withProductDefaults = (product?: ResultProduct): Required<ResultProduct> =
   if (product.name) merged.name = product.name;
   if (product.brand) merged.brand = product.brand;
   if (product.sku) merged.sku = product.sku;
+  if (product.price) merged.price = product.price;
   if (product.marketLabel) merged.marketLabel = product.marketLabel;
   if (product.marketPrice) merged.marketPrice = product.marketPrice;
-  if (product.deltaLabel) merged.deltaLabel = product.deltaLabel;
   if (product.suggestedLabel) merged.suggestedLabel = product.suggestedLabel;
   if (product.suggestedPrice) merged.suggestedPrice = product.suggestedPrice;
   if (product.escrowNote) merged.escrowNote = product.escrowNote;
@@ -289,6 +316,17 @@ export interface ListingAiResultStepProps {
    * `confidence` + `hasBill` như trước.
    */
   decision?: VerificationDecision | null;
+  /** Kết quả phát hiện ảnh AI và mức penalty backend trả về. */
+  aiImageDetection?: AiImageDetectionResult | null;
+  /**
+   * Kết quả `check-signals` của Bước 04 — nguồn THẬT cho thẻ "5 điều kiện
+   * thẩm định thực thể".
+   *
+   * Trước đây thẻ này dùng danh sách số cứng (`RESULT_EVIDENCE_ROWS`) nên luôn
+   * hiện "5/5 điều kiện đều đạt ngưỡng" với các con số 99.2% / 96.5% … bất kể
+   * ảnh thật ra sao. Truyền `signals` vào để thẻ phản ánh đúng kết quả kiểm định.
+   */
+  signals?: SignalCheckResult | null;
   /** Có bị chặn đăng tin khi điểm dưới ngưỡng tự động. */
   canPublish?: boolean;
   /** Báo ra ngoài khi trạng thái đăng tin thay đổi, để khóa nút ở action bar. */
@@ -328,6 +366,11 @@ export const ListingAiResultStep: React.FC<ListingAiResultStepProps> = ({
   latencyLabel = 'Độ trễ phân tích: 1.84s',
   title = 'Kết quả kiểm định AI & Bằng chứng quang học',
   description = 'Hoàn tất phân tích nơ-ron đa tầng. Đánh giá khách quan dựa trên cơ sở dữ liệu lưu trữ 42.000 mẫu trang phục xa xỉ đối chiếu.',
+  /**
+   * Điểm dự phòng khi Bước 04 không trả `decision` (endpoint lỗi, mở thẳng
+   * Bước 05). Chỉ dùng khi thiếu dữ liệu thật — có `decision` thì luôn lấy
+   * `decision.baseScore` / `decision.finalScore`.
+   */
   confidence = 94,
   scoreScaleLabel = 'XÁC THỰC',
   scoreHeadingLabel = 'Độ trùng khớp quang phổ cấu trúc:',
@@ -343,9 +386,9 @@ export const ListingAiResultStep: React.FC<ListingAiResultStepProps> = ({
   grades = RESULT_GRADES,
   gradesConclusion = 'Phù hợp thẩm định: Phù hợp với mức kỹ thuật của ReWear Fabric-Scan. Khả năng xây dựng và độ bóng của vải vẫn ở mức tốt, không có dấu hiệu vật lý lớn.',
   gradeMetrics = RESULT_GRADE_METRICS,
-  evidenceTitle = 'Chỉ số 5 điều kiện thẩm định thực thể (Visual Evidence)',
-  evidenceBadge = '5/5 Điều kiện đều đạt ngưỡng',
-  evidenceRows = RESULT_EVIDENCE_ROWS,
+  evidenceTitle: evidenceTitleProp,
+  evidenceRows: evidenceRowsProp,
+  evidenceBadge: evidenceBadgeProp,
   explainTitle = 'Minh bạch chẩn đoán AI (Explainable AI Engine)',
   explainSubtitle = 'Cơ sở lý luận & Thuật toán phân định rủi ro',
   explainBadge = 'Có sẵn để kiểm tra',
@@ -361,6 +404,8 @@ export const ListingAiResultStep: React.FC<ListingAiResultStepProps> = ({
   nextListingCert = 'Chứng thực giám định: License REWEAR-CERT-2024',
   hasBill = true,
   decision = null,
+  aiImageDetection = null,
+  signals = null,
   canPublish = true,
   onCanPublishChange,
   onConfidenceChange,
@@ -383,13 +428,101 @@ export const ListingAiResultStep: React.FC<ListingAiResultStepProps> = ({
    * Chỉ khi chưa có `decision` (endpoint lỗi, hoặc mở thẳng bước này) mới tự
    * tính từ `confidence` + `hasBill` như trước.
    */
-  const evaluation: ConfidenceEvaluation = useMemo(
+  const aiImagePenalty =
+    aiImageDetection?.isAiGenerated &&
+    Number.isFinite(aiImageDetection.penaltyPercent) &&
+    aiImageDetection.penaltyPercent > 0
+      ? Math.min(100, aiImageDetection.penaltyPercent)
+      : 0;
+
+  /*
+   * Điểm gốc dùng để hiển thị ở Bước 05.
+   *
+   * Khi Bước 04 đã có `decision`, phải lấy `decision.baseScore` — đó là điểm AI
+   * GỐC mà backend dùng để áp trừ. Trước đây truyền `confidence` (prop mặc
+   * định 94 và còn là số bịa trong lúc dựng UI) nên `evaluateConfidence` giữ nguyên
+   * baseScore = 94 và suy ra penalty = 94 − 70.1 = 24 điểm, hiển thị sai lệch với
+   * Bước 04 (thực tế 82.5 → 70.1, mất 12.4 điểm do trừ 15%).
+   *
+   * Chỉ khi không có `decision` (Bước 04 lỗi / mở thẳng Bước 05) mới rơi về
+   * `confidence`.
+   */
+  /*
+   * Điểm gốc dùng để hiển thị ở Bước 05.
+   *
+   * Khi Bước 04 đã có `decision`, phải lấy `decision.baseScore` — đó là điểm AI
+   * GỐC mà backend dùng để áp trừ. Trước đây truyền `confidence` (prop mặc
+   * định 94 và còn là số bịa trong lúc dựng UI) nên `evaluateConfidence` giữ nguyên
+   * baseScore = 94 và suy ra penalty = 94 − 67.5 = 26.5 điểm, hiển thị sai lệch với
+   * Bước 04 (thực tế 82.5 − 15 điểm = 67.5).
+   *
+   * Chỉ khi không có `decision` (Bước 04 lỗi / mở thẳng Bước 05) mới rơi về
+   * `confidence`.
+   */
+  const baseScoreSource = decision?.baseScore ?? confidence;
+
+  /*
+   * Thẻ "5 điều kiện thẩm định thực thể" — dựng từ kết quả `check-signals`
+   * của Bước 04, KHÔNG dùng danh sách số cứng.
+   *
+   * `VisualSignal` chỉ có `signalName` / `isPassed` / `note` (không kèm điểm
+   * số), nên ta hiển thị đúng những gì backend thật sự trả về: tên tín hiệu,
+   * ghi chú, và kết luận đạt/trượt — thay vì bịa những con số 99.2%, 96.5%…
+   */
+  const resolvedSignals = signals?.signals ?? [];
+  const resolvedPassed = signals?.passedSignals ?? resolvedSignals.filter((s) => s.isPassed).length;
+  const resolvedTotal = signals?.totalSignals ?? resolvedSignals.length;
+
+  const evidenceRows: ResultEvidenceRow[] = useMemo(() => {
+    // Người gọi truyền danh sách riêng thì ưu tiên danh sách đó.
+    if (evidenceRowsProp && evidenceRowsProp.length > 0) return evidenceRowsProp;
+    if (resolvedSignals.length === 0) return [];
+
+    return resolvedSignals.map((signal, index) => ({
+      id: String(index + 1).padStart(2, '0'),
+      label: signal.signalName,
+      sub: signal.note,
+      score: signal.isPassed ? 'Đạt' : 'Trượt',
+      status: signal.isPassed ? 'Đạt ngưỡng' : 'Cần chụp lại',
+    }));
+  }, [evidenceRowsProp, resolvedSignals]);
+
+  /*
+   * Tiêu đề thẻ cũng phải theo dữ liệu thật. Trước đây viết cứng "Chỉ số 5 điều
+   * kiện" trong khi `check-signals` chỉ trả về 3 tín hiệu — tiêu đề và nội dung
+   * mâu thuẫn ngay trên cùng một thẻ. Số trong tiêu đề lấy từ `resolvedTotal`.
+   */
+  const evidenceTitle =
+    evidenceTitleProp ??
+    (resolvedTotal > 0
+      ? `Chỉ số ${resolvedTotal} điều kiện thẩm định thực thể (Visual Evidence)`
+      : 'Chỉ số điều kiện thẩm định thực thể (Visual Evidence)');
+
+  const evidenceBadge =
+    evidenceBadgeProp ??
+    (resolvedTotal > 0
+      ? `${resolvedPassed}/${resolvedTotal} điều kiện đạt ngưỡng`
+      : 'Chưa có dữ liệu kiểm định');
+
+
+  const scoreBeforeAiPenalty: ConfidenceEvaluation = useMemo(
     () =>
-      evaluate(confidence, hasBill, {
+      evaluate(baseScoreSource, hasBill, {
         requiresBillPhoto: decision?.requiresBillPhoto,
         finalScoreFromDecision: decision?.finalScore,
       }),
-    [evaluate, confidence, hasBill, decision],
+    [evaluate, baseScoreSource, hasBill, decision],
+  );
+  const aiImagePenaltyApplied = Math.min(aiImagePenalty, scoreBeforeAiPenalty.finalScore);
+  const evaluation: ConfidenceEvaluation = useMemo(
+    () =>
+      aiImagePenaltyApplied > 0
+        ? evaluate(scoreBeforeAiPenalty.baseScore, hasBill, {
+            requiresBillPhoto: decision?.requiresBillPhoto,
+            finalScoreFromDecision: scoreBeforeAiPenalty.finalScore - aiImagePenaltyApplied,
+          })
+        : scoreBeforeAiPenalty,
+    [evaluate, scoreBeforeAiPenalty, hasBill, decision, aiImagePenaltyApplied],
   );
 
   /**
@@ -404,14 +537,32 @@ export const ListingAiResultStep: React.FC<ListingAiResultStepProps> = ({
   const showBillPenaltyNotice = Boolean(decision?.missingBillPenaltyApplied);
 
   /**
+   * Điểm cuối có rơi vào khoảng cạnh biên không → tin sẽ bị gắn cờ.
+   *
+   * Dùng đúng ngưỡng mà backend dùng ở `ListingService.ResolveListingStatus`:
+   *   >= autoPublish → đăng ngay
+   *   >= autoReject  → FLAGGED, chờ Admin
+   *   còn lại        → từ chối
+   */
+  const willBeFlagged =
+    typeof thresholds?.autoRejectThreshold === 'number' &&
+    typeof thresholds?.autoPublishThreshold === 'number' &&
+    evaluation.finalScore >= thresholds.autoRejectThreshold &&
+    evaluation.finalScore < thresholds.autoPublishThreshold;
+
+  /**
    * Ảnh không khớp data set chuẩn của hãng.
    *
    * Chỉ cảnh báo, không chặn hồ sơ — nhưng điểm đã bị trừ ở Bước 04 nên nói rõ
    * để seller biết cần chụp lại góc nào, nếu không sẽ tưởng điểm tự nhiên giảm.
    */
   const showDatasetWarning = Boolean(decision?.datasetMatch?.hasMismatchWarning);
+  const showAiImagePenalty = aiImagePenalty > 0;
 
   const productData = withProductDefaults(product);
+
+  /* Hai dòng giá của thẻ tóm tắt — suy ra từ giá người bán nhập ở Bước 01. */
+  const priceRows = resolvePriceRows(productData);
   const roundedConfidence = evaluation.finalScore;
   const arcLength = (evaluation.finalScore / 100) * DONUT_CIRCUMFERENCE;
 
@@ -423,8 +574,8 @@ export const ListingAiResultStep: React.FC<ListingAiResultStepProps> = ({
    * `evaluation`. Prop `explainItems` vẫn được ưu tiên nếu muốn ghi đè.
    */
   const resolvedExplainItems: ResultExplainItem[] = useMemo(
-    () => explainItems ?? buildExplainItems(evaluation, thresholds),
-    [evaluation, explainItems, thresholds],
+    () => explainItems ?? buildExplainItems(evaluation, thresholds, aiImagePenalty),
+    [evaluation, explainItems, thresholds, aiImagePenalty],
   );
 
   /** Badge chính phản ánh kết luận thật, không viết cứng "đủ điều kiện đăng tin". */
@@ -510,7 +661,7 @@ export const ListingAiResultStep: React.FC<ListingAiResultStepProps> = ({
         {/* ══ CẢNH BÁO TỪ BƯỚC 04 ══
             Brand không có trong danh sách NeonDB (chỉ nhắc lại chính tả, KHÔNG
             chặn hồ sơ) và điểm đã bị trừ vì thiếu hoá đơn. */}
-        {(showBrandWarning || showBillPenaltyNotice || showDatasetWarning) && (
+        {(showBrandWarning || showBillPenaltyNotice || showDatasetWarning || showAiImagePenalty) && (
           <div
             className="rw-lc-result-alerts"
             role="status"
@@ -539,12 +690,34 @@ export const ListingAiResultStep: React.FC<ListingAiResultStepProps> = ({
               </p>
             )}
 
+            {showAiImagePenalty && (
+              <p className="rw-lc-result-alert is-ai-generated">
+                AI phát hiện ảnh có dấu hiệu được tạo bằng AI. Confidence score tổng đã
+                bị trừ <strong>{aiImagePenalty} điểm</strong> theo mức backend trả về.
+              </p>
+            )}
+
             {showBillPenaltyNotice && (
               <p className="rw-lc-result-alert is-penalty">
                 Bước 04 đã trừ điểm vì thương hiệu này bắt buộc phải có ảnh hoá
                 đơn mà bạn chưa tải: điểm AI gốc <strong>{evaluation.baseScore}</strong>{' '}
-                còn <strong>{evaluation.finalScore}</strong>. Tải ảnh hoá đơn ở
-                Bước 01 và xác thực lại để được hoàn điểm.
+                còn <strong>{evaluation.finalScore}</strong>.{' '}
+                {/*
+                  Điểm đã tụt vào khoảng cạnh biên thì hậu quả KHÔNG chỉ là mất
+                  điểm mà tin đăng còn bị gắn cờ chờ Admin — nói rõ để seller biết
+                  mình đang ở luồng unhappy case, không phải chỉ cần chụp lại ảnh.
+                */}
+                {willBeFlagged ? (
+                  <>
+                    Với điểm này, tin đăng sẽ được{' '}
+                    <strong>gắn cờ và chuyển cho Admin xét duyệt thủ công</strong>,
+                    chưa hiển thị công khai trên sàn.{' '}
+                  </>
+                ) : (
+                  <>Tin đăng vẫn được đăng bình thường.{' '}</>
+                )}
+                Tải ảnh hoá đơn ở Bước 01 và xác thực lại để được hoàn điểm
+                {willBeFlagged ? ' và tránh bị gắn cờ' : ''}.
               </p>
             )}
           </div>
@@ -666,20 +839,24 @@ export const ListingAiResultStep: React.FC<ListingAiResultStepProps> = ({
                     <b>{evaluation.baseScore}%</b>
                   </div>
 
-                  <div
-                    className={`rw-lc-result-config-calc-row${evaluation.penalty > 0 ? ' is-penalty' : ''}`}
-                  >
+                  {/*
+                   * KHÔNG tách dòng "Ảnh tạo bởi AI" riêng nữa — mọi khoản điều
+                   * chỉnh (thiếu hoá đơn, đối chiếu hãng, ảnh AI) đều đã nằm
+                   * trong `evaluation.penalty`. Tách riêng làm bảng dài thêm mà
+                   * người bán không cần biết chi tiết từng khoản, và dễ lệch
+                   * với điểm cuối khi có sai số làm tròn.
+                   * Muốn biết VÌ SAO bị trừ: xem khối cảnh báo phía trên.
+                   */}
+                  <div className={`rw-lc-result-config-calc-row${evaluation.penalty > 0 ? ' is-penalty' : ''}`}>
                     <span>
-                      Thiếu hóa đơn
+                      Điểm chính khác
                       <em>
-                        {hasBill
-                          ? 'Đã tải hóa đơn — không bị trừ'
-                          : `Không có hóa đơn — trừ ${thresholds.missingBillPenaltyPercent}%`}
+                        {evaluation.penalty > 0
+                          ? 'Theo đối chiếu hãng / hóa đơn từ máy chủ'
+                          : 'Không có khoản điều chỉnh khác'}
                       </em>
                     </span>
-                    <b>
-                      {evaluation.penalty > 0 ? `−${evaluation.penalty}%` : '0'}
-                    </b>
+                    <b>{evaluation.penalty > 0 ? `−${evaluation.penalty}%` : '0'}</b>
                   </div>
 
                   <div className="rw-lc-result-config-calc-row is-total">
@@ -710,8 +887,8 @@ export const ListingAiResultStep: React.FC<ListingAiResultStepProps> = ({
                 {evaluation.penalty > 0 && (
                   <p className="rw-lc-result-config-tip">
                     <FileText width={13} height={13} aria-hidden="true" />
-                    Bạn có thể tải lại hóa đơn ở Bước 01 để được giữ nguyên điểm
-                    AI gốc.
+                    Điểm tổng có thể bao gồm điều chỉnh đối chiếu hãng hoặc hóa đơn
+                    từ máy chủ.
                   </p>
                 )}
 
@@ -785,32 +962,55 @@ export const ListingAiResultStep: React.FC<ListingAiResultStepProps> = ({
                   <ListChecks width={17} height={17} aria-hidden="true" />
                   {evidenceTitle}
                 </h3>
-                <span className="rw-lc-result-chip green">{evidenceBadge}</span>
+                <span
+                  className={`rw-lc-result-chip ${
+                    resolvedTotal > 0 && resolvedPassed === resolvedTotal ? 'green' : 'warn'
+                  }`}
+                >
+                  {evidenceBadge}
+                </span>
               </div>
 
-              <div className="rw-lc-result-evidence">
-                {evidenceRows.map((row) => (
-                  <div className="rw-lc-result-evidence-row" key={row.id}>
-                    <span className="rw-lc-result-evidence-idx">{row.id}</span>
-                    <div className="rw-lc-result-evidence-text">
-                      <div className="rw-lc-result-evidence-title">{row.label}</div>
-                      {row.sub && <div className="rw-lc-result-evidence-sub">{row.sub}</div>}
-                    </div>
-                    <div className="rw-lc-result-evidence-score">
-                      <span className="rw-lc-result-evidence-pct">{row.score}</span>
-                      <span className="rw-lc-result-evidence-status">
-                        <CircleCheck width={12} height={12} aria-hidden="true" />
-                        {row.status}
-                      </span>
-                      {typeof row.progress === 'number' && (
-                        <span className="rw-lc-result-evidence-bar" aria-label={`Tiến độ ${row.progress}%`}>
-                          <span style={{ width: `${Math.max(0, Math.min(100, row.progress))}%` }} />
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
+              {evidenceRows.length > 0 ? (
+                <div className="rw-lc-result-evidence">
+                  {evidenceRows.map((row) => {
+                    const failed = row.status !== 'Đạt ngưỡng';
+                    return (
+                      <div
+                        className={`rw-lc-result-evidence-row${failed ? ' is-failed' : ''}`}
+                        key={row.id}
+                      >
+                        <span className="rw-lc-result-evidence-idx">{row.id}</span>
+                        <div className="rw-lc-result-evidence-text">
+                          <div className="rw-lc-result-evidence-title">{row.label}</div>
+                          {row.sub && <div className="rw-lc-result-evidence-sub">{row.sub}</div>}
+                        </div>
+                        <div className="rw-lc-result-evidence-score">
+                          <span className="rw-lc-result-evidence-pct">{row.score}</span>
+                          <span className="rw-lc-result-evidence-status">
+                            {failed ? (
+                              <CircleX width={12} height={12} aria-hidden="true" />
+                            ) : (
+                              <CircleCheck width={12} height={12} aria-hidden="true" />
+                            )}
+                            {row.status}
+                          </span>
+                          {typeof row.progress === 'number' && (
+                            <span className="rw-lc-result-evidence-bar" aria-label={`Tiến độ ${row.progress}%`}>
+                              <span style={{ width: `${Math.max(0, Math.min(100, row.progress))}%` }} />
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="rw-lc-result-evidence-empty">
+                  Chưa có kết quả kiểm định tín hiệu từ Bước 04. Hãy quay lại Bước 04
+                  chạy xác thực AI để xem các điều kiện thẩm định thực tế.
+                </p>
+              )}
             </article>
 
             {/* Thẻ 4: Minh bạch đối soát AI */}
@@ -884,17 +1084,19 @@ export const ListingAiResultStep: React.FC<ListingAiResultStepProps> = ({
               <div className="rw-lc-result-product-subtitle">Màu Honey Beige · Size M · Xuất xứ UK thập niên 90</div>
               <div className="rw-lc-result-product-sku">{productData.sku}</div>
 
-              <div className="rw-lc-result-price-rows">
-                <div className="rw-lc-result-price-row">
-                  <span className="rw-lc-result-price-label">{productData.marketLabel}</span>
-                  <span className="rw-lc-result-price-value">{productData.marketPrice}</span>
-                  <span className="rw-lc-result-price-delta">{productData.deltaLabel}</span>
+              {/* Khối giá ẩn hoàn toàn khi không đọc được giá người bán nhập ở Bước 01. */}
+              {priceRows.listedPrice && (
+                <div className="rw-lc-result-price-rows">
+                  <div className="rw-lc-result-price-row">
+                    <span className="rw-lc-result-price-label">{productData.marketLabel}</span>
+                    <span className="rw-lc-result-price-value">{priceRows.listedPrice}</span>
+                  </div>
+                  <div className="rw-lc-result-price-row is-strong">
+                    <span className="rw-lc-result-price-label">{productData.suggestedLabel}</span>
+                    <span className="rw-lc-result-price-value">{priceRows.netPrice}</span>
+                  </div>
                 </div>
-                <div className="rw-lc-result-price-row is-strong">
-                  <span className="rw-lc-result-price-label">{productData.suggestedLabel}</span>
-                  <span className="rw-lc-result-price-value">{productData.suggestedPrice}</span>
-                </div>
-              </div>
+              )}
 
               <p className="rw-lc-result-escrow">
                 <Lock width={13} height={13} aria-hidden="true" />

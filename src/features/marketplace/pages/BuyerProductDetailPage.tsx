@@ -22,7 +22,8 @@ import {
 import BuyerTopbar from '../components/BuyerTopbar';
 import MarketplaceFooter from '../components/MarketplaceFooter';
 import buyerAvatar from '../../../assets/images/seller-avatar.png';
-import { BUYER_PRODUCTS } from '../data/marketplace.data';
+import { MARKETPLACE_CATALOG } from '../data/marketplace.data';
+import { isListingPublic } from '../../../types/listing.type';
 import ROUTES from '../../../routes/routes.config';
 import { logout } from '../../../store/slices/authSlice';
 import storage, { tokenStorage } from '../../../utils/storage';
@@ -67,13 +68,19 @@ const BuyerProductDetailPage: React.FC = () => {
   const [toast, setToast] = useState<string | null>(null);
   const user = storage.getItem<{ name?: string }>('rewear_current_user');
 
-  const product = useMemo(
-    () =>
-      BUYER_PRODUCTS.find(
-        (item) => item.id === id || id.startsWith(`${item.id}-`)
-      ),
-    [id]
-  );
+  /*
+   * Tìm trong CATALOG (bản đã gắn `listingStatus`) chứ không phải
+   * `BUYER_PRODUCTS` — để áp được quy tắc "chỉ tin đã phát hành mới xem
+   * được". Tin gắn cờ (FLAGGED, đang chờ chuyên viên đối soát) bị loại ở đây
+   * luôn, kể cả khi người mua gõ thẳng URL chi tiết.
+   */
+  const product = useMemo(() => {
+    const found = MARKETPLACE_CATALOG.find(
+      (item) => item.id === id || id.startsWith(`${item.id}-`)
+    );
+
+    return found && isListingPublic(found.listingStatus) ? found : undefined;
+  }, [id])
 
   useEffect(() => {
     if (!toast) return;

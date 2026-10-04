@@ -11,6 +11,17 @@ export interface BuyerProduct {
   location: string;
   sellerName: string;
   sellerVerified: boolean;
+  /**
+   * Trạng thái phát hành của tin, khớp `Listing.Status` của backend.
+   *
+   * CHỈ `ACTIVE` được hiện trên sàn. Tin `FLAGGED` (điểm 50–75, đang chờ
+   * chuyên viên đối soát) và `REJECTED` bị loại khỏi danh sách người mua bởi
+   * `isListingPublic` trong `BuyerMarketplacePage`.
+   *
+   * Không khai báo mặc định `ACTIVE` để bắt buộc mọi nguồn dữ liệu phải nói
+   * rõ trạng thái — quên khai báo sẽ khiến tin bị ẩn (an toàn hơn lộ).
+   */
+  listingStatus?: 'ACTIVE' | 'FLAGGED' | 'REJECTED';
   /** Điểm tin cậy thẩm định thị giác của AI (0 - 100) */
   aiScore: number;
   /** Sẵn sàng ký quỹ (khóa giá + giữ tiền cho người bán). */

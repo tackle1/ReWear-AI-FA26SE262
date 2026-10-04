@@ -13,6 +13,7 @@ const FALLBACK_THRESHOLDS: VerificationThresholds = {
   autoRejectThreshold: 50,
   missingBillPenaltyPercent: 15,
   aiAnalysisTokenCost: 1,
+  sellerDefaultAiTokenQuota: 10,
 };
 
 export type ThresholdsStatus = 'loading' | 'success' | 'error';
@@ -74,6 +75,13 @@ export const useVerificationThresholds = (): UseVerificationThresholdsResult => 
           typeof response.aiAnalysisTokenCost === 'number'
             ? response.aiAnalysisTokenCost
             : FALLBACK_THRESHOLDS.aiAnalysisTokenCost,
+        // Hạn mức token khởi tạo của SELLER mới (`SELLER_DEFAULT_AI_TOKEN_QUOTA`).
+        // Đây là số MẶC ĐỊNH của hệ thống, KHÔNG phải số dư hiện tại —
+        // số dư nằm ở `remainingTokens` của `verify-and-decide`.
+        sellerDefaultAiTokenQuota:
+          typeof response.sellerDefaultAiTokenQuota === 'number'
+            ? response.sellerDefaultAiTokenQuota
+            : FALLBACK_THRESHOLDS.sellerDefaultAiTokenQuota,
       });
       setIsFallback(false);
       setStatus('success');

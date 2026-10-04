@@ -1,11 +1,14 @@
-import React, { useMemo } from 'react';
-import { AlertTriangle, CheckCircle2, ImageOff, Loader, X } from 'lucide-react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { AlertTriangle, CheckCircle2, ImageOff, Loader, Sparkles, X } from 'lucide-react';
 import { LISTING_ANGLES } from '../../features/listing/constants/listingAngles';
 import {
   AiScanResult,
+  AiImageDetectionResult,
+  DatasetMatchResult,
   SignalCheckResult,
   VerificationDecision,
   VerificationThresholds,
+  VisualSignal,
 } from '../../types/verification.type';
 import '../../styles/listing/ListingAiVerificationStep.css';
 
@@ -18,6 +21,8 @@ export interface AngleQuality {
   angleType: string;
   number: string;
   label: string;
+  /** Tên tiếng Anh của góc, lấy từ `LISTING_ANGLES` để đối chiếu với chuẩn hãng. */
+  subtitle?: string;
   image?: string;
   state: AngleQualityState;
   /** Nhãn ngắn bên phải, ví dụ "Đạt" / "Cần chụp lại". */
@@ -60,6 +65,19 @@ const DECISION_LABEL: Record<string, { text: string; cls: string }> = {
   REJECTED: { text: 'Không đạt — bị từ chối', cls: 'fail' },
 };
 
+/** Nhãn tiếng Việt cho phân khúc brand do backend quyết định. */
+const SEGMENT_LABEL: Record<string, string> = {
+  LUXURY: 'LUXURY — thương hiệu cao cấp',
+  POPULAR: 'POPULAR — thương hiệu phổ thông',
+  LOCAL_NO_BRAND: 'Không nhãn hiệu',
+};
+
+/**
+ * Bỏ số 0 thừa cho giao diện gọn (85.5 → "85.5", 85.00 → "85").
+ */
+const formatScore = (value: number): string =>
+  Number.isFinite(value) ? String(Math.round(value * 10) / 10) : '—';
+
 /** Chuyển `GRADE_A_EXCELLENT` thành `A / Xuất sắc` cho dễ đọc. */
 const CONDITION_LABEL: Record<string, string> = {
   GRADE_S_LIKE_NEW: 'S — Như mới',
@@ -69,7 +87,13 @@ const CONDITION_LABEL: Record<string, string> = {
 };
 
 const angleChipClass = (state: AngleQualityState) =>
-  state === 'ok' ? 'pass' : state === 'warn' ? 'match' : '';
+  state === 'ok'
+    ? 'pass'
+    : state === 'warn'
+      ? 'match'
+      : state === 'checking'
+        ? 'scanning'
+        : '';
 
 /**
  * Quy đổi điểm độ nét của backend sang nhãn dễ hiểu.
@@ -113,6 +137,10 @@ export interface ListingAiVerificationStepProps {
   thresholds?: VerificationThresholds;
   /** Kết quả `analyze-photos`: điểm chính hãng + điểm thành phần. */
   analysis?: AiScanResult | null;
+  /** Mức độ khớp với data set chuẩn của hãng, kèm mức trừ tương ứng. */
+  datasetMatch?: DatasetMatchResult | null;
+  /** Kết quả phát hiện ảnh AI nếu backend đã chạy kiểm tra này. */
+  aiImageDetection?: AiImageDetectionResult | null;
   /** Kết quả `verify-and-decide`: APPROVED / REVIEW_NEEDED / REJECTED. */
   decision?: VerificationDecision | null;
   /** Kết quả `check-signals`: bảng đối chiếu tín hiệu. */
@@ -129,6 +157,18 @@ export interface ListingAiVerificationStepProps {
   remainingTokens?: number | null;
   /** Phí token cho mỗi lần phân tích, để giải thích vì sao số dư giảm. */
   tokenCost?: number;
+  /**
+   * Hạn mức token khởi tạo của SELLER mới (`sellerDefaultAiTokenQuota`
+   * từ `GET /thresholds`) — mẫu số cho hiển thị "còn 9/10".
+   */
+  tokenQuota?: number;
+  /**
+   * Backend đã chặn (403) vì hết quota token AI.
+   *
+   * Khác với việc tự suy ra từ `remainingTokens`: cờ này do chính lần gọi API
+   * thất bại trả về, nên vẫn đáng tin khi chưa đọc được số dư.
+   */
+  quotaExceeded?: boolean;
   /** Lỗi khi gọi endpoint Bước 04. */
   verifyError?: string | null;
   onCancel?: () => void;
@@ -147,11 +187,15 @@ export const ListingAiVerificationStep: React.FC<ListingAiVerificationStepProps>
   recommendation,
   thresholds,
   analysis = null,
+  datasetMatch = null,
+  aiImageDetection = null,
   decision = null,
   signals = null,
   isVerifying = false,
   remainingTokens = null,
   tokenCost,
+  tokenQuota,
+  quotaExceeded = false,
   verifyError = null,
   onCancel,
   onWaitResult,
@@ -167,6 +211,7 @@ export const ListingAiVerificationStep: React.FC<ListingAiVerificationStepProps>
             angleType: angle.angleType,
             number: angle.number,
             label: angle.title,
+            subtitle: angle.subtitle,
             state: 'missing' as const,
             result: 'Chưa chụp',
             detail: 'Cần ảnh cho góc này để đối chiếu.',
@@ -178,6 +223,7 @@ export const ListingAiVerificationStep: React.FC<ListingAiVerificationStepProps>
             angleType: angle.angleType,
             number: angle.number,
             label: angle.title,
+            subtitle: angle.subtitle,
             image,
             state: 'checking' as const,
             result: isChecking ? 'Đang đo' : 'Chưa có kết quả',
@@ -195,6 +241,7 @@ export const ListingAiVerificationStep: React.FC<ListingAiVerificationStepProps>
           angleType: angle.angleType,
           number: angle.number,
           label: angle.title,
+          subtitle: angle.subtitle,
           image,
           state: (measured.isAcceptable ? 'ok' : 'warn') as AngleQualityState,
           result: measured.isAcceptable ? 'Đạt' : 'Cần chụp lại',
@@ -212,16 +259,120 @@ export const ListingAiVerificationStep: React.FC<ListingAiVerificationStepProps>
   const isReady = okCount === total && total > 0;
 
   /**
+   * Điểm phân tích để hiển thị. Cả `analyze-photos` và `verify-and-decide` đều
+   * trả `AiScanResult`; ưu tiên kết quả của `analyze-photos` và fallback sang
+   * điểm AI gộp trong quyết định, để Bước 04 không bị trống khi một endpoint lỗi.
+   */
+  const aiScores = analysis ?? decision?.aiScores ?? null;
+
+  /**
+   * Bản báo giải thích mức trừ vì thiếu bill của hàng LUXURY.
+   *
+   * QUAN TRỌNG — chỉ ĐỌC số backend đã tính, tuyệt đối không tự nhân lại ở
+   * client. Backend đã áp `baseScore * (1 - penalty / 100)` rồi mới so ngưỡng
+   * (`AiVerificationExampleController.cs`); nếu ở đây trừ thêm lần nữa thì điểm
+   * sẽ bị trừ hai lần (100 → 85 → 72.25) và tệ hơn hẳn nghiệp vụ.
+   *
+   * Vì backend gộp cả trừ thiếu bill lẫn trừ lệch dataset vào `penaltyPercent`,
+   * ta hiện mũi tên `điểm gốc → điểm cuối` thay vì gán con số riêng cho bill.
+   * Mức trừ bill đọc từ `thresholds.missingBillPenaltyPercent` (cùng key cấu
+   * hình `MISSING_BILL_PENALTY_PERCENT` của backend) và chỉ hiện khi có sẵn.
+   */
+  const billPenaltyNote = useMemo(() => {
+    if (!decision?.missingBillPenaltyApplied) return null;
+
+    const base = decision.baseScore;
+    const final = decision.finalScore;
+    const percent = thresholds?.missingBillPenaltyPercent;
+
+    const mathText =
+      Number.isFinite(base) && Number.isFinite(final) && base > final
+        ? `${formatScore(base)} → ${formatScore(final)}`
+        : null;
+
+    return {
+      mathText,
+      percentText: typeof percent === 'number' && percent > 0 ? `−${percent}%` : null,
+    };
+  }, [decision, thresholds]);
+
+  /**
+   * Câu giải thích tiếng Việt cho kết quả quyết định.
+   *
+   * Thay cho `decision.recommendation` của backend (tiếng Anh máy dịch) và thay
+   * cho `decision.reason` (chuỗi kỹ thuật có mã grade + con số lặp lại). Câu này
+   * chỉ nói điều seller quan tâm: điểm họ đạt được nằm ở đâu so với ngưỡng, và
+   * vì vậy hồ sơ rơi vào kết quả nào.
+   *
+   * Chỉ hiện ngưỡng khi `thresholds` có sẵn; thiếu thì vẫn kết luận được nhờ
+   * `status` nên câu vẫn có giá trị.
+   */
+  const decisionSummary = useMemo(() => {
+    if (!decision) return null;
+
+    const score = formatScore(decision.finalScore);
+    const publish = thresholds?.autoPublishThreshold;
+    const reject = thresholds?.autoRejectThreshold;
+    const limit = (value: number | undefined) =>
+      typeof value === 'number' ? String(value) : null;
+
+    if (decision.status === 'APPROVED') {
+      const p = limit(publish);
+      return p
+        ? `Điểm ${score} đã đạt ngưỡng đăng tin (từ ${p} điểm). Hồ sơ sẽ được đăng.`
+        : `Điểm ${score} đạt yêu cầu. Hồ sơ sẽ được đăng.`;
+    }
+
+    if (decision.status === 'REJECTED') {
+      const r = limit(reject);
+      return r
+        ? `Điểm ${score} thấp hơn ngưỡng từ chối ${r} điểm, nên hồ sơ bị từ chối.`
+        : `Điểm ${score} quá thấp, nên hồ sơ bị từ chối.`;
+    }
+
+    // REVIEW_NEEDED — trạng thái phổ biến nhất nên nói rõ khoảng ngưỡng.
+    if (typeof reject === 'number' && typeof publish === 'number') {
+      return `Điểm ${score} nằm trong khoảng cần Admin xem xét (từ ${reject} đến dưới ${publish} điểm).`;
+    }
+    return `Điểm ${score} chưa đủ để tự động đăng, cần Admin xem xét thủ công.`;
+  }, [decision, thresholds]);
+
+  /** Các góc AI không đọc được — đánh dấu để seller biết cần chụp lại góc nào. */
+  const aiFailedAngles = useMemo(
+    () => new Set<string>(aiScores?.failedImageAngles ?? []),
+    [aiScores],
+  );
+
+  /**
+   * Danh sách tín hiệu hiển thị.
+   *
+   * `check-signals` là nguồn đầy đủ nhất (kèm số đạt/trượt); chỉ fallback sang
+   * `visualSignals` của `analyze-photos` khi endpoint đó không trả về, để không
+   * hiện hai bản giống nhau.
+   */
+  const signalSource = signals && signals.signals.length > 0 ? signals : null;
+  const signalList: VisualSignal[] = signalSource
+    ? signalSource.signals
+    : analysis?.visualSignals ?? [];
+  const signalTotal = signalSource?.totalSignals ?? signalList.length;
+  const signalPassed =
+    signalSource?.passedSignals ?? signalList.filter((item) => item.isPassed).length;
+
+  /**
    * Token AI còn lại không đủ cho một lần xác thực nữa.
    *
    * Backend chặn (403) khi số dư nhỏ hơn phí, nên báo TRƯỚC khi seller bấm mới
    * bị chặn — nếu không, họ sẽ thấy Bước 04 lỗi mà không hiểu vì sao.
    */
   const isOutOfTokens =
-    typeof remainingTokens === 'number' &&
-    typeof tokenCost === 'number' &&
-    tokenCost > 0 &&
-    remainingTokens < tokenCost;
+    quotaExceeded ||
+    (typeof remainingTokens === 'number' &&
+      typeof tokenCost === 'number' &&
+      tokenCost > 0 &&
+      remainingTokens < tokenCost);
+
+  /** Chỉ sang Bước 05 khi ẢNH ĐẠT và còn đủ token để xem kết quả. */
+  const canProceed = isReady && !isOutOfTokens;
 
   /** Chỉ số tóm tắt — tất cả suy ra từ dữ liệu đo, không có số bịa đặt. */
   const metrics = useMemo<VerificationMetric[]>(() => {
@@ -255,20 +406,39 @@ export const ListingAiVerificationStep: React.FC<ListingAiVerificationStepProps>
       items.push({ label: 'NGƯỠNG ĐĂNG TIN', value: `${thresholds.autoPublishThreshold}%` });
     }
 
-    // Số dư token AI. Hiện "còn N" kèm phí mỗi lần để seller hiểu vì sao
+    // Số dư token AI. Hiện "còn 9/10" (số dư / hạn mức khởi tạo từ
+    // `SELLER_DEFAULT_AI_TOKEN_QUOTA`) kèm phí mỗi lần để seller hiểu vì sao
     // số này tụt mỗi lần bấm xác thực lại, thay vì tự nhiên mất đi.
     if (typeof remainingTokens === 'number') {
+      const quotaSuffix =
+        typeof tokenQuota === 'number' && tokenQuota > 0 ? `/${tokenQuota}` : '';
       items.push({
         label: 'TOKEN AI CÒN LẠI',
         value:
           typeof tokenCost === 'number' && tokenCost > 0
-            ? `${remainingTokens} (mỗi lần −${tokenCost})`
-            : `${remainingTokens}`,
+            ? `${remainingTokens}${quotaSuffix} (mỗi lần −${tokenCost})`
+            : `${remainingTokens}${quotaSuffix}`,
       });
     }
 
     return items;
-  }, [okCount, total, isChecking, thresholds, analysis, signals, isVerifying, remainingTokens, tokenCost]);
+  }, [okCount, total, isChecking, thresholds, analysis, signals, isVerifying, remainingTokens, tokenCost, tokenQuota]);
+
+  /*
+   * Pop-up báo hết quota token AI.
+   *
+   * Mở tự động ở lần ĐẦU phát hiện hết quota để seller hiểu vì sao nút xem kết
+   * quả bị khoá; sau đó tôn trọng thao tác đóng của họ (không bật lại liên tục).
+   * Khi số dư được nạp lại thì trạng thái đóng cũng tự đặt lại.
+   */
+  const [isQuotaModalOpen, setIsQuotaModalOpen] = useState(false);
+  const wasOutOfTokens = useRef(false);
+
+  useEffect(() => {
+    if (isOutOfTokens && !wasOutOfTokens.current) setIsQuotaModalOpen(true);
+    if (!isOutOfTokens) setIsQuotaModalOpen(false);
+    wasOutOfTokens.current = isOutOfTokens;
+  }, [isOutOfTokens]);
 
   return (
     <>
@@ -292,26 +462,32 @@ export const ListingAiVerificationStep: React.FC<ListingAiVerificationStepProps>
           )}
         </header>
 
-        {checkError && (
-          <div className="rw-lc-ai-notice" role="alert">
-            <AlertTriangle width={15} height={15} aria-hidden="true" />
-            Không đọc được kết quả kiểm tra ảnh: {checkError}
-          </div>
-        )}
+        {(checkError || isOutOfTokens || verifyError) && (
+          <div className="rw-lc-ai-notices">
+            {checkError && (
+              <div className="rw-lc-ai-notice is-error" role="alert">
+                <AlertTriangle width={16} height={16} aria-hidden="true" />
+                <span>Không đọc được kết quả kiểm tra ảnh: {checkError}</span>
+              </div>
+            )}
 
-        {isOutOfTokens && (
-          <div className="rw-lc-ai-notice" role="alert">
-            <AlertTriangle width={15} height={15} aria-hidden="true" />
-            Bạn còn <strong>{remainingTokens}</strong> token AI, không đủ cho một
-            lần xác thực (mỗi lần tốn <strong>{tokenCost}</strong> token). Hãy
-            nạp thêm token để tiếp tục kiểm định sản phẩm.
-          </div>
-        )}
+            {isOutOfTokens && (
+              <div className="rw-lc-ai-notice is-warn" role="alert">
+                <AlertTriangle width={16} height={16} aria-hidden="true" />
+                <span>
+                  Bạn còn <strong>{remainingTokens}</strong> token AI, không đủ cho một
+                  lần xác thực (mỗi lần tốn <strong>{tokenCost}</strong> token). Hãy nạp
+                  thêm token để tiếp tục kiểm định sản phẩm.
+                </span>
+              </div>
+            )}
 
-        {verifyError && (
-          <div className="rw-lc-ai-notice" role="alert">
-            <AlertTriangle width={15} height={15} aria-hidden="true" />
-            Không hoàn tất được bước xác thực AI: {verifyError}
+            {verifyError && (
+              <div className="rw-lc-ai-notice is-error" role="alert">
+                <AlertTriangle width={16} height={16} aria-hidden="true" />
+                <span>Không hoàn tất được bước xác thực AI: {verifyError}</span>
+              </div>
+            )}
           </div>
         )}
 
@@ -319,7 +495,11 @@ export const ListingAiVerificationStep: React.FC<ListingAiVerificationStepProps>
           {/* ══ CỘT TRÁI ══ */}
           <div className="rw-lc-ai-col-main">
             {(decision || isVerifying) && (
-              <article className="rw-lc-ai-card">
+              <article
+                className={`rw-lc-ai-card rw-lc-ai-verdict ${
+                  decision ? (DECISION_LABEL[decision.status]?.cls ?? '') : ''
+                }`.trim()}
+              >
                 <div className="rw-lc-ai-card-head">
                   <h3 className="rw-lc-ai-card-title">
                     {isVerifying ? (
@@ -340,8 +520,91 @@ export const ListingAiVerificationStep: React.FC<ListingAiVerificationStepProps>
 
                 {decision ? (
                   <>
-                    <p className="rw-lc-ai-decision-reason">{decision.reason}</p>
-                    <p className="rw-lc-ai-decision-recommend">{decision.recommendation}</p>
+                    {/*
+                      Kết quả kiểm định. Đọc thẳng từ `decision` — KHÔNG tự tính
+                      lại ở client, vì backend đã áp trừ trước khi so ngưỡng; tính
+                      thêm lần nữa sẽ trừ hai lần.
+                    */}
+                    <div className="rw-lc-ai-result">
+                      <div className="rw-lc-ai-result-item">
+                        <span>Điểm cuối cùng</span>
+                        <b>{formatScore(decision.finalScore)}/100</b>
+                      </div>
+                      <div className="rw-lc-ai-result-item">
+                        <span>Mức trừ</span>
+                        <b>
+                          −{decision.penaltyPoints ?? decision.penaltyPercent} điểm
+                        </b>
+                      </div>
+                      <div className="rw-lc-ai-result-item">
+                        <span>Phân khúc</span>
+                        <b>{SEGMENT_LABEL[decision.brandSegment] ?? decision.brandSegment}</b>
+                      </div>
+                      <div className="rw-lc-ai-result-item">
+                        <span>Hoá đơn</span>
+                        <b>{decision.hasBillPhoto ? 'Đã tải lên' : 'Chưa có'}</b>
+                      </div>
+                    </div>
+
+                    {/*
+                      Giải thích rõ vì sao bị trừ điểm. Trước đây ô "Mức trừ" chỉ
+                      hiện −15% mà không nói lý do, seller thấy mất điểm nhưng
+                      không biết do thiếu bill hay do ảnh lệch data set.
+                      Con số đọc thẳng từ `decision` của backend, không tính lại.
+                    */}
+                    {billPenaltyNote && (
+                      <div className="rw-lc-ai-bill-note">
+                        <span className="rw-lc-ai-bill-note-eyebrow">
+                          <AlertTriangle width={14} height={14} aria-hidden="true" />
+                          Bị trừ điểm vì thiếu hoá đơn
+                        </span>
+                        <p className="rw-lc-ai-bill-note-text">
+                          Sản phẩm thuộc phân khúc <strong>LUXURY</strong> nên bắt buộc
+                          phải có ảnh hoá đơn của hãng. Bạn chưa tải hoá đơn, vì vậy
+                          điểm tin cậy bị trừ
+                          {billPenaltyNote.percentText && (
+                            <> <strong>{billPenaltyNote.percentText}</strong></>
+                          )}
+                          .
+                          {billPenaltyNote.mathText && (
+                            <>
+                              {' '}Điểm tính được:{' '}
+                              <strong className="rw-lc-ai-bill-math">
+                                {billPenaltyNote.mathText}
+                              </strong>
+                              .
+                            </>
+                          )}{' '}
+                          Tải ảnh hoá đơn và xác thực lại để lấy lại mức trừ này.
+                        </p>
+                      </div>
+                    )}
+                    {/*
+                      KHÔNG hiện `decision.reason` — đó là chuỗi kỹ thuật thô
+                      backend trả về cho dev, ví dụ:
+                      "Score: 70.12 | Grade: GRADE_A_EXCELLENT | Missing bill
+                      photo (-15%): base score 82.50 reduced because...".
+                      Toàn tiếng Anh, lẫn mã grade, lặp lại đúng những con số đã
+                      hiện ở các ô phía trên (điểm cuối, mức trừ, phân khúc), khiến
+                      seller đọc rối mà không thêm thông tin gì.
+
+                      Giữ lại trong log kỹ thuật qua `console.debug` để khi cần
+                      truy vết vẫn có full context, còn trên giao diện chỉ còn
+                      phần tiếng Việt đã dịch sẵn.
+                    */}
+                    {decision.reason && console.debug('[AI] decision.reason:', decision.reason)}
+                    {decision.recommendation &&
+                      console.debug('[AI] decision.recommendation:', decision.recommendation)}
+                    {/*
+                      `recommendation` của backend cũng là tiếng Anh máy dịch
+                      ("Final score 70.12 requires manual review") và nói lại đúng
+                      nội dung chip trạng thái phía trên, nên hiển thị câu tiếng
+                      Việt tự dựng — kèm ngưỡng để seller hiểu vì sao hồ sơ rơi
+                      vào kết quả đó.
+                    */}
+                    {decisionSummary && (
+                      <p className="rw-lc-ai-decision-recommend">{decisionSummary}</p>
+                    )}
                   </>
                 ) : (
                   <p className="rw-lc-ai-decision-reason">
@@ -351,8 +614,8 @@ export const ListingAiVerificationStep: React.FC<ListingAiVerificationStepProps>
               </article>
             )}
 
-            {/* Bảng đối chiếu từng tín hiệu — check-signals */}
-            {signals && signals.signals.length > 0 && (
+            {/* Bảng đối chiếu từng tín hiệu — check-signals (fallback: analyze-photos) */}
+            {signalList.length > 0 && (
               <article className="rw-lc-ai-card">
                 <div className="rw-lc-ai-card-head">
                   <h3 className="rw-lc-ai-card-title">
@@ -360,11 +623,11 @@ export const ListingAiVerificationStep: React.FC<ListingAiVerificationStepProps>
                     Đối chiếu tín hiệu thị giác
                   </h3>
                   <span className="rw-lc-ai-card-side">
-                    {signals.passedSignals}/{signals.totalSignals} đạt
+                    {signalPassed}/{signalTotal} đạt
                   </span>
                 </div>
                 <ul className="rw-lc-ai-signals">
-                  {signals.signals.map((signal, index) => (
+                  {signalList.map((signal, index) => (
                     <li
                       key={`${signal.signalName}-${index}`}
                       className={`rw-lc-ai-signal ${signal.isPassed ? 'pass' : 'fail'}`}
@@ -430,41 +693,157 @@ export const ListingAiVerificationStep: React.FC<ListingAiVerificationStepProps>
                 </div>
               )}
             </article>
-            {/* Thẻ 2: Chỉ số từng góc ảnh */}
+            {/* Bộ ảnh đã chụp ở Bước 02 và đo ở Bước 03 — hiện ẢNH THẬT kèm chỉ số và cờ AI */}
             <article className="rw-lc-ai-card">
               <div className="rw-lc-ai-card-head">
-                <h3 className="rw-lc-ai-card-title">Chỉ số từng góc ảnh</h3>
-                <span className="rw-lc-ai-card-side">Đo trực tiếp trên ảnh của bạn</span>
+                <h3 className="rw-lc-ai-card-title">
+                  <CheckCircle2 width={17} height={17} aria-hidden="true" />
+                  Bộ ảnh đã kiểm định
+                </h3>
+                <span className="rw-lc-ai-card-side">
+                  {okCount + warnCount}/{total} góc có ảnh
+                </span>
               </div>
 
-              <div className="rw-lc-ai-angles" role="list">
-                {angles.map((angle) => (
-                  <div
-                    key={angle.angleType}
-                    role="listitem"
-                    className={`rw-lc-ai-angle${angle.state === 'checking' ? ' is-scanning' : ''}`}
-                  >
-                    <span className="rw-lc-ai-angle-label">
-                      <i>{angle.number}.</i>
-                      {angle.label}
-                      {angle.detail && <em className="rw-lc-ai-angle-detail">{angle.detail}</em>}
-                    </span>
-                    <span className={`rw-lc-ai-angle-chip ${angleChipClass(angle.state)}`.trim()}>
-                      {angle.state === 'checking' && (
-                        <Loader width={12} height={12} aria-hidden="true" />
-                      )}
-                      {angle.state === 'missing' && (
-                        <ImageOff width={12} height={12} aria-hidden="true" />
-                      )}
-                      {angle.result}
-                    </span>
-                  </div>
-                ))}
+              <div className="rw-lc-ai-gallery">
+                {angles.map((angle) => {
+                  const aiFlagged = aiFailedAngles.has(angle.angleType);
+                  return (
+                    <figure
+                      key={angle.angleType}
+                      className={`rw-lc-ai-shot is-${angle.state}${aiFlagged ? ' is-ai-flagged' : ''}`}
+                    >
+                      <div className="rw-lc-ai-shot-media">
+                        {angle.image ? (
+                          <img
+                            src={angle.image}
+                            alt={`Ảnh góc ${angle.number} — ${angle.label}`}
+                            loading="lazy"
+                          />
+                        ) : (
+                          <span className="rw-lc-ai-shot-empty">
+                            <ImageOff width={20} height={20} aria-hidden="true" />
+                            Chưa chụp
+                          </span>
+                        )}
+                        <span className="rw-lc-ai-shot-badge">{angle.number}</span>
+                        <span className={`rw-lc-ai-shot-chip ${angleChipClass(angle.state)}`.trim()}>
+                          {angle.result}
+                        </span>
+                      </div>
+                      <figcaption className="rw-lc-ai-shot-caption">
+                        <b>{angle.label}</b>
+                        {angle.subtitle && <span>{angle.subtitle}</span>}
+                        {angle.detail && <em>{angle.detail}</em>}
+                        {aiFlagged && (
+                          <span className="rw-lc-ai-shot-ai">AI không đọc được góc này</span>
+                        )}
+                      </figcaption>
+                    </figure>
+                  );
+                })}
               </div>
             </article>
 
+            {/* Phân tích chi tiết của AI — điểm thành phần, độ khớp data set,
+                phát hiện ảnh AI và các cờ mờ / chụp hụt. */}
+            {(aiScores || datasetMatch || aiImageDetection) && (
+              <article className="rw-lc-ai-card">
+                <div className="rw-lc-ai-card-head">
+                  <h3 className="rw-lc-ai-card-title">
+                    <Sparkles width={17} height={17} aria-hidden="true" />
+                    Phân tích chi tiết từ AI
+                  </h3>
+                  <span className="rw-lc-ai-card-side">
+                    {aiScores
+                      ? `Điểm AI ${Math.round(aiScores.rawScore)}/100`
+                      : 'Chưa có điểm AI'}
+                  </span>
+                </div>
+
+                {aiScores && (
+                  <div className="rw-lc-ai-scores">
+                    {[
+                      { label: 'Điểm chính hãng', value: aiScores.rawScore },
+                      { label: 'Mác / Nhãn', value: aiScores.tagLegitScore },
+                      { label: 'Đường may & Khóa kéo', value: aiScores.stitchingScore },
+                      ...(datasetMatch
+                        ? [{ label: 'Khớp dữ liệu hãng', value: datasetMatch.matchScore }]
+                        : []),
+                    ].map((row) => (
+                      <div key={row.label} className="rw-lc-ai-score">
+                        <span className="rw-lc-ai-score-label">{row.label}</span>
+                        <span className="rw-lc-ai-score-value">{Math.round(row.value)}/100</span>
+                        <span className="rw-lc-ai-score-track">
+                          <span
+                            className={`rw-lc-ai-score-fill ${
+                              row.value >= 80 ? 'pass' : row.value >= 60 ? 'match' : 'fail'
+                            }`}
+                            style={{ width: `${Math.min(100, Math.max(0, row.value))}%` }}
+                          />
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {aiScores && (
+                  <div className="rw-lc-ai-chips">
+                    <span className="rw-lc-ai-mini-chip">
+                      Tình trạng:{' '}
+                      {CONDITION_LABEL[aiScores.conditionGrade] ?? aiScores.conditionGrade}
+                    </span>
+                    {aiScores.isBlur && (
+                      <span className="rw-lc-ai-mini-chip is-warn">AI thấy ảnh mờ</span>
+                    )}
+                    {aiFailedAngles.size > 0 && (
+                      <span className="rw-lc-ai-mini-chip is-warn">
+                        {aiFailedAngles.size} góc AI không đọc được
+                      </span>
+                    )}
+                  </div>
+                )}
+
+            {aiImageDetection && (
+                  <div className="rw-lc-ai-stage-panel">
+                    <div className="rw-lc-ai-stage-panel-text">
+                      <span className="rw-lc-ai-stage-eyebrow">KIỂM TRA ẢNH AI</span>
+                      <p className="rw-lc-ai-stage-panel-desc">
+                        {aiImageDetection.isAiGenerated
+                          ? `Phát hiện dấu hiệu ảnh được tạo bởi AI${
+                              typeof aiImageDetection.confidence === 'number'
+                                ? ` (độ tin cậy ${Math.round(aiImageDetection.confidence)}%)`
+                                : ''
+                            }. Điểm tin cậy ảnh bị trừ ${aiImageDetection.penaltyPercent}%.`
+                          : (aiImageDetection.reason ??
+                            'Không phát hiện dấu hiệu ảnh được tạo bởi AI.')}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {datasetMatch &&
+                  (datasetMatch.hasMismatchWarning ||
+                    datasetMatch.mismatchedSignals.length > 0) && (
+                    <div className="rw-lc-ai-stage-panel is-warn">
+                      <div className="rw-lc-ai-stage-panel-text">
+                        <span className="rw-lc-ai-stage-eyebrow">ĐỐI CHIẾU DATA SET HÃNG</span>
+                        <p className="rw-lc-ai-stage-panel-desc">
+                          {datasetMatch.warning}
+                          {datasetMatch.mismatchedSignals.length > 0 &&
+                            ` Tín hiệu chưa khớp: ${datasetMatch.mismatchedSignals.join(' · ')}.`}
+                          {datasetMatch.explanation && ` ${datasetMatch.explanation}`}
+                          {datasetMatch.penaltyPercent > 0 &&
+                            ` Mức trừ: −${datasetMatch.penaltyPercent}%.`}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+              </article>
+            )}
+
             {/* Thẻ 3: Điều kiện qua bước */}
-            <article className="rw-lc-ai-tip">
+            <article className={`rw-lc-ai-tip${isReady ? ' is-ready' : ''}`}>
               <div className="rw-lc-ai-tip-head">
                 <span className="rw-lc-ai-tip-icon" aria-hidden="true">
                   <CheckCircle2 width={16} height={16} />
@@ -519,34 +898,10 @@ export const ListingAiVerificationStep: React.FC<ListingAiVerificationStepProps>
               </div>
             </article>
 
-            {/* Trạng thái các góc bằng chứng đã nộp */}
-            <article className="rw-lc-ai-card">
-              <div className="rw-lc-ai-card-head">
-                <h3 className="rw-lc-ai-card-title">
-                  Góc bằng chứng đã nộp ({okCount + warnCount}/{total})
-                </h3>
-                <span className="rw-lc-ai-stage-chip done">
-                  {missingCount === 0 ? 'Đủ góc' : `Thiếu ${missingCount}`}
-                </span>
-              </div>
-              <div className="rw-lc-ai-angles" role="list">
-                {angles.map((angle) => (
-                  <div
-                    key={`sub-${angle.angleType}`}
-                    role="listitem"
-                    className="rw-lc-ai-angle"
-                  >
-                    <span className="rw-lc-ai-angle-label">
-                      <i>{angle.number}.</i>
-                      {angle.label}
-                    </span>
-                    <span className={`rw-lc-ai-angle-chip ${angleChipClass(angle.state)}`.trim()}>
-                      {angle.result}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </article>
+            {/*
+              Danh sách góc ảnh chi tiết đã chuyển lên cột trái dạng gallery kèm
+              ảnh thật, nên cột phải không lặp lại nữa.
+            */}
           </aside>
         </div>
       </section>
@@ -563,19 +918,86 @@ export const ListingAiVerificationStep: React.FC<ListingAiVerificationStepProps>
               type="button"
               className="rw-lc-ai-btn rw-lc-ai-btn-primary"
               onClick={onWaitResult}
-              disabled={!isReady}
+              disabled={!canProceed}
             >
-              <span className="rw-lc-ai-btn-spin" aria-hidden="true">
-                <Loader width={15} height={15} />
-              </span>
-              {isReady ? 'Xem kết quả thẩm định' : 'Cần đủ ảnh đạt để tiếp tục'}
+              {canProceed ? (
+                <CheckCircle2 width={15} height={15} aria-hidden="true" />
+              ) : isOutOfTokens ? (
+                <AlertTriangle width={15} height={15} aria-hidden="true" />
+              ) : (
+                <Loader
+                  className="rw-lc-ai-btn-spin"
+                  width={15}
+                  height={15}
+                  aria-hidden="true"
+                />
+              )}
+              {isOutOfTokens
+                ? 'Hết quota token AI'
+                : canProceed
+                  ? 'Xem kết quả thẩm định'
+                  : 'Cần đủ ảnh đạt để tiếp tục'}
             </button>
           </div>
         </div>
       </div>
 
-      {/* Khoảng đệm cuối trang để thanh cố định không che nội dung */}
+      {/* Khoảng đệm nhỏ cuối trang để nút không dính sát mép dưới. */}
       <div className="rw-lc-ai-actionbar-space" aria-hidden="true" />
+
+      {/*
+        Pop-up chặn xem kết quả khi hết token AI. Bấm ra ngoài hoặc nút "Đã hiểu"
+        đều đóng được; nút xem kết quả vẫn bị khoá cho tới khi nạp thêm token.
+      */}
+      {isQuotaModalOpen && (
+        <div
+          className="rw-lc-ai-quota-overlay"
+          role="presentation"
+          onClick={() => setIsQuotaModalOpen(false)}
+        >
+          <div
+            className="rw-lc-ai-quota-modal"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="rw-lc-ai-quota-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              className="rw-lc-ai-quota-close"
+              onClick={() => setIsQuotaModalOpen(false)}
+              aria-label="Đóng thông báo"
+            >
+              <X width={16} height={16} aria-hidden="true" />
+            </button>
+
+            <span className="rw-lc-ai-quota-icon" aria-hidden="true">
+              <AlertTriangle width={22} height={22} />
+            </span>
+
+            <p className="rw-lc-ai-quota-eyebrow">HẾT QUOTA TOKEN AI</p>
+            <h3 id="rw-lc-ai-quota-title">Không đủ token để xem kết quả</h3>
+            <p>
+              Mỗi lượt kiểm định tốn <strong>{tokenCost ?? 1} token</strong>. Số dư
+              hiện tại không đủ cho một lượt xác thực, nên hệ thống đã khoá nút xem
+              kết quả ở Bước 05. Hãy nạp thêm token rồi thực hiện lại xác thực.
+            </p>
+
+            <div className="rw-lc-ai-quota-usage">
+              <span>Số dư hiện tại</span>
+              <b>{typeof remainingTokens === 'number' ? remainingTokens : 0} token</b>
+            </div>
+
+            <button
+              type="button"
+              className="rw-lc-ai-btn rw-lc-ai-btn-primary"
+              onClick={() => setIsQuotaModalOpen(false)}
+            >
+              Đã hiểu
+            </button>
+          </div>
+        </div>
+      )}
     </>
   );
 };

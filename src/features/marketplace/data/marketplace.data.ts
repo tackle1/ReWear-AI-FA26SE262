@@ -502,9 +502,18 @@ export const MARKETPLACE_CATALOG: BuyerProduct[] = Array.from(
   { length: MARKETPLACE_TOTALS.totalResults },
   (_, index) => {
     const source = BUYER_PRODUCTS[index % BUYER_PRODUCTS.length];
+    /*
+     * Mọi tin trong bộ dữ liệu mô phỏng đều đã được phát hành công khai, nên
+     * gắn `listingStatus: 'ACTIVE'` ở đây. `isListingPublic` của
+     * `BuyerMarketplacePage` sẽ loại tin không phải ACTIVE (tin gắn cờ
+     * FLAGGED, tin bị từ chối) — khi backend thay bộ dữ liệu này bằng dữ
+     * liệu thật, trường này đến từ `Listing.Status`.
+     */
+    const withStatus = { ...source, listingStatus: 'ACTIVE' as const };
+
     // listedAt giảm dần để chế độ "Mới nhất" trải đều 16 mẫu gốc trên trang đầu tiên.
     return index < BUYER_PRODUCTS.length
-      ? { ...source, listedAt: index }
-      : { ...source, id: `${source.id}-${index}`, listedAt: index };
+      ? { ...withStatus, listedAt: index }
+      : { ...withStatus, id: `${source.id}-${index}`, listedAt: index };
   },
 );

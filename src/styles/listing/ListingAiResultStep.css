@@ -146,6 +146,8 @@
   white-space: nowrap;
 }
 .rw-lc-result-chip.green { background: #dcfce7; color: #15803d; }
+/* Khi chưa đạt hết điều kiện thì chip chuyển vàng để không "quảng cáo" 5/5. */
+.rw-lc-result-chip.warn { background: #fef3c7; color: #b45309; }
 .rw-lc-result-chip.indigo { background: #eef2ff; color: #3b5bdb; }
 .rw-lc-result-head-meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .rw-lc-result-head-note { color: #64748b; font-size: 11.5px; font-weight: 600; }
@@ -578,6 +580,28 @@
   border-radius: 12px;
   background: #f8fafd;
   border: 1px solid #e6ecf6;
+}
+/* Điều kiện thực sự trượt — nổi lên để seller biết cần chụp lại góc nào. */
+.rw-lc-result-evidence-row.is-failed {
+  background: #fffaf1;
+  border-color: #fde68a;
+}
+.rw-lc-result-evidence-row.is-failed .rw-lc-result-evidence-pct {
+  color: #b45309;
+}
+.rw-lc-result-evidence-row.is-failed .rw-lc-result-evidence-status {
+  color: #b45309;
+}
+/* Bước 04 chưa chạy xác thực thì nói rõ thay vì để thẻ trống. */
+.rw-lc-result-evidence-empty {
+  margin: 0;
+  padding: 14px;
+  border-radius: 12px;
+  background: #f8fafd;
+  border: 1px dashed #cbd5e1;
+  color: #64748b;
+  font-size: 12.5px;
+  line-height: 1.55;
 }
 .rw-lc-result-evidence-idx {
   display: grid;
@@ -1081,4 +1105,10 @@
   color: #7a3308;
   background: #fff4ea;
   border-color: #f6cfa8;
+}
+
+.rw-lc-result-alert.is-ai-generated {
+  color: #8a2f16;
+  background: #fff1ec;
+  border-color: #f5c3b2;
 }

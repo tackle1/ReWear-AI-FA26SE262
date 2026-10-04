@@ -111,6 +111,7 @@ export const findMissingAngles = (photos: Record<string, string>): string[] =>
 
 export interface BuildListingPayloadInput {
   productInfo: {
+    sku: string;
     name: string;
     categoryId: string;
     brand: string;
@@ -167,6 +168,7 @@ export const buildListingPayload = ({
   billPhoto,
   condition,
 }: BuildListingPayloadInput): CreateListingPayload => ({
+  sku: productInfo.sku,
   title: productInfo.name,
   categoryId: productInfo.categoryId,
   brand: productInfo.brand,
@@ -193,3 +195,89 @@ export const readSellerUserId = (): string | null => {
 };
 
 export default buildListingPayload;
+
+/**
+ * Kho nhớ hồ sơ giữa Bước 05 và hai trang kết quả (Đăng tin / Gắn cờ).
+ *
+ * Vì sao cần kho này: Bước 06 cũ là MỘT BƯỚC trong cùng trang nên state của
+ * người bán (ảnh, thông tin sản phẩm) còn sống. Sau khi tách thành trang
+ * riêng, chuyển trang sẽ mất toàn bộ state đó — payload gửi API lại lấy từ
+ * đâu? Đây là lý do.
+ *
+ * Dùng `sessionStorage` (không phải `localStorage`) vì đây là dữ liệu nháp của
+ * MỘT phiên đăng tin: đóng tab là bỏ, không nên để lại tin cũ mở lại sai.
+ * Ảnh là data URL nên khoá này có thể vài MB — vẫn nằm trong giới hạn
+ * sessionStorage (thường 5–10MB) và chỉ tồn tại trên tab hiện tại.
+ */
+
+/** Khoá lưu trong sessionStorage. */
+const DRAFT_KEY = 'rewear_listing_pending_draft';
+
+/** Thông tin hiển thị + body API của một hồ sơ đã qua Bước 05. */
+export interface PendingListingDraft {
+  /** Body đúng schema `POST /api/ListingsExample/create`. */
+  payload: CreateListingPayload;
+  /** Điểm confidence cuối do Bước 05 chốt (dùng cho badge và mô tả). */
+  confidence: number;
+  /** true nếu hồ sơ bị trừ điểm vì thiếu hóa đơn. */
+  billPenaltyApplied?: boolean;
+  /** Phân khúc thương hiệu backend đã trả về ở Bước 04 (nếu có). */
+  brandSegment?: string;
+  /** Ảnh đại diện (data URL góc toàn cảnh) để preview. */
+  thumbnail?: string;
+  /** Tên / hãng / kích cỡ / giá / sku để hiển thị. */
+  name?: string;
+  brand?: string;
+  category?: string;
+  size?: string;
+  pattern?: string;
+  price?: string;
+  sku?: string;
+  /** ISO string — dùng để chẩn đoán hồ sơ cũ khi mở lại trang. */
+  savedAt: string;
+}
+
+/** Lưu hồ sơ để trang kế tiếp đọc lại. Ghi lỗi thì bỏ qua, không chặn luồng. */
+export const savePendingDraft = (draft: PendingListingDraft): void => {
+  try {
+    sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+  } catch {
+    // sessionStorage hết chặn hoặc bị chặn (private mode) — vẫn cho sang trang,
+    // trang đích sẽ tự báo "không tìm thấy hồ sơ" nếu thiếu dữ liệu.
+  }
+};
+
+/**
+ * Đọc hồ sơ đang chờ. Trả `null` khi chưa có, dữ liệu hỏng, hoặc quá 30 phút
+ * (người bán bỏ tab rồi quay lại — dữ liệu đã lỗi thời).
+ */
+export const readPendingDraft = (): PendingListingDraft | null => {
+  try {
+    const raw = sessionStorage.getItem(DRAFT_KEY);
+    if (!raw) return null;
+
+    const draft = JSON.parse(raw) as PendingListingDraft;
+
+    if (!draft?.payload || typeof draft.confidence !== 'number') return null;
+
+    const savedAt = Date.parse(draft.savedAt ?? '');
+    const isExpired = Number.isFinite(savedAt) && Date.now() - savedAt > 30 * 60 * 1000;
+    if (isExpired) {
+      clearPendingDraft();
+      return null;
+    }
+
+    return draft;
+  } catch {
+    return null;
+  }
+};
+
+/** Xóa hồ sơ đang chờ sau khi đăng xong (tránh bấm lại tạo trùng tin). */
+export const clearPendingDraft = (): void => {
+  try {
+    sessionStorage.removeItem(DRAFT_KEY);
+  } catch {
+    // Không làm được thì thôi — hồ sơ sẽ bị xóa khi đóng tab.
+  }
+};

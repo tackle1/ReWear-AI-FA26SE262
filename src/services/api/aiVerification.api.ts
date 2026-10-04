@@ -78,10 +78,14 @@ export const buildAnalyzeRequest = (
   photos: Record<string, string>,
   brand: string,
   hasBillPhoto = false,
+  itemType = '',
 ): AnalyzePhotosRequest => ({
   brand: brand?.trim() ?? '',
   photos: buildPhotos(photos),
   hasBillPhoto,
+  // `itemType` chỉ có ý nghĩa với `verify-and-decide`: backend dùng để mở rộng
+  // điều kiện bắt buộc hoá đơn (luxury HOẶC SECONDHAND) cho khớp với create.
+  itemType: itemType?.trim() || undefined,
 });
 
 export default aiVerificationApi;

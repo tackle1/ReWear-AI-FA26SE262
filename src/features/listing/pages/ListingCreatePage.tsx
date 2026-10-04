@@ -13,20 +13,15 @@ import ListingUsageSection from '../../../components/listing/ListingUsageSection
 import ListingEvidenceSection from '../../../components/listing/ListingEvidenceSection';
 import ListingSidePanel from '../../../components/listing/ListingSidePanel';
 import ListingCreateActionBar from '../../../components/listing/ListingCreateActionBar';
-import useCurrentUser from '../../../hooks/useCurrentUser';
 import { buildListingPayload, findMissingAngles } from '../services/listingPayload';
-import { readApiErrorMessage } from '../utils/errorMessage';
 import usePhotoQualityCheck from '../hooks/usePhotoQualityCheck';
 import useAiVerification from '../hooks/useAiVerification';
 import useVerificationThresholds from '../hooks/useVerificationThresholds';
-import { saveSellerListing } from '../../seller/services/sellerListingsStore';
-import listingApi from '../../../services/api/listing.api';
-import { CreateListingResult } from '../../../types/listing.type';
 import ListingCaptureStep, { ListingCaptureHeader } from '../../../components/listing/ListingCaptureStep';
 import ListingPhotoReviewStep from '../../../components/listing/ListingPhotoReviewStep';
 import ListingAiVerificationStep from '../../../components/listing/ListingAiVerificationStep';
 import ListingAiResultStep from '../../../components/listing/ListingAiResultStep';
-import ListingPublishStep from '../../../components/listing/ListingPublishStep';
+import { savePendingDraft } from '../services/listingPayload';
 import '../../../styles/dashboard/DashboardTheme.css';
 import '../../../styles/listing/ListingCreate.css';
 
@@ -97,11 +92,9 @@ export const ListingCreatePage: React.FC = () => {
   const [hasBill, setHasBill] = useState(false);
   /** Ảnh hóa đơn dạng data URL, dùng cho trường `billPhotoUrl` khi tạo tin đăng. */
   const [billPhoto, setBillPhoto] = useState('');
-  /** Bước Kết quả báo lại: hồ sơ có được phép đăng tin hay đã bị từ chối tự động. */
-  const [canPublishResult, setCanPublishResult] = useState(true);
   /**
    * Điểm cuối do Bước 05 chốt lại (đã trừ theo cấu hình ngưỡng).
-   * Bước 06 hiển thị đúng con số này; `null` khi chưa qua Bước 05.
+   * `null` khi chưa qua Bước 05 — dùng để rẽ 3 nhánh sau Bước 05.
    */
   const [verifiedScore, setVerifiedScore] = useState<number | null>(null);
   const [warningToast, setWarningToast] = useState<WarningToast | null>(null);
@@ -161,26 +154,17 @@ export const ListingCreatePage: React.FC = () => {
   };
 
   /**
-   * Trạng thái đăng tin ở Bước 06: đang gửi / thành công / lỗi.
+   * Thông báo lỗi chặn người bán ở lại bước hiện tại (thiếu góc ảnh, thiếu điểm
+   * thẩm định, hồ sơ bị từ chối…). Việc gửi API đăng tin đã chuyển sang hai
+   * trang riêng nên trang này không còn trạng thái "đang gửi / đã đăng".
    */
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [createdListingId, setCreatedListingId] = useState<string | null>(null);
-  /**
-   * Kết quả đầy đủ backend trả về sau khi đăng tin (Bước 06).
-   *
-   * Giữ lại vì đây là nguồn dữ liệu thật duy nhất về những gì hệ thống đã quyết
-   * định — nổi bật là `brandSegment`: phân khúc thương hiệu do BACKEND suy ra,
-   * quyết định có bắt buộc hóa đơn hay không. Người bán cần thấy giá trị này
-   * để biết vì sao hồ sơ của họ bị áp quy tắc hóa đơn.
-   */
-  const [createdResult, setCreatedResult] = useState<CreateListingResult | null>(null);
-  const { userId } = useCurrentUser();
 
   /** Gom dữ liệu Bước 01 + ảnh Bước 02 thành body đúng schema backend. */
   const buildCurrentPayload = () =>
     buildListingPayload({
       productInfo: {
+        sku: productInfo.sku,
         name: productInfo.name,
         categoryId: productInfo.categoryId,
         brand: productInfo.brand,
@@ -214,87 +198,69 @@ export const ListingCreatePage: React.FC = () => {
   };
 
   /**
-   * Đăng tin ở Bước 06, sau khi đã qua kiểm tra ảnh (03), xác thực AI (04) và
-   * kết quả thẩm định (05). Bước 01 + 02 chỉ thu thập dữ liệu, không gọi API.
-   * Trạng thái hiển thị: đang gửi / thành công / lỗi.
+   * RẼ NHÁNH sau Bước 05 theo điểm confidence cuối cùng.
+   *
+   * Bước "Đăng tin" cũ (Bước 06) nay là HAI TRANG RIÊNG ngoài thanh tiến trình:
+   *   • >= `autoPublishThreshold` (75) → `ROUTES.LISTING.PUBLISH`
+   *   • >= `autoRejectThreshold`  (50) → `ROUTES.LISTING.FLAG` (chờ Admin)
+   *   • < 50                          → từ chối, đưa về Bước 01
+   *
+   * Trước khi chuyển trang, lưu hồ sơ vào kho phiên (`savePendingDraft`) vì
+   * state của trang này sẽ mất khi rời đi — trang đích cần payload đó để gọi
+   * API và hiển thị đúng điểm/ảnh.
    */
-  const handleCreateListing = async () => {
-    if (isSubmitting || createdListingId) return;
-
+  const routeByConfidence = () => {
     /*
-     * `userId` lấy từ phiên đăng nhập và phải là GUID hợp lệ (backend nhận
-     * `string($guid)`). `useCurrentUser` đã trả `null` khi thiếu hoặc sai
-     * định dạng, nên chặn ở đây trước khi gửi request để không mất dữ liệu
-     * đã nhập vì một lỗi 400 không rõ nguyên nhân từ backend.
+     * Chưa có điểm = Bước 05 chưa chạy xong (hoặc endpoint lỗi). Không đoán
+     * nhánh khi không có dữ liệu — báo lỗi và giữ người bán lại Bước 05.
      */
-    if (!userId) {
+    if (!resultRoute) {
       setSubmitError(
-        'Không xác định được mã người dùng (userId) hợp lệ. ' +
-          'Vui lòng đăng xuất rồi đăng nhập lại trước khi đăng tin.',
+        'Chưa có kết quả thẩm định. Vui lòng chạy lại xác thực AI ở Bước 04.',
       );
       return;
     }
 
-    // Chốt chặn cuối: backend trả 400 kèm `missingAngles` nếu thiếu góc nào.
+    /*
+     * Chốt chặn cuối: backend trả 400 kèm `missingAngles` nếu thiếu góc ảnh nào.
+     * Kiểm tra lại ở đây vì hai trang đích sẽ gọi API đăng tin.
+     */
     const missingAnglesMessage = buildMissingAnglesMessage();
     if (missingAnglesMessage) {
       setSubmitError(missingAnglesMessage);
       return;
     }
 
-    // Hồ sơ bị Bước 05 từ chối thì không được đăng, dù UI đã khoá nút.
-    if (!canPublishResult) {
+    // Dưới ngưỡng tối thiểu → hệ thống từ chối, cho người bán về lại Bước 01.
+    if (resultRoute === 'reject') {
       setSubmitError(
-        'Hồ sơ không đạt điều kiện thẩm định nên chưa thể đăng tin. ' +
-          'Vui lòng xem lại kết quả ở Bước 05.',
+        `Hồ sơ bị từ chối: điểm ${verifiedScore!.toFixed(1)}% thấp hơn ngưỡng tối thiểu ` +
+          `${thresholds.autoRejectThreshold}%. Vui lòng quay lại Bước 01 chỉnh thông tin ` +
+          'hoặc chụp lại ảnh rồi thực hiện lại.',
       );
+      setStepIndex(0);
       return;
     }
 
-    setIsSubmitting(true);
-    setSubmitError(null);
+    savePendingDraft({
+      payload: buildCurrentPayload(),
+      confidence: verifiedScore!,
+      billPenaltyApplied: aiVerify.decision?.missingBillPenaltyApplied ?? false,
+      brandSegment: aiVerify.decision?.brandSegment,
+      thumbnail: referencePhoto,
+      name: productInfo.name,
+      brand: productInfo.brand,
+      category: productInfo.category,
+      size: productInfo.size,
+      pattern: productInfo.pattern,
+      price: productInfo.price,
+      sku: productInfo.sku,
+      savedAt: new Date().toISOString(),
+    });
 
-    try {
-      const response = await listingApi.createListing(userId, buildCurrentPayload());
-      /*
-       * KHÔNG lấy `.data`: interceptor của axiosClient đã `response => response.data`
-       * nên giá trị await được CHÍNH LÀ body rồi, và backend trả thẳng DTO
-       * (không bọc `{success, data}`). Trước đây dùng `response?.data` khiến
-       * `listingId` luôn undefined — sau khi đăng xong không hiện mã tin và nút
-       * vẫn bấm được lần nữa (đăng trùng).
-       */
-      const data = response ?? null;
-      const listingId = data?.listingId ?? null;
-
-      setCreatedResult(data);
-      setCreatedListingId(listingId);
-
-      /*
-       * Lưu lại kết quả backend trả về vào kho của đúng seller này. Đây là
-       * nguồn dữ liệu thật cho trang tổng quan người bán (xem
-       * `useSellerDashboard`), vì backend chưa có endpoint đọc danh sách tin.
-       */
-      if (listingId) {
-        const payload = buildCurrentPayload();
-
-        saveSellerListing(userId, {
-          listingId,
-          title: payload.title,
-          categoryId: payload.categoryId,
-          brand: payload.brand,
-          size: payload.size,
-          price: payload.price,
-          itemType: payload.itemType,
-          thumbnail: capturedPhotos.OVERALL,
-          createdAt: new Date().toISOString(),
-          result: data ?? {},
-        });
-      }
-    } catch (err) {
-      setSubmitError(readApiErrorMessage(err, 'Không đăng được tin. Vui lòng thử lại.'));
-    } finally {
-      setIsSubmitting(false);
-    }
+    navigate(
+      resultRoute === 'publish' ? ROUTES.LISTING.PUBLISH : ROUTES.LISTING.FLAG,
+    );
   };
 
   /**
@@ -317,7 +283,7 @@ export const ListingCreatePage: React.FC = () => {
    * thiếu hoá đơn. Các endpoint này có `[Authorize]` — token và số dư token được
    * axiosClient tự gửi kèm và backend tự lấy từ claim, không truyền từ đây.
    */
-  const aiVerify = useAiVerification(capturedPhotos, productInfo.brand, hasBill);
+  const aiVerify = useAiVerification(capturedPhotos, productInfo.brand, hasBill, condition, stepIndex === 3);
 
   /**
    * Ngưỡng đánh giá + phí token mỗi lần phân tích.
@@ -326,6 +292,13 @@ export const ListingCreatePage: React.FC = () => {
    * tụt mỗi lần xác thực lại.
    */
   const { thresholds } = useVerificationThresholds();
+  const isAiQuotaExceeded =
+    aiVerify.quotaExceeded ||
+    (typeof aiVerify.remainingTokens === 'number' &&
+      (aiVerify.remainingTokens <= 0 ||
+        (typeof thresholds.aiAnalysisTokenCost === 'number' &&
+          thresholds.aiAnalysisTokenCost > 0 &&
+          aiVerify.remainingTokens < thresholds.aiAnalysisTokenCost)));
 
   /** Gom chỉ số đo theo `angleType` để truyền xuống Bước 04. */
   const measuredPhotos = useMemo(() => {
@@ -396,18 +369,23 @@ export const ListingCreatePage: React.FC = () => {
       return;
     }
 
-    // Bước 06 là bước DUY NHẤT được phép gọi API đăng tin.
-    if (stepIndex === LISTING_STEPS.length - 1) {
-      void handleCreateListing();
+    if (stepIndex === 3 && isAiQuotaExceeded) {
+      setSubmitError(
+        'Quota token AI không đủ để xem kết quả thẩm định. ' +
+          'Vui lòng nạp thêm token rồi thực hiện lại xác thực.',
+      );
       return;
     }
 
-    // Bước 05 cần hồ sơ đạt điều kiện thẩm định mới sang được Bước 06.
-    if (stepIndex === 4 && !canPublishResult) {
-      setSubmitError(
-        'Hồ sơ bị từ chối tự động nên chưa thể đăng tin. ' +
-          'Vui lòng xem lại kết quả thẩm định ở Bước 05.',
-      );
+    /*
+     * Bước 05 là bước CUỐI của thanh tiến trình: bấm nút ở đây sẽ RẼ NHÁNH
+     * theo điểm confidence, không sang bước kế tiếp nữa.
+     *   • >= ngưỡng đăng (75) → trang Đăng tin
+     *   • 50 – <75            → trang Gắn cờ (chờ Admin)
+     *   • < 50                → từ chối, đưa người bán về Bước 01
+     */
+    if (stepIndex === 4) {
+      routeByConfidence();
       return;
     }
 
@@ -417,6 +395,33 @@ export const ListingCreatePage: React.FC = () => {
   const handleDownloadReport = () => {
     setPdfState('preparing');
     window.setTimeout(() => setPdfState('ready'), 1200);
+  };
+
+  /**
+   * Nhánh rẽ của Bước 05, tính một lần để nhãn nút và ghi chú cùng dùng chung
+   * — tránh hai chỗ so ngưỡng lệch nhau khi ngưỡng backend đổi.
+   *
+   * `null` = chưa có điểm thẩm định thì chưa rẽ được.
+   */
+  const resultRoute = useMemo(() => {
+    if (typeof verifiedScore !== 'number') return null;
+    if (verifiedScore < thresholds.autoRejectThreshold) return 'reject' as const;
+    if (verifiedScore < thresholds.autoPublishThreshold) return 'flag' as const;
+    return 'publish' as const;
+  }, [verifiedScore, thresholds]);
+
+  /** Nhãn nút cuối ở Bước 05 — nói rõ sẽ đi đâu vì bước sau là TRANG RIÊNG. */
+  const RESULT_ACTION_LABEL: Record<'reject' | 'flag' | 'publish', string> = {
+    reject: 'Từ chối & quay lại Bước 01',
+    flag: 'Tiếp tục — Gắn cờ chờ Admin',
+    publish: 'Tiếp tục — Đăng tin',
+  };
+
+  /** Ghi chú dưới thanh hành động, mô tả đích đến của nhánh hiện tại. */
+  const RESULT_ACTION_NOTE: Record<'reject' | 'flag' | 'publish', string> = {
+    reject: 'Hồ sơ bị từ chối — bấm để quay lại Bước 01 chỉnh lại hồ sơ',
+    flag: `Điểm trong khoảng ${thresholds.autoRejectThreshold}% – ${thresholds.autoPublishThreshold}% — sẽ chuyển sang trang Gắn cờ chờ Admin`,
+    publish: `Điểm từ ${thresholds.autoPublishThreshold}% trở lên — sẽ chuyển sang trang Đăng tin`,
   };
 
   const showMissingBillWarning = () => {
@@ -443,7 +448,7 @@ export const ListingCreatePage: React.FC = () => {
       <main className="rw-lc-main">
         <ListingStepProgress activeIndex={stepIndex} />
 
-        {stepIndex !== 3 && stepIndex !== 4 && stepIndex !== 5 && (
+        {stepIndex !== 3 && stepIndex !== 4 && (
           <>
             {stepIndex === 1 && (
               <ListingCaptureHeader
@@ -497,6 +502,8 @@ export const ListingCreatePage: React.FC = () => {
             photos={capturedPhotos}
             measuredPhotos={measuredPhotos}
             analysis={aiVerify.analysis}
+            datasetMatch={aiVerify.datasetMatch}
+            aiImageDetection={aiVerify.aiImageDetection}
             decision={aiVerify.decision}
             signals={aiVerify.signals}
             isVerifying={aiVerify.isLoading}
@@ -506,6 +513,8 @@ export const ListingCreatePage: React.FC = () => {
              */
             remainingTokens={aiVerify.remainingTokens}
             tokenCost={thresholds.aiAnalysisTokenCost}
+            tokenQuota={thresholds.sellerDefaultAiTokenQuota}
+            quotaExceeded={aiVerify.quotaExceeded}
             thresholds={thresholds}
             verifyError={aiVerify.error}
             isChecking={photoCheck.isLoading}
@@ -521,6 +530,8 @@ export const ListingCreatePage: React.FC = () => {
               name: productInfo.name || undefined,
               brand: productInfo.brand || undefined,
               sku: productInfo.sku ? `SKU: ${productInfo.sku}` : undefined,
+              /* Giá người bán nhập ở Bước 01 — nguồn thật cho thẻ tóm tắt. */
+              price: productInfo.price || undefined,
             }}
             hasBill={hasBill}
             /**
@@ -529,24 +540,11 @@ export const ListingCreatePage: React.FC = () => {
              * Bước 05 hiển thị đúng điểm, không trừ lần thứ hai.
              */
             decision={aiVerify.decision}
-            onCanPublishChange={setCanPublishResult}
+            aiImageDetection={aiVerify.aiImageDetection}
+            signals={aiVerify.signals}
             onConfidenceChange={setVerifiedScore}
             onBack={handleBack}
             onApprove={handleNext}
-          />
-        ) : stepIndex === 5 ? (
-          <ListingPublishStep
-            image={referencePhoto}
-            name={productInfo.name || undefined}
-            brand={productInfo.brand || undefined}
-            category={productInfo.category || undefined}
-            size={productInfo.size || undefined}
-            pattern={productInfo.pattern || undefined}
-            price={productInfo.price || undefined}
-            sku={productInfo.sku || undefined}
-            confidence={verifiedScore ?? 94}
-            brandSegment={createdResult?.brandSegment}
-            billPenaltyApplied={createdResult?.missingBillPenaltyApplied ?? false}
           />
         ) : <div className="rw-lc-columns">
           <div className="rw-lc-col-left">
@@ -599,7 +597,6 @@ export const ListingCreatePage: React.FC = () => {
           </div>
           <aside className="rw-lc-col-right">
             <ListingSidePanel
-              previewImage={referencePhoto}
               preview={{
                 title: productInfo.name,
                 brand: productInfo.brand,
@@ -622,25 +619,11 @@ export const ListingCreatePage: React.FC = () => {
         </div>
       )}
 
-      {/* Trạng thái đăng tin ở Bước 06 */}
-      {(isSubmitting || submitError || createdListingId) && (
-        <div
-          className={`rw-lc-submit-toast${submitError ? ' is-error' : ''}`}
-          role={submitError ? 'alert' : 'status'}
-        >
-          {submitError ? (
-            <>
-              <span>{submitError}</span>
-              <button type="button" onClick={() => setSubmitError(null)} aria-label="Đóng cảnh báo">×</button>
-            </>
-          ) : isSubmitting ? (
-            <span>Đang đăng tin lên hệ thống...</span>
-          ) : (
-            <span>
-              Đã đăng tin thành công
-              {createdListingId ? ` (mã: ${createdListingId})` : ''}.
-            </span>
-          )}
+      {/* Lỗi chặn ở bước hiện tại (thiếu góc ảnh, hết quota, hồ sơ bị từ chối...). */}
+      {submitError && (
+        <div className="rw-lc-submit-toast is-error" role="alert">
+          <span>{submitError}</span>
+          <button type="button" onClick={() => setSubmitError(null)} aria-label="Đóng cảnh báo">×</button>
         </div>
       )}
 
@@ -651,34 +634,38 @@ export const ListingCreatePage: React.FC = () => {
           backLabel={
             stepIndex === 4
               ? 'Quay lại Bước 04 (Xác thực AI)'
-              : stepIndex === 5
-                ? 'Quay lại Bước 05 (Kết quả)'
-                : undefined
+              : undefined
           }
           nextLabel={
             stepIndex === 4
-              ? 'Phê duyệt và sang Bước 06'
-              : stepIndex === 5
-                ? isSubmitting
-                  ? 'Đang đăng tin...'
-                  : createdListingId
-                    ? 'Đã đăng tin'
-                    : 'Đăng tin ngay'
-                : stepIndex === 2
+              ? /*
+                * Nút cuối của thanh tiến trình. Bước kế tiếp KHÔNG còn là một
+                * bước nữa mà là trang riêng, tuỳ điểm — nên nhãn nói rõ đi đâu.
+                */
+                resultRoute
+                  ? RESULT_ACTION_LABEL[resultRoute]
+                  : 'Chờ kết quả thẩm định'
+              : stepIndex === 2
                   ? 'Xác thực AI'
                   : stepIndex === 3
-                    ? 'Xem kết quả thẩm định'
-                    : undefined
+                  ? isAiQuotaExceeded
+                    ? 'Hết quota AI — không thể xem kết quả'
+                    : aiVerify.isLoading
+                      ? 'Đang xác thực...'
+                      : 'Xem kết quả thẩm định'
+                  : undefined
           }
           nextDisabled={
             // Bước 03: chưa đo xong hoặc ảnh chưa đạt thì chưa sang Bước 04.
             (stepIndex === 2 && (!photoCheck.result || !photosAllPassed)) ||
             // Bước 04: ảnh chưa đạt thì không sang Bước 05.
-            (stepIndex === 3 && !photosAllPassed) ||
-            // Bước 05: bị từ chối thì không sang Bước 06.
-            (stepIndex === 4 && !canPublishResult) ||
-            // Bước 06: khoá khi đang gửi / bị chặn / đã đăng xong.
-            (stepIndex === 5 && (isSubmitting || !canPublishResult || !!createdListingId))
+            (stepIndex === 3 && (!photosAllPassed || isAiQuotaExceeded || aiVerify.isLoading)) ||
+            /*
+             * Bước 05: chưa có điểm thẩm định thì chưa rẽ được nhánh nào.
+             * KHÔNG khoá khi bị từ chối — nút "Từ chối & quay lại Bước 01"
+             * vẫn phải bấm được để người bán thoát luồng.
+             */
+            (stepIndex === 4 && resultRoute === null)
           }
           note={
             stepIndex === 2
@@ -688,22 +675,20 @@ export const ListingCreatePage: React.FC = () => {
                   ? 'Ảnh đã đạt — sẵn sàng chuyển sang xác thực AI'
                   : 'Cần đủ ảnh đạt chất lượng để sang Bước 04'
               : stepIndex === 3
-                ? photosAllPassed
+                ? isAiQuotaExceeded
+                  ? 'Quota token AI không đủ — nút xem kết quả đã khóa. Nạp token để tiếp tục.'
+                  : aiVerify.isLoading
+                    ? 'Đang chờ kết quả xác thực từ AI...'
+                  : photosAllPassed
                   ? 'Bằng chứng ảnh hợp lệ — sẵn sàng xem kết quả thẩm định'
                   : 'Bằng chứng ảnh chưa đạt — quay lại Bước 02 để chụp lại'
                 : stepIndex === 4
-              ? canPublishResult
-                ? 'Kết quả kiểm định đã sẵn sàng để phê duyệt'
-                : 'Hồ sơ bị từ chối tự động — không thể đăng tin'
-              : stepIndex === 5
-                ? createdListingId
-                  ? 'Tin đăng đã được đưa lên chợ ReWear AI'
-                  : canPublishResult
-                    ? 'Đủ điều kiện thẩm định — xác nhận để đăng tin lên chợ'
-                    : 'Hồ sơ chưa đạt điều kiện — không thể đăng tin'
-                : stepIndex === 1
-                  ? 'Bước này chỉ thu thập ảnh — tin đăng được tạo ở Bước 06'
-                  : undefined
+                  ? resultRoute
+                    ? RESULT_ACTION_NOTE[resultRoute]
+                    : 'Chờ kết quả thẩm định để chuyển sang bước tiếp theo'
+                  : stepIndex === 1
+                    ? 'Bước này chỉ thu thập ảnh — tin đăng được tạo sau Bước 05'
+                    : undefined
           }
           secondaryLabel={
             stepIndex === 4

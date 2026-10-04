@@ -110,7 +110,7 @@ export const ListingSidePanel: React.FC<ListingSidePanelProps> = ({
               <div className="rw-lc-preview-empty">
                 <ImageIcon />
                 <b>Chưa có ảnh sản phẩm</b>
-                <small>Ảnh sẽ hiển thị sau khi bạn chụp ở Bước 02</small>
+                <small>Ảnh sẽ hiển thị ở các bước kiểm định sau khi chụp ở Bước 02</small>
               </div>
             )}
           </div>
